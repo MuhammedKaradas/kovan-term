@@ -1,6 +1,7 @@
 using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using EasyWindowsTerminalControl;
 using KovanTerm.Services;
 using KovanTerm.ViewModels;
@@ -55,4 +56,16 @@ public partial class MainWindow : Window
     private void Editor_ContextMenuOpening(object sender, ContextMenuEventArgs e) => _contextMenuLocation = Editor.MouseLocation;
 
     private void NewTerminalHere_Click(object sender, RoutedEventArgs e) => _vm.NewTerminalCommand.Execute(_contextMenuLocation);
+
+    // Thumb düğümün içinde, Nodify'ın ölçeklediği katmanda olduğu için DragDelta değerleri tuval birimindedir
+    private void ResizeThumb_DragStarted(object sender, DragStartedEventArgs e) => _canvas.BeginInteraction();
+
+    private void ResizeThumb_DragDelta(object sender, DragDeltaEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TerminalNodeViewModel node })
+            node.ResizeBy(e.HorizontalChange, e.VerticalChange);
+        e.Handled = true; // Nodify düğümü sürüklemesin
+    }
+
+    private void ResizeThumb_DragCompleted(object sender, DragCompletedEventArgs e) => _canvas.EndInteraction();
 }
