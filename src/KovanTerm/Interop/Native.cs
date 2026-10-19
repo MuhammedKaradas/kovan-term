@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace KovanTerm;
+namespace KovanTerm.Interop;
 
 internal static class Native
 {

@@ -4,9 +4,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using EasyWindowsTerminalControl;
+using KovanTerm.Interop;
 using Microsoft.Terminal.Wpf;
 
-namespace KovanTerm;
+namespace KovanTerm.Views;
 
 public partial class MainWindow : Window
 {

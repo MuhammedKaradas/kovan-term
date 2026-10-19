@@ -1,4 +1,4 @@
-<Window x:Class="KovanTerm.MainWindow"
+<Window x:Class="KovanTerm.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:nodify="https://miroiu.github.io/nodify"
