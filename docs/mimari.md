@@ -72,8 +72,10 @@ barındırır. Süreçler ConPTY ile başlatılır. Bunun sonuçları:
 ## Bağımlılık riski
 
 `EasyWindowsTerminalControl`, Microsoft'un resmi olarak yayımlamadığı WPF terminal kontrolünün
-topluluk tarafından yeniden paketlenmiş sürümüne (`CI.Microsoft.Terminal.Wpf`) dayanır. API
-değişebilir. Alternatifler `docs/kararlar/0001-dotnet-wpf-ve-yerel-terminal.md` içinde.
+topluluk tarafından yeniden paketlenmiş sürümüne (`CI.Microsoft.Terminal.Wpf`) dayanır. Riskler,
+WebView2 + xterm.js yedeğiyle bellek karşılaştırması ve alınan önlemler:
+[0002 karar kaydı](kararlar/0002-terminal-bagimliligi-riski.md). Kısaca: paket sürümleri sabit
+tutulur, güncellemeler elle test edilir.
 
 ## Planlanan bileşenler
 
