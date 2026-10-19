@@ -58,13 +58,26 @@ barındırır. Süreçler ConPTY ile başlatılır. Bunun sonuçları:
    açılır pencereler vb. bu yüzden sınırlıdır.
 3. **Hareket maliyeti**: Her kaydırma karesinde tüm HWND'ler yeniden konumlanıp boyutlandığı için
    takılma olur. Çözüm "fotoğraf modu":
-   - `ViewportUpdated` veya `ItemContainer.LocationChanged` geldiğinde `Freeze()`: her terminalin
-     `PrintWindow(PW_RENDERFULLCONTENT)` ile görüntüsü alınır, `Image`'a konur, terminal gizlenir.
-   - Son hareketten 150 ms sonra `Unfreeze()`: yazı boyutu güncellenir, terminaller geri gelir.
+   - `ViewportUpdated` veya `ItemContainer.LocationChanged` geldiğinde `Freeze()`: terminaller
+     gizlenir, yerlerine `Image` içinde anlık görüntüleri gösterilir.
+   - Son hareketten 150 ms sonra `Unfreeze()`: yazı boyutu güncellenir, terminaller geri gelir;
+     görüntüler terminal ilk karesini çizene kadar 100 ms daha arkada tutulur (boş kare titremesi olmasın).
    - Boyutlandırma gibi süresi belli olmayan etkileşimlerde `BeginInteraction()`/`EndInteraction()`
      fotoğraf modunu etkileşim bitene kadar tutar; görüntü yeni boyuta gerilir, bırakınca terminal
      gerçek boyutta yeniden çizilir.
-   - Bilinen sorun: pencere dışında kalan terminal parçaları görüntüde gri çıkar.
+   - **Görüntü önbelleği:** `PrintWindow(PW_RENDERFULLCONTENT)` bir DWM karesini beklediği için
+     terminal başına ~12-20 ms sürer ve çağrılar paralelleştirilemiyor (sıraya giriyor). Hareket
+     anında almak 10 terminalde ~100-170 ms donmaya yol açıyordu. Bunun yerine terminalin
+     `TerminalOutput` olayı ve boyut değişimi "değişti" bayrağı kaldırır; 150 ms'de bir değişen
+     terminallerin görüntüsü **arka plan iş parçacığında** alınır. `Freeze()` önbellekteki
+     görüntüyü kullanır (<1 ms); yalnızca güncel olmayanları anında alır.
+   - **Kırpılan terminaller:** pencere dışına taşan bir HWND için `PrintWindow` yalnızca görünür
+     kısmı sol üst köşeye yaslanmış çizer. `TerminalSnapshot` görünür parçayı doğru konuma kaydırır,
+     taşan kısmı terminal arka planıyla boyar.
+   - Ölçüm: `KOVAN_PERF_SELFTEST` (CLAUDE.md). 10 terminalde ~58 fps, en kötü kare ~35 ms
+     (önbellek öncesi ~200 ms).
+   - Bilinen sınır: yazı boyutu tam sayı olduğu için (`SetTheme` `short` alıyor) hareket bitince
+     terminal yazısı ölçeklenmiş görüntüden biraz farklı boyutta gelebilir (küçük bir "zıplama").
 4. **Boyutlandırma tutamacı**: terminalin üstüne WPF çizilemediği için tutamaç terminalin altındaki
    ince şerittedir. `Thumb.DragDelta` değerleri düğümün içinde ölçülür, yani zaten tuval birimindedir.
 
