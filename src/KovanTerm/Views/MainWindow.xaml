@@ -20,8 +20,7 @@
         <nodify:NodifyEditor x:Name="Editor"
                              ItemsSource="{Binding Nodes}"
                              Background="#16171d"
-                             MinViewportZoom="0.3" MaxViewportZoom="1.5"
-                             ViewportUpdated="Editor_ViewportUpdated">
+                             MinViewportZoom="0.3" MaxViewportZoom="1.5">
             <nodify:NodifyEditor.ItemContainerStyle>
                 <Style TargetType="{x:Type nodify:ItemContainer}">
                     <Setter Property="Location" Value="{Binding Location}"/>
