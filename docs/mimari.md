@@ -2,23 +2,38 @@
 
 ## Genel görünüm
 
+Uygulama MVVM ile yazılır ([CommunityToolkit.Mvvm](https://learn.microsoft.com/dotnet/communitytoolkit/mvvm/)).
+Durum ve komutlar ViewModel'lerde; HwndHost'a özgü işler görünüm katmanında kalır.
+
 ```
-MainWindow
- └─ NodifyEditor (sonsuz tuval: kaydırma, zoom, seçim, sürükleme)
-     └─ ItemContainer (her düğüm için)
-         └─ TerminalNode şablonu
-             ├─ Başlık (durum noktası, ad, kapat)
+MainWindow  (DataContext: MainViewModel)
+ └─ NodifyEditor (sonsuz tuval; ViewportZoom/ViewportLocation ↔ MainViewModel)
+     └─ ItemContainer (her düğüm için; Location ↔ TerminalNodeViewModel)
+         └─ TerminalNodeViewModel şablonu
+             ├─ Başlık (durum noktası, ad, kapat → CloseNodeCommand)
              └─ Grid
                  ├─ Image                (fotoğraf modu için anlık görüntü)
                  └─ EasyTerminalControl  (HwndHost → Windows Terminal kontrolü → ConPTY → süreç)
 ```
 
+```
+src/KovanTerm/
+├─ Models/        Saf veri: NodeStatus, TerminalLaunch
+├─ ViewModels/    MainViewModel, TerminalNodeViewModel
+├─ Views/         MainWindow, TerminalCanvasController, TerminalThemes, Converters/
+└─ Interop/       Win32 P/Invoke (Native) ve HWND görüntüsü alma (TerminalSnapshot)
+```
+
 | Dosya | Görev |
 |---|---|
-| `MainWindow.xaml(.cs)` | Tuval, düğüm şablonu, fotoğraf modu, zoom→yazı boyutu |
-| `TerminalNode.cs` | Düğüm modeli (başlık, komut, konum, durum) |
-| `TerminalSnapshot.cs` | Terminal HWND'sinin anlık görüntüsünü alma |
-| `Native.cs` | Win32 P/Invoke tanımları |
+| `ViewModels/MainViewModel.cs` | Düğüm listesi, hızlı başlatma, görünüm durumu, komutlar (`AddTerminal`, `CloseNode`) |
+| `ViewModels/TerminalNodeViewModel.cs` | Düğüm: başlık, komut, boyut, konum, durum |
+| `Views/MainWindow.xaml(.cs)` | Tuval ve düğüm şablonu; code-behind yalnızca terminalleri kontrolcüye kaydeder |
+| `Views/TerminalCanvasController.cs` | Fotoğraf modu ve zoom→yazı boyutu (HwndHost kısıtları) |
+| `Interop/TerminalSnapshot.cs` | Terminal HWND'sinin anlık görüntüsünü alma |
+
+Kural: ViewModel'ler WPF kontrollerine (`EasyTerminalControl`, `NodifyEditor`) dokunmaz. Terminal
+kontrolüyle doğrudan çalışması gereken kod `Views/` altında yaşar.
 
 ## Terminal katmanı ve kısıtları
 
