@@ -15,6 +15,7 @@ namespace KovanTerm.Views;
 /// <list type="bullet">
 /// <item>Kaydırma/zoom/sürükleme sırasında canlı terminaller yerine anlık görüntülerini gösterir ("fotoğraf modu").</item>
 /// <item>Görüntüleri boştayken arka planda önbelleğe alır; böylece harekete geçiş anlık olur.</item>
+/// <item>Görünür alanın dışındaki terminalleri uyutur; çok uzaklaştırılınca canlı terminal yerine son görüntüyü gösterir.</item>
 /// <item>HWND, WPF zoom'uyla ölçeklenmediği için yazı boyutunu zoom'a göre ayarlar.</item>
 /// <item>Düğüm kapanınca terminalin işlem ağacını sonlandırır.</item>
 /// </list>
@@ -24,6 +25,8 @@ public sealed class TerminalCanvasController
 {
     private const int BaseFontSize = 13;
     private const int MinFontSize = 4;
+    /// <summary>Bu zoom'un altında yazı okunamaz (≤5 pt); canlı terminaller yerine son görüntüler gösterilir.</summary>
+    public const double SleepZoomThreshold = 0.4;
 
     /// <summary>Tuvaldeki bir terminal ve önbellekteki görüntüsü.</summary>
     private sealed class Entry(EasyTerminalControl control)
@@ -32,6 +35,11 @@ public sealed class TerminalCanvasController
         /// <summary>Son görüntüden sonra terminal çıktısı değişti mi? Okuma iş parçacığından yazılır.</summary>
         public volatile bool Dirty = true;
         public BitmapSource? Snapshot;
+        /// <summary>
+        /// Uyuyan terminalin HWND'si gizlidir: çizilmez, görüntüsü yenilenmez. İşlem çalışmaya ve çıktı
+        /// terminal arabelleğine yazılmaya devam eder; uyanınca güncel hali çizilir.
+        /// </summary>
+        public bool Sleeping;
     }
 
     private readonly NodifyEditor _editor;
@@ -84,6 +92,7 @@ public sealed class TerminalCanvasController
         {
             _appliedFontSize = FontSizeForZoom(_editor.ViewportZoom);
             SetFont(term, _appliedFontSize);
+            UpdateSleepStates();
         }, DispatcherPriority.ApplicationIdle);
     }
 
@@ -159,10 +168,11 @@ public sealed class TerminalCanvasController
         foreach (var entry in _byNode.Values)
         {
             if (GetSnapshotImage(entry.Control) is not { } image) continue;
-            // Önbellekteki görüntü güncelse onu kullan; değilse (ör. hiç alınmamış) şimdi al
-            var shot = !entry.Dirty && entry.Snapshot != null ? entry.Snapshot : null;
+            // Önbellekteki görüntü güncelse onu kullan; değilse (ör. hiç alınmamış) şimdi al.
+            // Uyuyan terminal gizli olduğu için görüntüsü alınamaz; eldeki görüntü kullanılır.
+            var shot = entry.Sleeping || (!entry.Dirty && entry.Snapshot != null) ? entry.Snapshot : null;
             if (shot != null) fromCache++;
-            else if (TerminalSnapshot.GetTarget(entry.Control) is { } target)
+            else if (!entry.Sleeping && TerminalSnapshot.GetTarget(entry.Control) is { } target)
             {
                 shot = entry.Snapshot = TerminalSnapshot.Capture(target, TerminalThemes.DarkBackground);
                 entry.Dirty = false;
@@ -186,11 +196,12 @@ public sealed class TerminalCanvasController
         ApplyZoomToTerminals();
         foreach (var entry in _byNode.Values)
         {
-            entry.Control.Visibility = Visibility.Visible;
             // Konum/yazı boyutu değişmiş olabilir; görüntü yeniden alınmalı
             entry.Dirty = true;
+            entry.Sleeping = false;
         }
-        Timing?.Invoke($"canlı terminale dönüş ({_byNode.Count} terminal)", sw.Elapsed);
+        var sleeping = UpdateSleepStates();
+        Timing?.Invoke($"canlı terminale dönüş ({_byNode.Count} terminal, {sleeping} uyuyor)", sw.Elapsed);
         // Terminal (özellikle yazı boyutu değiştiyse) ilk karesini çizene kadar görüntü arkada kalsın;
         // hemen kaldırılırsa kısa bir boş kare görünüyor
         _snapshotCleanupTimer.Start();
@@ -201,7 +212,49 @@ public sealed class TerminalCanvasController
         _snapshotCleanupTimer.Stop();
         if (_frozen) return;
         foreach (var entry in _byNode.Values)
+        {
+            // Uyuyan terminalin görüntüsü (çok uzaklaştırılmışken) yerinde kalır
+            if (entry.Sleeping) continue;
             if (GetSnapshotImage(entry.Control) is { } image) { image.Visibility = Visibility.Collapsed; image.Source = null; }
+        }
+    }
+
+    /// <summary>
+    /// Görünür alanın dışındaki terminalleri uyutur, içeri girenleri uyandırır. Çok uzaklaştırılmışken
+    /// (<see cref="SleepZoomThreshold"/>) görüntüsü olan tüm terminaller uyur ve son görüntüleri gösterilir.
+    /// Fotoğraf modundayken çağrılmaz; hareket bitince <see cref="Unfreeze"/> çağırır. Uyuyan sayısını döndürür.
+    /// </summary>
+    private int UpdateSleepStates()
+    {
+        if (_frozen) return 0;
+        var viewport = new Rect(_editor.ViewportLocation, _editor.ViewportSize);
+        var lowZoom = _editor.ViewportZoom < SleepZoomThreshold;
+        var count = 0;
+        foreach (var entry in _byNode.Values)
+        {
+            if (entry.Control.DataContext is not ViewModels.TerminalNodeViewModel node) continue;
+            var offscreen = !viewport.IntersectsWith(node.Bounds);
+            // Görüntüsü olmayan terminal uzaklaştırılmışken uyutulmaz, yoksa yerinde boşluk görünür
+            var sleep = offscreen || (lowZoom && entry.Snapshot != null);
+            var image = GetSnapshotImage(entry.Control);
+            if (sleep)
+            {
+                count++;
+                entry.Sleeping = true;
+                entry.Control.Visibility = Visibility.Hidden;
+                if (image == null) continue;
+                var showImage = !offscreen && entry.Snapshot != null;
+                image.Source = showImage ? entry.Snapshot : null;
+                image.Visibility = showImage ? Visibility.Visible : Visibility.Collapsed;
+            }
+            else
+            {
+                if (entry.Sleeping) entry.Dirty = true; // uyurken çıktı gelmiş olabilir
+                entry.Sleeping = false;
+                entry.Control.Visibility = Visibility.Visible;
+            }
+        }
+        return count;
     }
 
     /// <summary>
