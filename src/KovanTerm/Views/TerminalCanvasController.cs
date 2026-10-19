@@ -46,8 +46,12 @@ public sealed class TerminalCanvasController
     {
         if (term.DataContext is not { } node || _byNode.ContainsKey(node)) return;
         _byNode[node] = term;
-        // Terminal hazır olunca mevcut zoom'a uygun yazı boyutunu uygula
-        term.Dispatcher.BeginInvoke(() => SetFont(term, _appliedFontSize), DispatcherPriority.ApplicationIdle);
+        // Terminal hazır olunca mevcut zoom'a uygun yazı boyutunu uygula (çalışma alanı farklı bir zoom'la açılmış olabilir)
+        term.Dispatcher.BeginInvoke(() =>
+        {
+            _appliedFontSize = FontSizeForZoom(_editor.ViewportZoom);
+            SetFont(term, _appliedFontSize);
+        }, DispatcherPriority.ApplicationIdle);
     }
 
     /// <summary>Düğümün terminalini ve altındaki tüm işlemleri (ör. cmd → claude → MCP sunucuları) sonlandırır.</summary>
@@ -132,12 +136,14 @@ public sealed class TerminalCanvasController
 
     private void ApplyZoomToTerminals()
     {
-        var size = Math.Max(MinFontSize, (int)Math.Round(BaseFontSize * _editor.ViewportZoom));
+        var size = FontSizeForZoom(_editor.ViewportZoom);
         if (size == _appliedFontSize) return;
         _appliedFontSize = size;
         foreach (var term in _terminals)
             SetFont(term, size);
     }
+
+    private static int FontSizeForZoom(double zoom) => Math.Max(MinFontSize, (int)Math.Round(BaseFontSize * zoom));
 
     private static void SetFont(EasyTerminalControl term, int size) =>
         term.Terminal?.SetTheme(TerminalThemes.Dark, "Cascadia Code", (short)size);
