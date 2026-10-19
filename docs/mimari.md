@@ -43,6 +43,10 @@ kontrolüyle doğrudan çalışması gereken kod `Views/` altında yaşar. ViewM
 pencereler `IDialogService` üzerinden açılır (görünümde `DialogService`), böylece ViewModel test
 edilebilir kalır.
 
+Görünüm (zoom/konum) yalnızca kullanıcı ya da bilinçli komutlarla değişir. Nodify'ın odaklanan
+düğüme kendiliğinden kaydırması (`NodifyEditor.AutoPanOnNodeFocus`) kapalıdır; terminaller açılışta
+ve tıklanınca odak aldığı için kaydedilen görünümü bozuyordu.
+
 Yeni düğümler hiçbir düğümle çakışmayacak şekilde yerleştirilir (`NodePlacement`): üst üste binen
 terminaller airspace nedeniyle birbirinin başlığını örter.
 

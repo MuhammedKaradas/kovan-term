@@ -5,6 +5,7 @@ using System.Windows.Controls.Primitives;
 using EasyWindowsTerminalControl;
 using KovanTerm.Services;
 using KovanTerm.ViewModels;
+using Nodify;
 
 namespace KovanTerm.Views;
 
@@ -20,6 +21,9 @@ public partial class MainWindow : Window
         _vm = new MainViewModel(new WorkspaceStore(), new ProfileStore(), new CommandResolver(), new DialogService(this));
         DataContext = _vm;
         _canvas = new TerminalCanvasController(Editor);
+        // Düğüm odak alınca Nodify tuvali o düğüme kaydırıyor; terminaller açılışta ve tıklanınca odak aldığı
+        // için kaydedilen görünüm bozuluyordu (#35). Görünüm yalnızca kullanıcı ya da bilinçli komutlarla değişmeli.
+        NodifyEditor.AutoPanOnNodeFocus = false;
         PerfSelfTest.AttachIfRequested(this, Editor, _canvas);
 
         // ViewportSize salt okunur olduğu için bağlanamıyor; yeni düğümü ortalamak için ViewModel'e aktar
