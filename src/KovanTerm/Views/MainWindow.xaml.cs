@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.Windows;
 using EasyWindowsTerminalControl;
 using KovanTerm.ViewModels;
@@ -11,8 +12,25 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        DataContext = new MainViewModel();
+        var vm = new MainViewModel();
+        DataContext = vm;
         _canvas = new TerminalCanvasController(Editor);
+
+        // Düğüm kapanınca ya da pencere kapanınca terminal işlemleri arkada çalışmaya devam etmesin
+        vm.Nodes.CollectionChanged += OnNodesChanged;
+        Closed += (_, _) => _canvas.TerminateAll();
+    }
+
+    private void OnNodesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.Action == NotifyCollectionChangedAction.Reset)
+        {
+            _canvas.TerminateAll();
+            return;
+        }
+        if (e.OldItems == null) return;
+        foreach (var node in e.OldItems)
+            _canvas.Terminate(node);
     }
 
     // Terminal kontrolleri HwndHost olduğu için tuval kontrolcüsüne görünüm katmanında kaydedilir
