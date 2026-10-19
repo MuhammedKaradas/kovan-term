@@ -21,6 +21,7 @@ Electron tabanlı alternatiflere (OpenCove, TermCanvas) göre düşük RAM ve ak
 dotnet build                      # derle
 dotnet run --project src/KovanTerm  # çalıştır
 dotnet build -c Release           # performans ölçerken Release kullan
+dotnet test                       # birim testleri (tests/KovanTerm.Tests)
 ```
 
 ## Mimari notlar (önemli)

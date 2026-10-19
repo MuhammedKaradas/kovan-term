@@ -77,6 +77,7 @@
                             <Grid Width="{Binding Width}" Height="{Binding Height}">
                                 <Image Visibility="Collapsed" Stretch="Fill"/>
                                 <term:EasyTerminalControl StartupCommandLine="{Binding CommandLine}"
+                                                          WorkingDirectory="{Binding WorkingDirectory}"
                                                           FontSizeWhenSettingTheme="13"
                                                           Loaded="Terminal_Loaded"/>
                             </Grid>

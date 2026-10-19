@@ -18,10 +18,12 @@ MainWindow  (DataContext: MainViewModel)
 
 ```
 src/KovanTerm/
-├─ Models/        Saf veri: NodeStatus, TerminalLaunch
+├─ Models/        Saf veri: NodeStatus, TerminalLaunch, WorkspaceState
 ├─ ViewModels/    MainViewModel, TerminalNodeViewModel
 ├─ Views/         MainWindow, TerminalCanvasController, TerminalThemes, Converters/
+├─ Services/      WorkspaceStore (çalışma alanı kaydı)
 └─ Interop/       Win32 P/Invoke (Native) ve HWND görüntüsü alma (TerminalSnapshot)
+tests/KovanTerm.Tests/   xUnit birim testleri
 ```
 
 | Dosya | Görev |
@@ -52,6 +54,21 @@ barındırır. Süreçler ConPTY ile başlatılır. Bunun sonuçları:
    - Son hareketten 150 ms sonra `Unfreeze()`: yazı boyutu güncellenir, terminaller geri gelir.
    - Bilinen sorun: pencere dışında kalan terminal parçaları görüntüde gri çıkar.
 
+## Kalıcılık
+
+Çalışma alanı `%APPDATA%\KovanTerm\workspace.json` dosyasında tutulur (`WorkspaceStore`).
+
+- **Ne kaydedilir:** düğümler (kimlik, başlık, komut, çalışma dizini, konum, boyut) ve görünüm
+  (zoom, konum). Terminal içeriği ve ajan durumu kaydedilmez; açılışta terminaller aynı komutla
+  yeniden başlar.
+- **Ne zaman:** düğüm eklenince/kapanınca, düğüm taşınınca ve görünüm değişince 500 ms gecikmeyle;
+  ayrıca pencere kapanırken.
+- **Güvenlik:** önce `.tmp` dosyasına yazılıp yer değiştirilir (yarım dosya kalmaz). Okunamayan ya
+  da daha yeni sürümle yazılmış dosya `workspace.bozuk-<tarih>.json` olarak yedeklenir ve uygulama
+  varsayılan alanla açılır.
+- **Sürüm:** `WorkspaceState.Version`. Alan eklemek geriye uyumludur; alan anlamını değiştiren
+  değişiklikte sürüm artırılıp geçiş kodu yazılır.
+
 ## Bağımlılık riski
 
 `EasyWindowsTerminalControl`, Microsoft'un resmi olarak yayımlamadığı WPF terminal kontrolünün
@@ -61,5 +78,4 @@ değişebilir. Alternatifler `docs/kararlar/0001-dotnet-wpf-ve-yerel-terminal.md
 ## Planlanan bileşenler
 
 - **Ajan durum köprüsü** (v0.2): Claude Code hook'ları → yerel named pipe → düğüm durumu.
-- **Kalıcılık** (v0.1): çalışma alanı JSON olarak `%APPDATA%\KovanTerm` altında.
 - **Ses** (v0.4): Whisper.net ile yerel konuşma tanıma.

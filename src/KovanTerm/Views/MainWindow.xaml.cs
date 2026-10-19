@@ -1,6 +1,7 @@
 using System.Collections.Specialized;
 using System.Windows;
 using EasyWindowsTerminalControl;
+using KovanTerm.Services;
 using KovanTerm.ViewModels;
 
 namespace KovanTerm.Views;
@@ -12,13 +13,17 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        var vm = new MainViewModel();
+        var vm = new MainViewModel(new WorkspaceStore());
         DataContext = vm;
         _canvas = new TerminalCanvasController(Editor);
 
         // Düğüm kapanınca ya da pencere kapanınca terminal işlemleri arkada çalışmaya devam etmesin
         vm.Nodes.CollectionChanged += OnNodesChanged;
-        Closed += (_, _) => _canvas.TerminateAll();
+        Closed += (_, _) =>
+        {
+            vm.SaveNow();
+            _canvas.TerminateAll();
+        };
     }
 
     private void OnNodesChanged(object? sender, NotifyCollectionChangedEventArgs e)
