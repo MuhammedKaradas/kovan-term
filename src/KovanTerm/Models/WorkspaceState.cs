@@ -8,6 +8,9 @@ public sealed record WorkspaceState
     public int Version { get; init; } = CurrentVersion;
     public ViewportState Viewport { get; init; } = new();
     public List<NodeState> Nodes { get; init; } = [];
+    /// <summary>En son kullanılan çalışma dizinleri, en yenisi başta.</summary>
+    public List<string> RecentDirectories { get; init; } = [];
+    public string? LastProfileId { get; init; }
 }
 
 public sealed record ViewportState
@@ -20,8 +23,10 @@ public sealed record ViewportState
 public sealed record NodeState
 {
     public Guid Id { get; init; } = Guid.NewGuid();
+    public string? ProfileId { get; init; }
     public required string Title { get; init; }
     public required string CommandLine { get; init; }
+    public string? Color { get; init; }
     public string? WorkingDirectory { get; init; }
     public double X { get; init; }
     public double Y { get; init; }

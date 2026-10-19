@@ -18,24 +18,33 @@ MainWindow  (DataContext: MainViewModel)
 
 ```
 src/KovanTerm/
-├─ Models/        Saf veri: NodeStatus, TerminalLaunch, WorkspaceState
-├─ ViewModels/    MainViewModel, TerminalNodeViewModel
-├─ Views/         MainWindow, TerminalCanvasController, TerminalThemes, Converters/
-├─ Services/      WorkspaceStore (çalışma alanı kaydı)
+├─ Models/        Saf veri: NodeStatus, TerminalProfile, WorkspaceState
+├─ ViewModels/    MainViewModel, TerminalNodeViewModel, NewTerminalViewModel, NodePlacement
+├─ Views/         MainWindow, NewTerminalWindow, DialogService, TerminalCanvasController, Converters/
+├─ Services/      WorkspaceStore, ProfileStore, CommandResolver, IDialogService
 └─ Interop/       Win32 P/Invoke (Native) ve HWND görüntüsü alma (TerminalSnapshot)
 tests/KovanTerm.Tests/   xUnit birim testleri
 ```
 
 | Dosya | Görev |
 |---|---|
-| `ViewModels/MainViewModel.cs` | Düğüm listesi, hızlı başlatma, görünüm durumu, komutlar (`AddTerminal`, `CloseNode`) |
+| `ViewModels/MainViewModel.cs` | Düğüm listesi, görünüm durumu, komutlar (`NewTerminal`, `CloseNode`), kayıt |
+| `ViewModels/NewTerminalViewModel.cs` | "Yeni terminal" diyaloğu: profil ve çalışma dizini seçimi, doğrulama |
+| `ViewModels/NodePlacement.cs` | Yeni düğüm için çakışmayan, tercihen görünür boş yer bulma |
+| `Services/CommandResolver.cs` | Programı `PATH`/`PATHEXT` ile bulma, ConPTY komut satırını kurma |
+| `Services/ProfileStore.cs` | Varsayılan + `profiles.json` profilleri ([profiller.md](profiller.md)) |
 | `ViewModels/TerminalNodeViewModel.cs` | Düğüm: başlık, komut, boyut, konum, durum |
 | `Views/MainWindow.xaml(.cs)` | Tuval ve düğüm şablonu; code-behind yalnızca terminalleri kontrolcüye kaydeder |
 | `Views/TerminalCanvasController.cs` | Fotoğraf modu ve zoom→yazı boyutu (HwndHost kısıtları) |
 | `Interop/TerminalSnapshot.cs` | Terminal HWND'sinin anlık görüntüsünü alma |
 
 Kural: ViewModel'ler WPF kontrollerine (`EasyTerminalControl`, `NodifyEditor`) dokunmaz. Terminal
-kontrolüyle doğrudan çalışması gereken kod `Views/` altında yaşar.
+kontrolüyle doğrudan çalışması gereken kod `Views/` altında yaşar. ViewModel'in açması gereken
+pencereler `IDialogService` üzerinden açılır (görünümde `DialogService`), böylece ViewModel test
+edilebilir kalır.
+
+Yeni düğümler hiçbir düğümle çakışmayacak şekilde yerleştirilir (`NodePlacement`): üst üste binen
+terminaller airspace nedeniyle birbirinin başlığını örter.
 
 ## Terminal katmanı ve kısıtları
 
