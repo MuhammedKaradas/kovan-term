@@ -55,7 +55,7 @@ Yerel kontrolle devam ediyoruz. Riski şu önlemlerle yönetiyoruz:
    arkasına alınması ayrı bir iş olarak planlandı (#30). Bu, WebView2'ye geçişi gerekirse günlerle sınırlar.
 4. **Tetikleyiciler:** Aşağıdakilerden biri olursa bu karar yeniden değerlendirilir:
    - Paketler 12 aydan uzun güncellenmez **ve** çözülmeyen kritik bir hata çıkar
-   - Microsoft resmi bir WPF/WinUI terminal kontrolü yayımlar (#6999 kapanır)
+   - Microsoft resmi bir WPF/WinUI terminal kontrolü yayımlar (microsoft/terminal#6999 kapanır)
    - Desteklenen bir Windows sürümünde kontrol çalışmaz hale gelir
 
 ## Sonuçlar
