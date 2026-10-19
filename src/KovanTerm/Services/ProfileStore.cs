@@ -32,8 +32,7 @@ public sealed class ProfileStore
 
     public ProfileStore(string? filePath = null)
     {
-        FilePath = filePath ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "KovanTerm", "profiles.json");
+        FilePath = filePath ?? Path.Combine(AppPaths.DataDirectory, "profiles.json");
     }
 
     /// <summary>Profiller; kullanıcı dosyası okunamazsa yalnızca varsayılanlar (uygulama açılmaya devam eder).</summary>
