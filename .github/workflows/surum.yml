@@ -1,0 +1,68 @@
+name: Sürüm
+
+# v* etiketi atılınca: test → kendi başına çalışan win-x64 paketi → zip + SHA256 → taslak GitHub Release.
+# Yayın ayarlarını değiştiren PR'larda paket yalnızca üretilip artifact olarak yüklenir (sürüm oluşturulmaz).
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - .github/workflows/surum.yml
+      - src/KovanTerm/KovanTerm.csproj
+
+permissions:
+  contents: write
+
+jobs:
+  paket:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Sürüm numarası
+        id: surum
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq 'tag') { $v = $env:GITHUB_REF_NAME.TrimStart('v') } else { $v = '0.0.0-pr' }
+          "surum=$v" >> $env:GITHUB_OUTPUT
+          "dosya=KovanTerm-$v-win-x64" >> $env:GITHUB_OUTPUT
+
+      - name: Test
+        run: dotnet test -c Release
+
+      - name: Yayınla
+        run: >
+          dotnet publish src/KovanTerm -c Release -r win-x64 --self-contained
+          -p:Version=${{ steps.surum.outputs.surum }} -o yayin/${{ steps.surum.outputs.dosya }}
+
+      - name: Zip ve SHA256
+        shell: pwsh
+        run: |
+          $ad = '${{ steps.surum.outputs.dosya }}'
+          Compress-Archive -Path "yayin/$ad/*" -DestinationPath "yayin/$ad.zip"
+          $hash = (Get-FileHash "yayin/$ad.zip" -Algorithm SHA256).Hash.ToLower()
+          "$hash  $ad.zip" | Out-File "yayin/$ad.zip.sha256" -Encoding ascii
+          "{0:N1} MB, SHA256 {1}" -f ((Get-Item "yayin/$ad.zip").Length / 1MB), $hash
+
+      - name: Artifact (PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.surum.outputs.dosya }}
+          path: yayin/${{ steps.surum.outputs.dosya }}.zip
+          retention-days: 7
+
+      - name: Taslak sürüm
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ad = '${{ steps.surum.outputs.dosya }}'
+          $onsurum = if ('${{ steps.surum.outputs.surum }}'.Contains('-')) { '--prerelease' } else { '' }
+          gh release create $env:GITHUB_REF_NAME "yayin/$ad.zip" "yayin/$ad.zip.sha256" `
+            --draft --generate-notes --title "Kovan Term $env:GITHUB_REF_NAME" $onsurum

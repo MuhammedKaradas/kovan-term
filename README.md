@@ -24,7 +24,13 @@ Terminal'in GPU hızlandırmalı terminal bileşeniyle, düşük kaynak tüketim
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - Ajanlar için ilgili CLI'lar (ör. `claude`) PATH'te olmalı
 
-## Çalıştırma
+## Kurulum
+
+[Releases](https://github.com/MuhammedKaradas/kovan-term/releases) sayfasından
+`KovanTerm-<sürüm>-win-x64.zip` dosyasını indir, bir klasöre aç ve `KovanTerm.exe`'yi çalıştır.
+.NET kurulumu gerekmez. İmzasız olduğu için SmartScreen uyarısı çıkarsa "Ek bilgi → Yine de çalıştır".
+
+## Kaynaktan çalıştırma
 
 ```bash
 git clone https://github.com/MuhammedKaradas/kovan-term.git
