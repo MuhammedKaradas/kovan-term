@@ -6,9 +6,11 @@ namespace KovanTerm.Views;
 
 public static class TerminalThemes
 {
+    public static readonly Color DarkBackground = Color.FromRgb(0x0c, 0x0c, 0x0c);
+
     public static readonly TerminalTheme Dark = new()
     {
-        DefaultBackground = EasyTerminalControl.ColorToVal(Color.FromRgb(0x0c, 0x0c, 0x0c)),
+        DefaultBackground = EasyTerminalControl.ColorToVal(DarkBackground),
         DefaultForeground = EasyTerminalControl.ColorToVal(Color.FromRgb(0xe6, 0xe8, 0xf0)),
         DefaultSelectionBackground = EasyTerminalControl.ColorToVal(Color.FromRgb(0x3a, 0x3c, 0x4a)),
         CursorStyle = CursorStyle.BlinkingBar,

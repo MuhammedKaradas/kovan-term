@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using EasyWindowsTerminalControl;
 using KovanTerm.Interop;
@@ -13,6 +14,7 @@ namespace KovanTerm.Views;
 /// Tuval üzerindeki terminal kontrollerinin HwndHost kısıtlarını yönetir:
 /// <list type="bullet">
 /// <item>Kaydırma/zoom/sürükleme sırasında canlı terminaller yerine anlık görüntülerini gösterir ("fotoğraf modu").</item>
+/// <item>Görüntüleri boştayken arka planda önbelleğe alır; böylece harekete geçiş anlık olur.</item>
 /// <item>HWND, WPF zoom'uyla ölçeklenmediği için yazı boyutunu zoom'a göre ayarlar.</item>
 /// <item>Düğüm kapanınca terminalin işlem ağacını sonlandırır.</item>
 /// </list>
@@ -23,18 +25,35 @@ public sealed class TerminalCanvasController
     private const int BaseFontSize = 13;
     private const int MinFontSize = 4;
 
+    /// <summary>Tuvaldeki bir terminal ve önbellekteki görüntüsü.</summary>
+    private sealed class Entry(EasyTerminalControl control)
+    {
+        public EasyTerminalControl Control { get; } = control;
+        /// <summary>Son görüntüden sonra terminal çıktısı değişti mi? Okuma iş parçacığından yazılır.</summary>
+        public volatile bool Dirty = true;
+        public BitmapSource? Snapshot;
+    }
+
     private readonly NodifyEditor _editor;
     // Anahtar: terminalin DataContext'i (düğüm ViewModel'i). Görsel ağaçtan bağımsız
     // tutulur ki düğüm listeden çıkarıldığında terminal hâlâ bulunabilsin.
-    private readonly Dictionary<object, EasyTerminalControl> _byNode = new();
-    private IEnumerable<EasyTerminalControl> _terminals => _byNode.Values;
+    private readonly Dictionary<object, Entry> _byNode = new();
 
     // Hareket bittikten bu kadar sonra canlı terminallere geri dönülür
     private readonly DispatcherTimer _settleTimer = new() { Interval = TimeSpan.FromMilliseconds(150) };
     private bool _frozen;
     // Boyutlandırma gibi süresi belli olmayan etkileşimlerde, etkileşim bitene kadar fotoğraf modunda kal
     private bool _held;
+    private readonly DispatcherTimer _snapshotCleanupTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private int _appliedFontSize = BaseFontSize;
+
+    // Önbellek: çıktısı değişen terminallerin görüntüsü arka planda yenilenir.
+    // PrintWindow ~bir DWM karesi bekler ama arayüz iş parçacığını meşgul etmez.
+    private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(150) };
+    private bool _refreshInFlight;
+
+    /// <summary>Fotoğraf moduna giriş/çıkış süreleri (ölçüm için; bkz. <see cref="PerfSelfTest"/>).</summary>
+    public event Action<string, TimeSpan>? Timing;
 
     public TerminalCanvasController(NodifyEditor editor)
     {
@@ -44,6 +63,9 @@ public sealed class TerminalCanvasController
             _settleTimer.Stop();
             if (!_held) Unfreeze();
         };
+        _snapshotCleanupTimer.Tick += (_, _) => RemoveSnapshots();
+        _refreshTimer.Tick += (_, _) => RefreshDirtySnapshots();
+        _refreshTimer.Start();
         _editor.ViewportUpdated += (_, _) => OnCanvasMoving();
         _editor.AddHandler(ItemContainer.LocationChangedEvent, new RoutedEventHandler((_, _) => OnCanvasMoving()));
     }
@@ -51,7 +73,12 @@ public sealed class TerminalCanvasController
     public void Register(EasyTerminalControl term)
     {
         if (term.DataContext is not { } node || _byNode.ContainsKey(node)) return;
-        _byNode[node] = term;
+        var entry = new Entry(term);
+        _byNode[node] = entry;
+        // Çıktı geldikçe görüntü eskir; boyut değişince de (boyutlandırma, yazı boyutu) yeniden alınmalı
+        if (term.ConPTYTerm != null)
+            term.ConPTYTerm.TerminalOutput += (_, _) => entry.Dirty = true;
+        term.SizeChanged += (_, _) => entry.Dirty = true;
         // Terminal hazır olunca mevcut zoom'a uygun yazı boyutunu uygula (çalışma alanı farklı bir zoom'la açılmış olabilir)
         term.Dispatcher.BeginInvoke(() =>
         {
@@ -63,14 +90,15 @@ public sealed class TerminalCanvasController
     /// <summary>Düğümün terminalini ve altındaki tüm işlemleri (ör. cmd → claude → MCP sunucuları) sonlandırır.</summary>
     public void Terminate(object node)
     {
-        if (!_byNode.Remove(node, out var term)) return;
-        KillProcessTree(term);
+        if (!_byNode.Remove(node, out var entry)) return;
+        KillProcessTree(entry.Control);
     }
 
     public void TerminateAll()
     {
-        foreach (var term in _byNode.Values)
-            KillProcessTree(term);
+        _refreshTimer.Stop();
+        foreach (var entry in _byNode.Values)
+            KillProcessTree(entry.Control);
         _byNode.Clear();
     }
 
@@ -125,31 +153,88 @@ public sealed class TerminalCanvasController
     {
         if (_frozen) return;
         _frozen = true;
-        foreach (var term in _terminals)
+        _snapshotCleanupTimer.Stop();
+        var sw = Stopwatch.StartNew();
+        int fromCache = 0, captured = 0;
+        foreach (var entry in _byNode.Values)
         {
-            if (GetSnapshotImage(term) is not { } image) continue;
-            var shot = TerminalSnapshot.Capture(term);
+            if (GetSnapshotImage(entry.Control) is not { } image) continue;
+            // Önbellekteki görüntü güncelse onu kullan; değilse (ör. hiç alınmamış) şimdi al
+            var shot = !entry.Dirty && entry.Snapshot != null ? entry.Snapshot : null;
+            if (shot != null) fromCache++;
+            else if (TerminalSnapshot.GetTarget(entry.Control) is { } target)
+            {
+                shot = entry.Snapshot = TerminalSnapshot.Capture(target, TerminalThemes.DarkBackground);
+                entry.Dirty = false;
+                captured++;
+            }
+            // Eski de olsa bir görüntü, hiç görüntü olmamasından iyidir
+            shot ??= entry.Snapshot;
             if (shot == null) continue;
             image.Source = shot;
             image.Visibility = Visibility.Visible;
-            term.Visibility = Visibility.Hidden;
+            entry.Control.Visibility = Visibility.Hidden;
         }
+        Timing?.Invoke($"fotoğraf moduna giriş ({_byNode.Count} terminal: {fromCache} önbellekten, {captured} anında)", sw.Elapsed);
     }
 
     private void Unfreeze()
     {
         if (!_frozen) return;
         _frozen = false;
+        var sw = Stopwatch.StartNew();
         ApplyZoomToTerminals();
-        foreach (var term in _terminals)
-            term.Visibility = Visibility.Visible;
-        // Terminal yeniden çizilene kadar görüntü altta kalsın, sonra kaldır
-        _editor.Dispatcher.BeginInvoke(() =>
+        foreach (var entry in _byNode.Values)
         {
-            if (_frozen) return;
-            foreach (var term in _terminals)
-                if (GetSnapshotImage(term) is { } image) { image.Visibility = Visibility.Collapsed; image.Source = null; }
-        }, DispatcherPriority.Background);
+            entry.Control.Visibility = Visibility.Visible;
+            // Konum/yazı boyutu değişmiş olabilir; görüntü yeniden alınmalı
+            entry.Dirty = true;
+        }
+        Timing?.Invoke($"canlı terminale dönüş ({_byNode.Count} terminal)", sw.Elapsed);
+        // Terminal (özellikle yazı boyutu değiştiyse) ilk karesini çizene kadar görüntü arkada kalsın;
+        // hemen kaldırılırsa kısa bir boş kare görünüyor
+        _snapshotCleanupTimer.Start();
+    }
+
+    private void RemoveSnapshots()
+    {
+        _snapshotCleanupTimer.Stop();
+        if (_frozen) return;
+        foreach (var entry in _byNode.Values)
+            if (GetSnapshotImage(entry.Control) is { } image) { image.Visibility = Visibility.Collapsed; image.Source = null; }
+    }
+
+    /// <summary>
+    /// Çıktısı değişmiş tüm görünür terminallerin görüntüsünü tek bir arka plan turunda yeniler.
+    /// PrintWindow çağrıları sıraya girdiği için (terminal başına ~15 ms) arka planda sırayla alınır;
+    /// arayüz iş parçacığı yalnızca hedef bilgisini toplarken kısa bir süre kullanılır.
+    /// </summary>
+    private void RefreshDirtySnapshots()
+    {
+        if (_frozen || _refreshInFlight) return;
+        var batch = new List<(Entry Entry, TerminalSnapshot.Target Target)>();
+        foreach (var entry in _byNode.Values)
+        {
+            if (!entry.Dirty || entry.Control.Visibility != Visibility.Visible) continue;
+            if (TerminalSnapshot.GetTarget(entry.Control) is not { } target) continue;
+            // Görüntü alınırken gelen çıktı tekrar işaretlesin diye bayrağı önce indir
+            entry.Dirty = false;
+            batch.Add((entry, target));
+        }
+        if (batch.Count == 0) return;
+
+        _refreshInFlight = true;
+        var ui = TaskScheduler.FromCurrentSynchronizationContext();
+        Task.Run(() => batch.Select(b => TerminalSnapshot.Capture(b.Target, TerminalThemes.DarkBackground)).ToList())
+            .ContinueWith(t =>
+            {
+                _refreshInFlight = false;
+                for (var i = 0; i < batch.Count; i++)
+                {
+                    if (t.Result[i] is { } shot) batch[i].Entry.Snapshot = shot;
+                    else batch[i].Entry.Dirty = true;
+                }
+            }, ui);
     }
 
     private static Image? GetSnapshotImage(EasyTerminalControl term) =>
@@ -160,8 +245,8 @@ public sealed class TerminalCanvasController
         var size = FontSizeForZoom(_editor.ViewportZoom);
         if (size == _appliedFontSize) return;
         _appliedFontSize = size;
-        foreach (var term in _terminals)
-            SetFont(term, size);
+        foreach (var entry in _byNode.Values)
+            SetFont(entry.Control, size);
     }
 
     private static int FontSizeForZoom(double zoom) => Math.Max(MinFontSize, (int)Math.Round(BaseFontSize * zoom));
