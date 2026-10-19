@@ -61,7 +61,12 @@ barındırır. Süreçler ConPTY ile başlatılır. Bunun sonuçları:
    - `ViewportUpdated` veya `ItemContainer.LocationChanged` geldiğinde `Freeze()`: her terminalin
      `PrintWindow(PW_RENDERFULLCONTENT)` ile görüntüsü alınır, `Image`'a konur, terminal gizlenir.
    - Son hareketten 150 ms sonra `Unfreeze()`: yazı boyutu güncellenir, terminaller geri gelir.
+   - Boyutlandırma gibi süresi belli olmayan etkileşimlerde `BeginInteraction()`/`EndInteraction()`
+     fotoğraf modunu etkileşim bitene kadar tutar; görüntü yeni boyuta gerilir, bırakınca terminal
+     gerçek boyutta yeniden çizilir.
    - Bilinen sorun: pencere dışında kalan terminal parçaları görüntüde gri çıkar.
+4. **Boyutlandırma tutamacı**: terminalin üstüne WPF çizilemediği için tutamaç terminalin altındaki
+   ince şerittedir. `Thumb.DragDelta` değerleri düğümün içinde ölçülür, yani zaten tuval birimindedir.
 
 ## Kalıcılık
 

@@ -90,6 +90,20 @@
                             </Border>
                             <!-- Profil rengi -->
                             <Border DockPanel.Dock="Top" Height="2" Background="{Binding Color}"/>
+                            <!-- Boyutlandırma şeridi: terminalin üstüne WPF çizilemediği (airspace) için terminalin altında -->
+                            <Grid DockPanel.Dock="Bottom" Height="10">
+                                <Thumb HorizontalAlignment="Right" Width="28" Cursor="SizeNWSE" ToolTip="Boyutlandır"
+                                       DragStarted="ResizeThumb_DragStarted" DragDelta="ResizeThumb_DragDelta" DragCompleted="ResizeThumb_DragCompleted">
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <Border Background="Transparent">
+                                                <Path Data="M 4,8 L 12,0 M 12,8 L 20,0 M 20,8 L 26,2" Stroke="#6b6f80" StrokeThickness="1.2"
+                                                      HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Grid>
                             <ContentControl Content="{Binding}" Width="{Binding Width}" Height="{Binding Height}" Focusable="False">
                                 <ContentControl.Style>
                                     <Style TargetType="ContentControl">
