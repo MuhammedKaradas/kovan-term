@@ -1,7 +1,7 @@
 ---
 name: Özellik
 about: Yeni bir özellik ya da iyileştirme öner
-labels: "tür: özellik"
+labels: "type: feature"
 ---
 
 ## Amaç

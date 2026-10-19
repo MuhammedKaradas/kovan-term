@@ -1,7 +1,7 @@
 ---
 name: Hata
 about: Bir hatayı bildir
-labels: "tür: hata"
+labels: "type: bug"
 ---
 
 ## Ne oldu?

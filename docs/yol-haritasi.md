@@ -3,7 +3,7 @@
 Güncel durum için GitHub'daki [milestone'lara](https://github.com/MuhammedKaradas/kovan-term/milestones)
 bak. Bu belge büyük resmi ve sıralamanın gerekçesini anlatır.
 
-## v0.1 Temel: günlük kullanılabilir tuval
+## v0.1 Foundation: günlük kullanılabilir tuval
 
 Hedef: Kovan Term'i her gün açıp ajanlarla çalışabilmek.
 
@@ -19,7 +19,7 @@ Hedef: Kovan Term'i her gün açıp ajanlarla çalışabilmek.
 | #8 | Terminal bağımlılığı riskinin araştırılması | Karar kaydı çıkacak |
 | #9 | Kurulum paketi ve sürüm yayınlama | Sürümün son adımı |
 
-## v0.2 Ajan farkındalığı
+## v0.2 Agent awareness: ajan farkındalığı
 
 Hedef: Hangi ajanın çalıştığını, hangisinin beni beklediğini bir bakışta görmek.
 
@@ -31,7 +31,7 @@ Hedef: Hangi ajanın çalıştığını, hangisinin beni beklediğini bir bakı�
 | #13 | Ajan oturumlarını sürdürme |
 | #14 | Kullanım ve kota takibi |
 
-## v0.3 Çalışma alanı
+## v0.3 Workspace: çalışma alanı
 
 Hedef: Plan, görev, önizleme ve kod aynı tuvalde.
 
@@ -43,7 +43,7 @@ Hedef: Plan, görev, önizleme ve kod aynı tuvalde.
 | #18 | Git worktree entegrasyonu |
 | #19 | Gruplar (alanlar) ve proje ayrımı |
 
-## v0.4 Ses
+## v0.4 Voice: ses
 
 Hedef: Konuşarak yazmak ve tuvali sesle yönetmek. Bu, benzer projelerden ayrıştığımız özellik.
 

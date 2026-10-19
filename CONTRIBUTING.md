@@ -75,5 +75,5 @@ Closes #5
 
 ## Issue'lar
 
-- Her issue bir milestone'a (sürüm) ve en az bir `tür:` ve `alan:` etiketine bağlanır.
+- Her issue bir milestone'a (sürüm) ve en az bir `type:` ve `area:` etiketine bağlanır. Etiket ve milestone adları İngilizcedir.
 - Özellik issue'larında **Kabul kriterleri** bölümü olmalı.
