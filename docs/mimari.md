@@ -82,7 +82,14 @@ barındırır. Süreçler ConPTY ile başlatılır. Bunun sonuçları:
      (önbellek öncesi ~200 ms).
    - Bilinen sınır: yazı boyutu tam sayı olduğu için (`SetTheme` `short` alıyor) hareket bitince
      terminal yazısı ölçeklenmiş görüntüden biraz farklı boyutta gelebilir (küçük bir "zıplama").
-4. **Boyutlandırma tutamacı**: terminalin üstüne WPF çizilemediği için tutamaç terminalin altındaki
+4. **Uyuyan terminaller**: Görünür alanın dışındaki terminallerin HWND'si gizlenir (hareket bitince
+   `UpdateSleepStates`). İşlem çalışmaya, çıktı terminal arabelleğine yazılmaya devam eder; uyanınca
+   güncel hali çizilir. Zoom 0.4'ün altında (yazı ≤5 pt, okunamaz) görüntüsü olan tüm terminaller uyur
+   ve yerlerinde son görüntüleri durur.
+   - Ölçüm (20 terminal, hepsi sürekli çıktı üretirken, 6'sı görünür): GPU %7,8 → %3,2. İşlemci
+     değişmedi (~3 çekirdek): maliyetin neredeyse tamamı VT çıktısının ayrıştırılması ve bu, terminal
+     gizliyken de yapılmak zorunda.
+5. **Boyutlandırma tutamacı**: terminalin üstüne WPF çizilemediği için tutamaç terminalin altındaki
    ince şerittedir. `Thumb.DragDelta` değerleri düğümün içinde ölçülür, yani zaten tuval birimindedir.
 
 ## Kalıcılık
