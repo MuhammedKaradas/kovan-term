@@ -13,26 +13,35 @@
         Background="#16171d">
     <Window.Resources>
         <conv:NodeStatusToBrushConverter x:Key="StatusToBrush"/>
+
+        <!-- Düğüm gövdesi: canlı terminal. Hareket sırasında terminal yerine anlık görüntüsü gösterilir (TerminalCanvasController) -->
+        <DataTemplate x:Key="TerminalBody" DataType="{x:Type vm:TerminalNodeViewModel}">
+            <Grid>
+                <Image Visibility="Collapsed" Stretch="Fill"/>
+                <term:EasyTerminalControl StartupCommandLine="{Binding CommandLine}"
+                                          WorkingDirectory="{Binding WorkingDirectory}"
+                                          FontSizeWhenSettingTheme="13"
+                                          Loaded="Terminal_Loaded"/>
+            </Grid>
+        </DataTemplate>
+
+        <!-- Düğüm gövdesi: terminal başlatılamadı (ör. komut bulunamadı); terminal hiç oluşturulmaz -->
+        <DataTemplate x:Key="ErrorBody" DataType="{x:Type vm:TerminalNodeViewModel}">
+            <Border Background="#0c0c0c" Padding="16">
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Terminal başlatılamadı" Foreground="#e5a04b" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
+                    <TextBlock Text="{Binding StartError}" Foreground="#c8cbd6" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
     </Window.Resources>
 
     <DockPanel>
         <!-- Üst çubuk -->
         <Border DockPanel.Dock="Top" Background="#1f2029" Padding="10,6">
             <StackPanel Orientation="Horizontal">
-                <ItemsControl ItemsSource="{Binding QuickLaunches}" Margin="0,0,8,0">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Button Content="{Binding Title}" ContentStringFormat="+ {0}" Margin="0,0,8,0" Padding="10,4"
-                                    Command="{Binding DataContext.AddTerminalCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                    CommandParameter="{Binding}"/>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <Button Content="+ Yeni terminal" Command="{Binding NewTerminalCommand}" Margin="0,0,16,0" Padding="10,4"
+                        ToolTip="Profil ve çalışma dizini seçerek yeni terminal aç. Tuvalde sağ tık: tıklanan yere aç."/>
                 <TextBlock Foreground="#9aa0b4" VerticalAlignment="Center" FontFamily="Consolas">
                     <TextBlock.Text>
                         <MultiBinding StringFormat="Uygulama RAM: {0} MB   |   Terminal: {1}   |   Zoom: {2:0.00}">
@@ -50,7 +59,13 @@
                              ViewportZoom="{Binding ViewportZoom, Mode=TwoWay}"
                              ViewportLocation="{Binding ViewportLocation, Mode=TwoWay}"
                              Background="#16171d"
-                             MinViewportZoom="0.3" MaxViewportZoom="1.5">
+                             MinViewportZoom="0.3" MaxViewportZoom="1.5"
+                             ContextMenuOpening="Editor_ContextMenuOpening">
+            <nodify:NodifyEditor.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Burada yeni terminal…" Click="NewTerminalHere_Click"/>
+                </ContextMenu>
+            </nodify:NodifyEditor.ContextMenu>
             <nodify:NodifyEditor.ItemContainerStyle>
                 <Style TargetType="{x:Type nodify:ItemContainer}">
                     <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}"/>
@@ -73,14 +88,20 @@
                                     <TextBlock Text="{Binding Title}" Foreground="#e6e8f0" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 </DockPanel>
                             </Border>
-                            <!-- Hareket sırasında canlı terminal yerine anlık görüntüsü gösterilir (TerminalCanvasController) -->
-                            <Grid Width="{Binding Width}" Height="{Binding Height}">
-                                <Image Visibility="Collapsed" Stretch="Fill"/>
-                                <term:EasyTerminalControl StartupCommandLine="{Binding CommandLine}"
-                                                          WorkingDirectory="{Binding WorkingDirectory}"
-                                                          FontSizeWhenSettingTheme="13"
-                                                          Loaded="Terminal_Loaded"/>
-                            </Grid>
+                            <!-- Profil rengi -->
+                            <Border DockPanel.Dock="Top" Height="2" Background="{Binding Color}"/>
+                            <ContentControl Content="{Binding}" Width="{Binding Width}" Height="{Binding Height}" Focusable="False">
+                                <ContentControl.Style>
+                                    <Style TargetType="ContentControl">
+                                        <Setter Property="ContentTemplate" Value="{StaticResource TerminalBody}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasStartError}" Value="True">
+                                                <Setter Property="ContentTemplate" Value="{StaticResource ErrorBody}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ContentControl.Style>
+                            </ContentControl>
                         </DockPanel>
                     </Border>
                 </DataTemplate>

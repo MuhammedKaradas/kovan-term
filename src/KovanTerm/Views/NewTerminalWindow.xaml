@@ -1,0 +1,70 @@
+<Window x:Class="KovanTerm.Views.NewTerminalWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:KovanTerm.ViewModels"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:NewTerminalViewModel}"
+        Title="Yeni terminal" Width="520" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False"
+        Background="#1f2029" Foreground="#e6e8f0"
+        FocusManager.FocusedElement="{Binding ElementName=ProfileList}">
+    <Window.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding CancelCommand}"/>
+    </Window.InputBindings>
+
+    <StackPanel Margin="16">
+        <TextBlock Text="Profil" FontWeight="SemiBold" Margin="0,0,0,6"/>
+        <ListBox x:Name="ProfileList" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"
+                 Background="#16171d" BorderBrush="#3a3c4a" Foreground="#e6e8f0" MaxHeight="260">
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="Padding" Value="8,6"/>
+                    <!-- Çift tık: seç ve aç -->
+                    <EventSetter Event="MouseDoubleClick" Handler="ProfileItem_DoubleClick"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsAvailable}" Value="False">
+                            <Setter Property="Opacity" Value="0.45"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:ProfileOptionViewModel}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding Detail}" FontSize="11" Foreground="#9aa0b4" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <TextBlock Text="Çalışma dizini" FontWeight="SemiBold" Margin="0,14,0,6"/>
+        <DockPanel>
+            <Button DockPanel.Dock="Right" Content="Gözat…" Command="{Binding BrowseCommand}" Margin="8,0,0,0" Padding="10,3"/>
+            <ComboBox IsEditable="True" ItemsSource="{Binding RecentDirectories}"
+                      Text="{Binding WorkingDirectory, UpdateSourceTrigger=PropertyChanged}"/>
+        </DockPanel>
+
+        <TextBlock Text="{Binding ValidationMessage}" Foreground="#e5a04b" Margin="0,10,0,0" TextWrapping="Wrap">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                    <Style.Triggers>
+                        <Trigger Property="Text" Value="">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </Trigger>
+                        <Trigger Property="Text" Value="{x:Null}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="İptal" Command="{Binding CancelCommand}" Padding="14,4" Margin="0,0,8,0"/>
+            <Button Content="Aç" Command="{Binding ConfirmCommand}" IsDefault="True" Padding="18,4"/>
+        </StackPanel>
+    </StackPanel>
+</Window>
