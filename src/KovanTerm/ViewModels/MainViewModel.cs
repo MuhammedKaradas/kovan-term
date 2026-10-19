@@ -195,8 +195,8 @@ public partial class MainViewModel : ObservableObject
 
     private void OnNodePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // Durum (Status) kalıcı değil; yalnızca konum değişince kaydet
-        if (e.PropertyName == nameof(TerminalNodeViewModel.Location))
+        // Durum (Status) kalıcı değil; yalnızca konum ve boyut değişince kaydet
+        if (e.PropertyName is nameof(TerminalNodeViewModel.Location) or nameof(TerminalNodeViewModel.Width) or nameof(TerminalNodeViewModel.Height))
             ScheduleSave();
     }
 

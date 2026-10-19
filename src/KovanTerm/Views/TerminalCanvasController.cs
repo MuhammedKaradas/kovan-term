@@ -32,12 +32,18 @@ public sealed class TerminalCanvasController
     // Hareket bittikten bu kadar sonra canlı terminallere geri dönülür
     private readonly DispatcherTimer _settleTimer = new() { Interval = TimeSpan.FromMilliseconds(150) };
     private bool _frozen;
+    // Boyutlandırma gibi süresi belli olmayan etkileşimlerde, etkileşim bitene kadar fotoğraf modunda kal
+    private bool _held;
     private int _appliedFontSize = BaseFontSize;
 
     public TerminalCanvasController(NodifyEditor editor)
     {
         _editor = editor;
-        _settleTimer.Tick += (_, _) => { _settleTimer.Stop(); Unfreeze(); };
+        _settleTimer.Tick += (_, _) =>
+        {
+            _settleTimer.Stop();
+            if (!_held) Unfreeze();
+        };
         _editor.ViewportUpdated += (_, _) => OnCanvasMoving();
         _editor.AddHandler(ItemContainer.LocationChangedEvent, new RoutedEventHandler((_, _) => OnCanvasMoving()));
     }
@@ -90,6 +96,21 @@ public sealed class TerminalCanvasController
             try { ((ITerminalConnection)pty).Close(); }
             catch (Exception ex) { Debug.WriteLine($"Pseudo-console kapatılamadı: {ex.Message}"); }
         });
+    }
+
+    /// <summary>Etkileşim boyunca (ör. boyutlandırma) terminalleri anlık görüntüyle değiştirir.</summary>
+    public void BeginInteraction()
+    {
+        _held = true;
+        Freeze();
+    }
+
+    /// <summary>Etkileşim bitti; kısa bir süre sonra canlı terminallere dönülür.</summary>
+    public void EndInteraction()
+    {
+        _held = false;
+        _settleTimer.Stop();
+        _settleTimer.Start();
     }
 
     private void OnCanvasMoving()
