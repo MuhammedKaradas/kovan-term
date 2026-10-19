@@ -1,0 +1,57 @@
+<Window x:Class="KovanTerm.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:nodify="https://miroiu.github.io/nodify"
+        xmlns:term="clr-namespace:EasyWindowsTerminalControl;assembly=EasyWindowsTerminalControl"
+        xmlns:local="clr-namespace:KovanTerm"
+        Title="Kovan Term" Height="900" Width="1500"
+        Background="#16171d">
+    <DockPanel>
+        <!-- Üst çubuk -->
+        <Border DockPanel.Dock="Top" Background="#1f2029" Padding="10,6">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="+ PowerShell" Click="AddPowerShell_Click" Margin="0,0,8,0" Padding="10,4"/>
+                <Button Content="+ Claude Code" Click="AddClaude_Click" Margin="0,0,8,0" Padding="10,4"/>
+                <Button Content="+ cmd" Click="AddCmd_Click" Margin="0,0,16,0" Padding="10,4"/>
+                <TextBlock x:Name="StatsText" Foreground="#9aa0b4" VerticalAlignment="Center" FontFamily="Consolas"/>
+            </StackPanel>
+        </Border>
+
+        <nodify:NodifyEditor x:Name="Editor"
+                             ItemsSource="{Binding Nodes}"
+                             Background="#16171d"
+                             MinViewportZoom="0.3" MaxViewportZoom="1.5"
+                             ViewportUpdated="Editor_ViewportUpdated">
+            <nodify:NodifyEditor.ItemContainerStyle>
+                <Style TargetType="{x:Type nodify:ItemContainer}">
+                    <Setter Property="Location" Value="{Binding Location}"/>
+                </Style>
+            </nodify:NodifyEditor.ItemContainerStyle>
+
+            <nodify:NodifyEditor.ItemTemplate>
+                <DataTemplate DataType="{x:Type local:TerminalNode}">
+                    <Border Background="#22232d" BorderBrush="#3a3c4a" BorderThickness="1" CornerRadius="8">
+                        <DockPanel>
+                            <!-- Başlık: buradan sürüklenir -->
+                            <Border DockPanel.Dock="Top" Background="#2a2c38" CornerRadius="8,8,0,0" Padding="10,6">
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Content="✕" Click="CloseNode_Click" Tag="{Binding}"
+                                            Background="Transparent" BorderThickness="0" Foreground="#9aa0b4" Padding="6,0"/>
+                                    <Ellipse Width="9" Height="9" Margin="0,0,8,0" Fill="{Binding StatusBrush}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Title}" Foreground="#e6e8f0" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </DockPanel>
+                            </Border>
+                            <!-- Hareket sırasında canlı terminal yerine fotoğrafı gösterilir -->
+                            <Grid Width="{Binding Width}" Height="{Binding Height}">
+                                <Image Visibility="Collapsed" Stretch="Fill"/>
+                                <term:EasyTerminalControl StartupCommandLine="{Binding CommandLine}"
+                                                          FontSizeWhenSettingTheme="13"
+                                                          Loaded="Terminal_Loaded"/>
+                            </Grid>
+                        </DockPanel>
+                    </Border>
+                </DataTemplate>
+            </nodify:NodifyEditor.ItemTemplate>
+        </nodify:NodifyEditor>
+    </DockPanel>
+</Window>
