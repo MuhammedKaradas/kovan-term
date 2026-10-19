@@ -24,6 +24,17 @@ dotnet build -c Release           # performans ölçerken Release kullan
 dotnet test                       # birim testleri (tests/KovanTerm.Tests)
 ```
 
+### Uygulamayı denerken
+
+- `KOVAN_DATA_DIR=<klasör>`: çalışma alanı ve profiller için ayrı klasör. **Kullanıcının
+  `%APPDATA%\KovanTerm` verisine dokunmamak için testlerde her zaman ayarla.**
+- `KOVAN_PERF_SELFTEST=<log dosyası>`: açılıştan 8 sn sonra programatik zoom/kaydırma yapar, kare
+  sürelerini ve fotoğraf modu sürelerini dosyaya yazar, pencereyi kapatır. Akıcılığı etkileyen her
+  değişiklikte önce/sonra çalıştır, sonuçları PR'a yaz. Fare girdisi gerektirmez.
+- Kullanıcının makinesinde **gerçek fare/klavye girdisi gönderme** (SetCursorPos, mouse_event,
+  SendInput): o an öndeki başka pencerelere gider. Yalnızca UI Automation desenleri (Invoke,
+  SelectionItem) ve pencereye mesaj (`CloseMainWindow`) kullan.
+
 ## Mimari notlar (önemli)
 
 - Terminal kontrolü **HwndHost**'tur: kendi HWND'sinde DirectX ile çizer. Bu yüzden
@@ -31,8 +42,9 @@ dotnet test                       # birim testleri (tests/KovanTerm.Tests)
   - WPF içeriği terminalin **üstüne çizilemez** (airspace). Terminal üstünde açılır menü,
     tooltip vb. tasarlarken bunu hesaba kat.
   - Kaydırma/zoom/sürükleme sırasında canlı terminaller gizlenir, yerine `TerminalSnapshot`
-    ile alınan anlık görüntü gösterilir ("fotoğraf modu"). Hareket bitince 150 ms sonra
-    canlı terminale dönülür. Bu davranışı bozacak değişikliklerde akıcılığı mutlaka elle test et.
+    ile alınan anlık görüntü gösterilir ("fotoğraf modu"). Görüntüler boştayken arka planda
+    önbelleğe alınır (yalnızca çıktısı değişen terminaller). Hareket bitince 150 ms sonra canlı
+    terminale dönülür. Bu davranışı bozacak değişikliklerde `KOVAN_PERF_SELFTEST` ile ölç.
 - Ayrıntı: `docs/mimari.md`, kararların gerekçesi: `docs/kararlar/`.
 
 ## Kurallar

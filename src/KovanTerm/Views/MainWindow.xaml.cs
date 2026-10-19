@@ -20,6 +20,7 @@ public partial class MainWindow : Window
         _vm = new MainViewModel(new WorkspaceStore(), new ProfileStore(), new CommandResolver(), new DialogService(this));
         DataContext = _vm;
         _canvas = new TerminalCanvasController(Editor);
+        PerfSelfTest.AttachIfRequested(this, Editor, _canvas);
 
         // ViewportSize salt okunur olduğu için bağlanamıyor; yeni düğümü ortalamak için ViewModel'e aktar
         Editor.ViewportUpdated += (_, _) => _vm.ViewportSize = Editor.ViewportSize;

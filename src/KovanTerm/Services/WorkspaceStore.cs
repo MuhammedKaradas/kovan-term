@@ -18,8 +18,7 @@ public sealed class WorkspaceStore
 
     public WorkspaceStore(string? filePath = null)
     {
-        FilePath = filePath ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "KovanTerm", "workspace.json");
+        FilePath = filePath ?? Path.Combine(AppPaths.DataDirectory, "workspace.json");
     }
 
     /// <summary>
