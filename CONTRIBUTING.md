@@ -77,3 +77,20 @@ Closes #5
 
 - Her issue bir milestone'a (sürüm) ve en az bir `type:` ve `area:` etiketine bağlanır. Etiket ve milestone adları İngilizcedir.
 - Özellik issue'larında **Kabul kriterleri** bölümü olmalı.
+
+## Sürüm yayınlama
+
+1. `src/KovanTerm/KovanTerm.csproj` içindeki `<Version>` değerini güncelle ve `main`'e al.
+2. Etiket at ve gönder:
+   ```bash
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
+3. `Sürüm` iş akışı testleri çalıştırır, kendi başına çalışan `win-x64` paketini üretir ve
+   zip + SHA256 dosyasıyla **taslak** bir GitHub Release oluşturur.
+4. Release sayfasında notları kontrol edip yayınla. `-` içeren etiketler (`v0.2.0-beta.1`) ön sürüm
+   olarak işaretlenir.
+
+Paket .NET kurulumu gerektirmez (~60 MB zip). Exe imzalı olmadığı için ilk açılışta Windows
+SmartScreen uyarısı çıkabilir ("Ek bilgi → Yine de çalıştır").
+

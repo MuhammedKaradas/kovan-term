@@ -9,7 +9,16 @@
     <AssemblyName>KovanTerm</AssemblyName>
     <Product>Kovan Term</Product>
     <Version>0.1.0</Version>
+    <!-- Kendi sembollerimiz dll'e gömülür: ayrı .pdb dağıtmadan hata raporlarında satır numarası kalır -->
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
+
+  <!-- Paketlerden gelen .pdb dosyalarını (ör. 81 MB'lık Microsoft.Terminal.Control.pdb) yayına alma -->
+  <Target Name="KovanExcludePdbsFromPublish" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb'" />
+    </ItemGroup>
+  </Target>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
