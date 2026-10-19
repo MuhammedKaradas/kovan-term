@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using EasyWindowsTerminalControl;
 using KovanTerm.Interop;
+using Microsoft.Terminal.Wpf;
 using Nodify;
 
 namespace KovanTerm.Views;
@@ -12,6 +14,7 @@ namespace KovanTerm.Views;
 /// <list type="bullet">
 /// <item>Kaydırma/zoom/sürükleme sırasında canlı terminaller yerine anlık görüntülerini gösterir ("fotoğraf modu").</item>
 /// <item>HWND, WPF zoom'uyla ölçeklenmediği için yazı boyutunu zoom'a göre ayarlar.</item>
+/// <item>Düğüm kapanınca terminalin işlem ağacını sonlandırır.</item>
 /// </list>
 /// Terminal kontrolünün, kardeşi bir <see cref="Image"/> olan bir <see cref="Grid"/> içinde durması beklenir.
 /// </summary>
@@ -21,7 +24,10 @@ public sealed class TerminalCanvasController
     private const int MinFontSize = 4;
 
     private readonly NodifyEditor _editor;
-    private readonly List<EasyTerminalControl> _terminals = new();
+    // Anahtar: terminalin DataContext'i (düğüm ViewModel'i). Görsel ağaçtan bağımsız
+    // tutulur ki düğüm listeden çıkarıldığında terminal hâlâ bulunabilsin.
+    private readonly Dictionary<object, EasyTerminalControl> _byNode = new();
+    private IEnumerable<EasyTerminalControl> _terminals => _byNode.Values;
 
     // Hareket bittikten bu kadar sonra canlı terminallere geri dönülür
     private readonly DispatcherTimer _settleTimer = new() { Interval = TimeSpan.FromMilliseconds(150) };
@@ -38,11 +44,48 @@ public sealed class TerminalCanvasController
 
     public void Register(EasyTerminalControl term)
     {
-        if (_terminals.Contains(term)) return;
-        _terminals.Add(term);
-        term.Unloaded += (_, _) => _terminals.Remove(term);
+        if (term.DataContext is not { } node || _byNode.ContainsKey(node)) return;
+        _byNode[node] = term;
         // Terminal hazır olunca mevcut zoom'a uygun yazı boyutunu uygula
         term.Dispatcher.BeginInvoke(() => SetFont(term, _appliedFontSize), DispatcherPriority.ApplicationIdle);
+    }
+
+    /// <summary>Düğümün terminalini ve altındaki tüm işlemleri (ör. cmd → claude → MCP sunucuları) sonlandırır.</summary>
+    public void Terminate(object node)
+    {
+        if (!_byNode.Remove(node, out var term)) return;
+        KillProcessTree(term);
+    }
+
+    public void TerminateAll()
+    {
+        foreach (var term in _byNode.Values)
+            KillProcessTree(term);
+        _byNode.Clear();
+    }
+
+    private static void KillProcessTree(EasyTerminalControl term)
+    {
+        var pty = term.ConPTYTerm;
+        if (pty == null) return;
+        try
+        {
+            if (pty.Process is { HasExited: false } process)
+                process.Kill(EntireProcessTree: true);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or ArgumentException)
+        {
+            // İşlem bu arada kendiliğinden kapanmış olabilir
+            Debug.WriteLine($"Terminal işlemi sonlandırılamadı: {ex.Message}");
+        }
+
+        // Kütüphane işlem bitince pseudo-console'u kapatmıyor, conhost.exe açık kalıyor.
+        // ClosePseudoConsole bloklayabildiği için arayüz iş parçacığında çağrılmaz.
+        Task.Run(() =>
+        {
+            try { ((ITerminalConnection)pty).Close(); }
+            catch (Exception ex) { Debug.WriteLine($"Pseudo-console kapatılamadı: {ex.Message}"); }
+        });
     }
 
     private void OnCanvasMoving()
