@@ -25,6 +25,7 @@ public partial class MainWindow : Window
         // için kaydedilen görünüm bozuluyordu (#35). Görünüm yalnızca kullanıcı ya da bilinçli komutlarla değişmeli.
         NodifyEditor.AutoPanOnNodeFocus = false;
         PerfSelfTest.AttachIfRequested(this, Editor, _canvas);
+        InitShortcuts();
 
         // ViewportSize salt okunur olduğu için bağlanamıyor; yeni düğümü ortalamak için ViewModel'e aktar
         Editor.ViewportUpdated += (_, _) => _vm.ViewportSize = Editor.ViewportSize;

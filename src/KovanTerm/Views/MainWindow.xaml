@@ -41,7 +41,7 @@
         <Border DockPanel.Dock="Top" Background="#1f2029" Padding="10,6">
             <StackPanel Orientation="Horizontal">
                 <Button Content="+ Yeni terminal" Command="{Binding NewTerminalCommand}" Margin="0,0,16,0" Padding="10,4"
-                        ToolTip="Profil ve çalışma dizini seçerek yeni terminal aç. Tuvalde sağ tık: tıklanan yere aç."/>
+                        ToolTip="Profil ve çalışma dizini seçerek yeni terminal aç (Ctrl+Shift+T). Tuvalde sağ tık: tıklanan yere aç."/>
                 <TextBlock Foreground="#9aa0b4" VerticalAlignment="Center" FontFamily="Consolas">
                     <TextBlock.Text>
                         <MultiBinding StringFormat="Uygulama RAM: {0} MB   |   Terminal: {1}   |   Zoom: {2:0.00}">
@@ -77,7 +77,8 @@
                     <Border Background="#22232d" BorderBrush="#3a3c4a" BorderThickness="1" CornerRadius="8">
                         <DockPanel>
                             <!-- Başlık: buradan sürüklenir -->
-                            <Border DockPanel.Dock="Top" Background="#2a2c38" CornerRadius="8,8,0,0" Padding="10,6">
+                            <Border DockPanel.Dock="Top" Background="#2a2c38" CornerRadius="8,8,0,0" Padding="10,6"
+                                    MouseLeftButtonDown="NodeHeader_MouseLeftButtonDown" ToolTip="Çift tık: bu terminale yakınlaş">
                                 <DockPanel>
                                     <Button DockPanel.Dock="Right" Content="✕"
                                             Command="{Binding DataContext.CloseNodeCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
