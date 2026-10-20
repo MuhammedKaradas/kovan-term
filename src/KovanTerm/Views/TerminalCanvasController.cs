@@ -60,6 +60,12 @@ public sealed class TerminalCanvasController
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(150) };
     private bool _refreshInFlight;
 
+    // Odaklanacak düğüm; uyuyor ya da fotoğraf modundaysa canlı terminale dönülünce odaklanır
+    private object? _pendingFocus;
+
+    /// <summary>Bir terminal klavye odağını aldığında (tıklama, kısayol); argüman düğüm ViewModel'i.</summary>
+    public event Action<object>? NodeFocused;
+
     /// <summary>Fotoğraf moduna giriş/çıkış süreleri (ölçüm için; bkz. <see cref="PerfSelfTest"/>).</summary>
     public event Action<string, TimeSpan>? Timing;
 
@@ -87,6 +93,10 @@ public sealed class TerminalCanvasController
         if (term.ConPTYTerm != null)
             term.ConPTYTerm.TerminalOutput += (_, _) => entry.Dirty = true;
         term.SizeChanged += (_, _) => entry.Dirty = true;
+        term.IsKeyboardFocusWithinChanged += (_, e) =>
+        {
+            if (e.NewValue is true) NodeFocused?.Invoke(node);
+        };
         // Terminal hazır olunca mevcut zoom'a uygun yazı boyutunu uygula (çalışma alanı farklı bir zoom'la açılmış olabilir)
         term.Dispatcher.BeginInvoke(() =>
         {
@@ -133,6 +143,24 @@ public sealed class TerminalCanvasController
             try { ((ITerminalConnection)pty).Close(); }
             catch (Exception ex) { Debug.WriteLine($"Pseudo-console kapatılamadı: {ex.Message}"); }
         });
+    }
+
+    /// <summary>
+    /// Düğümün terminaline klavye odağını verir. Terminal o an gizliyse (fotoğraf modu ya da uyuyor)
+    /// canlı terminale dönülünce odaklanır.
+    /// </summary>
+    public void FocusNode(object node)
+    {
+        if (!_byNode.TryGetValue(node, out var entry)) return;
+        if (_frozen || entry.Sleeping)
+        {
+            _pendingFocus = node;
+            return;
+        }
+        _pendingFocus = null;
+        // Terminal kontrolü HwndHost'u içeren TerminalControl'dür; odağı ona vermek HWND'ye SetFocus yapar
+        if (entry.Control.Terminal?.Focus() != true)
+            entry.Control.Focus();
     }
 
     /// <summary>Etkileşim boyunca (ör. boyutlandırma) terminalleri anlık görüntüyle değiştirir.</summary>
@@ -202,6 +230,8 @@ public sealed class TerminalCanvasController
         }
         var sleeping = UpdateSleepStates();
         Timing?.Invoke($"canlı terminale dönüş ({_byNode.Count} terminal, {sleeping} uyuyor)", sw.Elapsed);
+        if (_pendingFocus is { } pending)
+            FocusNode(pending);
         // Terminal (özellikle yazı boyutu değiştiyse) ilk karesini çizene kadar görüntü arkada kalsın;
         // hemen kaldırılırsa kısa bir boş kare görünüyor
         _snapshotCleanupTimer.Start();

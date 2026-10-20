@@ -18,6 +18,7 @@ Terminal'in GPU hızlandırmalı terminal bileşeniyle, düşük kaynak tüketim
 - Profiller: PowerShell, cmd, Claude Code, Codex, Gemini CLI + kendi profillerin ([docs/profiller.md](docs/profiller.md))
 - Çalışma dizini seçimi, tuvalde sağ tıkla "Burada yeni terminal"
 - Çalışma alanı otomatik kaydedilir ve açılışta geri gelir
+- Klavye kısayolları: terminaller arası geçiş, tümünü sığdır, yakınlaş ([docs/kisayollar.md](docs/kisayollar.md))
 - Zoom'a göre ölçeklenen terminal yazısı
 - Kaydırma/zoom sırasında akıcılık için "fotoğraf modu"
 
@@ -45,6 +46,7 @@ dotnet run --project src/KovanTerm -c Release
 
 - [Mimari](docs/mimari.md)
 - [Profiller](docs/profiller.md)
+- [Klavye kısayolları](docs/kisayollar.md)
 - [Yol haritası](docs/yol-haritasi.md)
 - [Mimari karar kayıtları](docs/kararlar/)
 - [Katkı kuralları](CONTRIBUTING.md)
