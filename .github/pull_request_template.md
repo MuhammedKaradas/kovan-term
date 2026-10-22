@@ -1,11 +1,11 @@
-## Ne değişti?
+## What changed?
 
-## Neden?
+## Why?
 
 Closes #
 
-## Kontrol listesi
+## Checklist
 
-- [ ] `dotnet build -c Release` uyarısız derleniyor
-- [ ] Tuvalde kaydırma/zoom akıcılığı elle denendi (terminal ya da tuval değiştiyse)
-- [ ] Gerekiyorsa belgeler güncellendi
+- [ ] `dotnet build -c Release` builds without warnings and `dotnet test` passes
+- [ ] Panning/zooming smoothness checked (if the terminal or canvas changed); `KOVAN_PERF_SELFTEST` numbers included for performance changes
+- [ ] Docs updated if needed

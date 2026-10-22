@@ -2,12 +2,12 @@ using System.IO;
 
 namespace KovanTerm.Services;
 
-/// <summary>Uygulama verilerinin (çalışma alanı, profiller) tutulduğu klasör.</summary>
+/// <summary>Folder where app data (workspace, profiles) is stored.</summary>
 public static class AppPaths
 {
     /// <summary>
-    /// Varsayılan <c>%APPDATA%\KovanTerm</c>. <c>KOVAN_DATA_DIR</c> ortam değişkeniyle değiştirilebilir;
-    /// testlerde ya da aynı makinede ikinci bir kopya çalıştırırken kullanıcının verisine dokunmamak için.
+    /// Defaults to <c>%APPDATA%\KovanTerm</c>. Can be overridden with the <c>KOVAN_DATA_DIR</c> environment variable,
+    /// so tests or a second copy on the same machine don't touch the user's data.
     /// </summary>
     public static string DataDirectory { get; } =
         Environment.GetEnvironmentVariable("KOVAN_DATA_DIR") is { Length: > 0 } custom

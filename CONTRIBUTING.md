@@ -1,96 +1,104 @@
-# Katkı Kuralları
+# Contributing
 
-## Dal (branch) düzeni
+## Branches
 
-- `main` her zaman derlenebilir ve çalışır durumda olmalı.
-- Her iş bir issue'ya bağlı kendi dalında yapılır:
-  - `ozellik/<issue-no>-kisa-ad` → `ozellik/12-calisma-alani-kaydet`
-  - `duzeltme/<issue-no>-kisa-ad` → `duzeltme/31-zoom-titreme`
-- Dallar `main`'e PR ile, **squash merge** yapılarak alınır. PR başlığı commit kuralına uyar.
+- `main` must always build and run.
+- Every change is made on its own branch, tied to an issue:
+  - `feature/<issue>-short-name` → `feature/12-save-workspace`
+  - `fix/<issue>-short-name` → `fix/31-zoom-flicker`
+  - `perf/…`, `docs/…`, `chore/…` for the matching kinds of work
+- Branches are merged into `main` through a PR with **squash merge**. The PR title follows the commit
+  convention below.
 
-## Commit mesajları
+## Commit messages
 
-[Conventional Commits](https://www.conventionalcommits.org/tr/v1.0.0/) kullanılır.
-Tür ve kapsam İngilizce/ASCII, **açıklama Türkçe ve Türkçe karakterlerle** yazılır.
+We use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), in English.
 
 ```
-<tür>(<kapsam>): <açıklama>
+<type>(<scope>): <description>
 
-[isteğe bağlı gövde: neden ve ne]
+[optional body: why and what]
 
-[isteğe bağlı alt bilgi: Closes #12]
+[optional footer: Closes #12]
 ```
 
-### Türler
+> Commits before 2026-10-22 were written in Turkish; they're left as they are.
 
-| Tür | Ne zaman |
+### Types
+
+| Type | When |
 |---|---|
-| `feat` | Yeni özellik |
-| `fix` | Hata düzeltme |
-| `perf` | Performans iyileştirmesi |
-| `refactor` | Davranışı değiştirmeyen kod düzenlemesi |
-| `docs` | Yalnızca belge |
-| `test` | Test ekleme/düzeltme |
-| `build` | Derleme, bağımlılık, paketleme |
-| `ci` | GitHub Actions vb. |
-| `chore` | Diğer bakım işleri |
+| `feat` | New feature |
+| `fix` | Bug fix |
+| `perf` | Performance improvement |
+| `refactor` | Code change that doesn't change behavior |
+| `docs` | Documentation only |
+| `test` | Adding or fixing tests |
+| `build` | Build, dependencies, packaging |
+| `ci` | GitHub Actions etc. |
+| `chore` | Other maintenance |
 
-### Kapsamlar
+### Scopes
 
-`tuval`, `terminal`, `ajan`, `ses`, `alan` (çalışma alanı), `ui`, `ayar`. Gerekmiyorsa kapsam yazılmaz.
+`canvas`, `terminal`, `agent`, `voice`, `workspace`, `ui`, `settings`. Leave the scope out if none fits.
 
-### Kurallar
+### Rules
 
-- Açıklama küçük harfle başlar, emir kipiyle yazılır ("ekle", "düzelt"), sonunda nokta olmaz,
-  72 karakteri geçmez.
-- **Basit değişiklik → tek satır.** Davranış değiştiren, gerekçesi açık olmayan ya da birden
-  fazla parçayı etkileyen değişiklik → gövdede *neden*i ve önemli ayrıntıları yaz.
-- Geriye uyumsuz değişiklikte türden sonra `!` koy ve alt bilgiye `BREAKING CHANGE:` ekle.
-- Commit'lere **imza satırı eklenmez** (`Co-Authored-By`, "Generated with …" vb.).
+- The description starts with a lowercase letter, uses the imperative mood ("add", "fix"), has no
+  trailing period and is at most 72 characters.
+- **Simple change → one line.** A change that alters behavior, isn't self-explanatory or touches
+  several parts → explain the *why* and the important details in the body.
+- For breaking changes, add `!` after the type and a `BREAKING CHANGE:` footer.
+- No attribution trailers in commits (`Co-Authored-By`, "Generated with …", etc.).
 
-### Örnekler
+### Examples
 
-Basit:
-
-```
-fix(tuval): zoom sınırında yazı boyutunun 4'ün altına inmesini engelle
-```
+Simple:
 
 ```
-docs: kurulum adımlarını güncelle
+fix(canvas): keep the font size from dropping below 4 at the zoom limit
 ```
 
-Detaylı:
+```
+docs: update the install steps
+```
+
+Detailed:
 
 ```
-perf(tuval): kaydırma sırasında terminalleri anlık görüntüyle değiştir
+perf(canvas): replace terminals with snapshots while panning
 
-Terminal kontrolü kendi HWND'sinde çizildiği için her karede yeniden
-konumlanıp boyutlanıyor, bu da kaydırma ve zoom'da takılmaya yol
-açıyordu. Hareket başlarken her terminalin görüntüsü alınıp canlı
-terminal gizleniyor; hareket bittikten 150 ms sonra geri getiriliyor.
+The terminal control renders in its own HWND, so every frame it had to
+be repositioned and resized, which made panning and zooming stutter.
+When a gesture starts, each terminal is captured and the live terminal
+is hidden; it comes back 150 ms after the gesture ends.
 
 Closes #5
 ```
 
-## Issue'lar
+## Issues
 
-- Her issue bir milestone'a (sürüm) ve en az bir `type:` ve `area:` etiketine bağlanır. Etiket ve milestone adları İngilizcedir.
-- Özellik issue'larında **Kabul kriterleri** bölümü olmalı.
+- Every issue belongs to a milestone (release) and has at least one `type:` and one `area:` label.
+- Feature issues need an **Acceptance criteria** section.
 
-## Sürüm yayınlama
+## Pull requests
 
-1. `src/KovanTerm/KovanTerm.csproj` içindeki `<Version>` değerini güncelle ve `main`'e al.
-2. Etiket at ve gönder:
+- Fill in the PR template; for changes that affect smoothness, include before/after numbers from
+  `KOVAN_PERF_SELFTEST` (see [CLAUDE.md](CLAUDE.md)).
+- `dotnet build -c Release` must have no warnings and `dotnet test` must pass.
+
+## Releasing
+
+1. Update `<Version>` in `src/KovanTerm/KovanTerm.csproj` and merge it into `main`.
+2. Tag and push:
    ```bash
    git tag v0.1.0
    git push origin v0.1.0
    ```
-3. `Sürüm` iş akışı testleri çalıştırır, kendi başına çalışan `win-x64` paketini üretir ve
-   zip + SHA256 dosyasıyla **taslak** bir GitHub Release oluşturur.
-4. Release sayfasında notları kontrol edip yayınla. `-` içeren etiketler (`v0.2.0-beta.1`) ön sürüm
-   olarak işaretlenir.
+3. The `Release` workflow runs the tests, builds the self-contained `win-x64` package and creates a
+   **draft** GitHub Release with the zip and a SHA256 file.
+4. Review the notes on the Release page and publish it. Tags containing `-` (`v0.2.0-beta.1`) are
+   marked as pre-releases.
 
-Paket .NET kurulumu gerektirmez (~60 MB zip). Exe imzalı olmadığı için ilk açılışta Windows
-SmartScreen uyarısı çıkabilir ("Ek bilgi → Yine de çalıştır").
-
+The package doesn't need .NET installed (~60 MB zip). The executable isn't signed, so Windows
+SmartScreen may warn on first launch ("More info → Run anyway").

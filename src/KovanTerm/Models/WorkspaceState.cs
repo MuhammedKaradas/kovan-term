@@ -1,6 +1,6 @@
 namespace KovanTerm.Models;
 
-/// <summary>Diske kaydedilen çalışma alanı. Alan eklerken geriye uyumlu kal; bozan değişiklikte <see cref="CurrentVersion"/>'ı artır.</summary>
+/// <summary>Workspace persisted to disk. Stay backward compatible when adding fields; bump <see cref="CurrentVersion"/> on breaking changes.</summary>
 public sealed record WorkspaceState
 {
     public const int CurrentVersion = 1;
@@ -8,7 +8,7 @@ public sealed record WorkspaceState
     public int Version { get; init; } = CurrentVersion;
     public ViewportState Viewport { get; init; } = new();
     public List<NodeState> Nodes { get; init; } = [];
-    /// <summary>En son kullanılan çalışma dizinleri, en yenisi başta.</summary>
+    /// <summary>Most recently used working directories, newest first.</summary>
     public List<string> RecentDirectories { get; init; } = [];
     public string? LastProfileId { get; init; }
 }

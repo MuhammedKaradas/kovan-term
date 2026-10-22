@@ -17,16 +17,16 @@ public sealed class CommandResolverTests : IDisposable
     }
 
     [Fact]
-    public void Resolve_PathteUzantisizAdi_PathextIleBulur()
+    public void Resolve_BareNameOnPath_FindsViaPathext()
     {
         var cmd = Touch("claude.cmd");
-        Touch("claude"); // npm'in bash betiği: uzantısız dosya seçilmemeli
+        Touch("claude"); // npm's bash script: the extensionless file must not be picked
 
         Assert.Equal(cmd, new CommandResolver(_dir, ".EXE;.CMD").Resolve("claude"));
     }
 
     [Fact]
-    public void Resolve_PathextSirasinaUyar()
+    public void Resolve_FollowsPathextOrder()
     {
         var exe = Touch("tool.exe");
         Touch("tool.cmd");
@@ -35,23 +35,23 @@ public sealed class CommandResolverTests : IDisposable
     }
 
     [Fact]
-    public void Resolve_UzantiVerilmisse_OlduguGibiBulur()
+    public void Resolve_WithExtension_FindsAsIs()
     {
         var exe = Touch("app.exe");
         Assert.Equal(exe, new CommandResolver(_dir, ".EXE").Resolve("app.exe"));
     }
 
     [Fact]
-    public void Resolve_TamYol_PathteAramaz()
+    public void Resolve_FullPath_DoesNotSearchPath()
     {
         var exe = Touch("x.exe");
         Assert.Equal(exe, new CommandResolver("", ".EXE").Resolve(exe));
     }
 
     [Fact]
-    public void Resolve_Bulunamazsa_NullDoner()
+    public void Resolve_NotFound_ReturnsNull()
     {
-        Assert.Null(new CommandResolver(_dir, ".EXE").Resolve("yok"));
+        Assert.Null(new CommandResolver(_dir, ".EXE").Resolve("missing"));
         Assert.Null(new CommandResolver(_dir, ".EXE").Resolve(""));
     }
 
@@ -61,7 +61,7 @@ public sealed class CommandResolverTests : IDisposable
     [InlineData(@"C:\Program Files\App\app.exe", "-x", "\"C:\\Program Files\\App\\app.exe\" -x")]
     [InlineData(@"C:\Program Files\nodejs\claude.cmd", "", "cmd.exe /k \"\"C:\\Program Files\\nodejs\\claude.cmd\"\"")]
     [InlineData(@"C:\npm\codex.CMD", "--full-auto", "cmd.exe /k \"C:\\npm\\codex.CMD --full-auto\"")]
-    public void BuildCommandLine_BatchDosyalariniCmdIleSarar(string path, string args, string expected)
+    public void BuildCommandLine_WrapsBatchFilesInCmd(string path, string args, string expected)
     {
         Assert.Equal(expected, CommandResolver.BuildCommandLine(path, args));
     }
@@ -70,8 +70,8 @@ public sealed class CommandResolverTests : IDisposable
     [InlineData("cmd.exe /k claude", "cmd.exe")]
     [InlineData("powershell.exe", "powershell.exe")]
     [InlineData("\"C:\\Program Files\\App\\app.exe\" -x", @"C:\Program Files\App\app.exe")]
-    [InlineData("  boşluklu.exe arg", "boşluklu.exe")]
-    public void FirstToken_IlkOgeyiDoner(string commandLine, string expected)
+    [InlineData("  padded.exe arg", "padded.exe")]
+    public void FirstToken_ReturnsFirstToken(string commandLine, string expected)
     {
         Assert.Equal(expected, CommandResolver.FirstToken(commandLine));
     }

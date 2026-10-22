@@ -14,7 +14,7 @@
     <Window.Resources>
         <conv:NodeStatusToBrushConverter x:Key="StatusToBrush"/>
 
-        <!-- Düğüm gövdesi: canlı terminal. Hareket sırasında terminal yerine anlık görüntüsü gösterilir (TerminalCanvasController) -->
+        <!-- Node body: live terminal. During motion its snapshot is shown instead (TerminalCanvasController) -->
         <DataTemplate x:Key="TerminalBody" DataType="{x:Type vm:TerminalNodeViewModel}">
             <Grid>
                 <Image Visibility="Collapsed" Stretch="Fill"/>
@@ -25,11 +25,11 @@
             </Grid>
         </DataTemplate>
 
-        <!-- Düğüm gövdesi: terminal başlatılamadı (ör. komut bulunamadı); terminal hiç oluşturulmaz -->
+        <!-- Node body: terminal couldn't start (e.g. command not found); no terminal is created -->
         <DataTemplate x:Key="ErrorBody" DataType="{x:Type vm:TerminalNodeViewModel}">
             <Border Background="#0c0c0c" Padding="16">
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="Terminal başlatılamadı" Foreground="#e5a04b" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
+                    <TextBlock Text="Couldn't start terminal" Foreground="#e5a04b" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
                     <TextBlock Text="{Binding StartError}" Foreground="#c8cbd6" TextWrapping="Wrap"/>
                 </StackPanel>
             </Border>
@@ -37,14 +37,14 @@
     </Window.Resources>
 
     <DockPanel>
-        <!-- Üst çubuk -->
+        <!-- Top bar -->
         <Border DockPanel.Dock="Top" Background="#1f2029" Padding="10,6">
             <StackPanel Orientation="Horizontal">
-                <Button Content="+ Yeni terminal" Command="{Binding NewTerminalCommand}" Margin="0,0,16,0" Padding="10,4"
-                        ToolTip="Profil ve çalışma dizini seçerek yeni terminal aç (Ctrl+Shift+T). Tuvalde sağ tık: tıklanan yere aç."/>
+                <Button Content="+ New terminal" Command="{Binding NewTerminalCommand}" Margin="0,0,16,0" Padding="10,4"
+                        ToolTip="Open a new terminal with a chosen profile and working directory (Ctrl+Shift+T). Right-click the canvas: open it where you clicked."/>
                 <TextBlock Foreground="#9aa0b4" VerticalAlignment="Center" FontFamily="Consolas">
                     <TextBlock.Text>
-                        <MultiBinding StringFormat="Uygulama RAM: {0} MB   |   Terminal: {1}   |   Zoom: {2:0.00}">
+                        <MultiBinding StringFormat="App RAM: {0} MB   |   Terminals: {1}   |   Zoom: {2:0.00}">
                             <Binding Path="MemoryMb"/>
                             <Binding Path="Nodes.Count"/>
                             <Binding Path="ViewportZoom"/>
@@ -63,7 +63,7 @@
                              ContextMenuOpening="Editor_ContextMenuOpening">
             <nodify:NodifyEditor.ContextMenu>
                 <ContextMenu>
-                    <MenuItem Header="Burada yeni terminal…" Click="NewTerminalHere_Click"/>
+                    <MenuItem Header="New terminal here…" Click="NewTerminalHere_Click"/>
                 </ContextMenu>
             </nodify:NodifyEditor.ContextMenu>
             <nodify:NodifyEditor.ItemContainerStyle>
@@ -76,9 +76,9 @@
                 <DataTemplate DataType="{x:Type vm:TerminalNodeViewModel}">
                     <Border Background="#22232d" BorderBrush="#3a3c4a" BorderThickness="1" CornerRadius="8">
                         <DockPanel>
-                            <!-- Başlık: buradan sürüklenir -->
+                            <!-- Header: drag from here -->
                             <Border DockPanel.Dock="Top" Background="#2a2c38" CornerRadius="8,8,0,0" Padding="10,6"
-                                    MouseLeftButtonDown="NodeHeader_MouseLeftButtonDown" ToolTip="Çift tık: bu terminale yakınlaş">
+                                    MouseLeftButtonDown="NodeHeader_MouseLeftButtonDown" ToolTip="Double-click: zoom to this terminal">
                                 <DockPanel>
                                     <Button DockPanel.Dock="Right" Content="✕"
                                             Command="{Binding DataContext.CloseNodeCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
@@ -89,11 +89,11 @@
                                     <TextBlock Text="{Binding Title}" Foreground="#e6e8f0" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 </DockPanel>
                             </Border>
-                            <!-- Profil rengi -->
+                            <!-- Profile color -->
                             <Border DockPanel.Dock="Top" Height="2" Background="{Binding Color}"/>
-                            <!-- Boyutlandırma şeridi: terminalin üstüne WPF çizilemediği (airspace) için terminalin altında -->
+                            <!-- Resize strip: below the terminal, since WPF can't draw on top of it (airspace) -->
                             <Grid DockPanel.Dock="Bottom" Height="10">
-                                <Thumb HorizontalAlignment="Right" Width="28" Cursor="SizeNWSE" ToolTip="Boyutlandır"
+                                <Thumb HorizontalAlignment="Right" Width="28" Cursor="SizeNWSE" ToolTip="Resize"
                                        DragStarted="ResizeThumb_DragStarted" DragDelta="ResizeThumb_DragDelta" DragCompleted="ResizeThumb_DragCompleted">
                                     <Thumb.Template>
                                         <ControlTemplate TargetType="Thumb">

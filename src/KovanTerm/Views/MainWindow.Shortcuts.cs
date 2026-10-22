@@ -6,17 +6,17 @@ using KovanTerm.ViewModels;
 
 namespace KovanTerm.Views;
 
-/// <summary>Klavye kısayolları ve terminaller arası gezinme (bkz. <see cref="Shortcuts"/>, <c>docs/kisayollar.md</c>).</summary>
+/// <summary>Keyboard shortcuts and navigation between terminals (see <see cref="Shortcuts"/>, <c>docs/shortcuts.md</c>).</summary>
 public partial class MainWindow
 {
     private const int WM_KEYDOWN = 0x0100, WM_SYSKEYDOWN = 0x0104;
-    /// <summary>Bir terminale yakınlaşırken terminalin görünür alanın ne kadarını kaplayacağı.</summary>
+    /// <summary>How much of the viewport a terminal fills when zooming to it.</summary>
     private const double ZoomToNodeFill = 0.9;
 
     private IntPtr _hwnd;
 
-    // Gezinmenin "şu anki" terminali: en son odaklanan ya da kısayolla gidilen. Yalnızca klavye odağına
-    // güvenilmez; pencere etkin değilken odak verilemez ve gezinme aynı yerde takılırdı.
+    // The "current" terminal for navigation: the last one focused or navigated to via shortcut. Keyboard focus
+    // alone isn't reliable; focus can't be set while the window is inactive, so navigation would get stuck.
     private TerminalNodeViewModel? _currentNode;
 
     private void InitShortcuts()
@@ -31,12 +31,12 @@ public partial class MainWindow
         Closed += (_, _) => ComponentDispatcher.ThreadPreprocessMessage -= OnThreadPreprocessMessage;
     }
 
-    // Terminal odaktayken tuşlar doğrudan terminalin HWND'sine gider ve WPF KeyBinding'lerine ulaşmaz.
-    // Terminal HWND'si arayüz iş parçacığında olduğu için tuş mesajı burada, terminalden önce yakalanır.
+    // While a terminal is focused, keys go straight to its HWND and never reach WPF KeyBindings.
+    // The terminal HWND lives on the UI thread, so the key message is caught here, before the terminal sees it.
     private void OnThreadPreprocessMessage(ref MSG msg, ref bool handled)
     {
         if (handled || (msg.message != WM_KEYDOWN && msg.message != WM_SYSKEYDOWN)) return;
-        // Yalnızca ana pencere ve içindeki terminaller; açık bir diyalog varsa ona karışma
+        // Only the main window and its terminals; don't interfere with an open dialog
         if (_hwnd == IntPtr.Zero || (msg.hwnd != _hwnd && !Native.IsChild(_hwnd, msg.hwnd))) return;
         var key = KeyInterop.KeyFromVirtualKey((int)msg.wParam);
         if (Shortcuts.Match(key, Keyboard.Modifiers) is not { } action) return;
@@ -67,14 +67,14 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>Görünümü düğüme kaydırır (animasyonlu) ve terminaline odaklanır.</summary>
+    /// <summary>Pans the viewport to the node (animated) and focuses its terminal.</summary>
     private void GoToNode(TerminalNodeViewModel node)
     {
         _currentNode = node;
         Editor.BringIntoView(Center(node.Bounds), true, () => _canvas.FocusNode(node));
     }
 
-    /// <summary>Düğüm görünür alanı dolduracak şekilde yakınlaşır (en fazla %100) ve terminaline odaklanır.</summary>
+    /// <summary>Zooms so the node fills the viewport (at most 100%) and focuses its terminal.</summary>
     private void ZoomToNode(TerminalNodeViewModel node)
     {
         var b = node.Bounds;
@@ -83,7 +83,7 @@ public partial class MainWindow
         GoToNode(node);
     }
 
-    // Başlığa çift tık: o terminale yakınlaş
+    // Double-click on the header: zoom to that terminal
     private void NodeHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ClickCount != 2 || sender is not FrameworkElement { DataContext: TerminalNodeViewModel node }) return;

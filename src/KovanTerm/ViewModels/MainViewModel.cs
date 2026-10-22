@@ -24,7 +24,7 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     public partial Point ViewportLocation { get; set; }
 
-    /// <summary>Görünür alanın tuval koordinatlarındaki boyutu; görünüm tarafından güncellenir.</summary>
+    /// <summary>Size of the visible area in canvas coordinates; updated by the view.</summary>
     public Size ViewportSize { get; set; }
 
     [ObservableProperty]
@@ -38,7 +38,7 @@ public partial class MainViewModel : ObservableObject
     private string? _lastProfileId;
 
     private readonly DispatcherTimer _statsTimer = new() { Interval = TimeSpan.FromSeconds(1) };
-    // Değişiklikten bu kadar sonra kaydedilir; sürükleme gibi art arda gelen değişiklikler tek yazıma iner
+    // Saves this long after a change; bursts of changes such as dragging collapse into a single write
     private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
 
     public MainViewModel(WorkspaceStore store, ProfileStore profiles, CommandResolver resolver, IDialogService dialogs)
@@ -62,7 +62,7 @@ public partial class MainViewModel : ObservableObject
         _statsTimer.Start();
     }
 
-    /// <summary>Profil ve çalışma dizini sorup yeni terminal açar. <paramref name="location"/> boşsa görünümün ortasına koyar.</summary>
+    /// <summary>Asks for a profile and working directory, then opens a new terminal. Places it at the center of the viewport if <paramref name="location"/> is null.</summary>
     [RelayCommand]
     private void NewTerminal(Point? location)
     {
@@ -79,7 +79,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void CloseNode(TerminalNodeViewModel node) => Nodes.Remove(node);
 
-    /// <summary>Bekleyen kaydı hemen yazar. Uygulama kapanırken çağrılır.</summary>
+    /// <summary>Writes any pending save immediately. Called when the app is closing.</summary>
     public void SaveNow()
     {
         _saveTimer.Stop();
@@ -95,8 +95,8 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // Kayıt başarısız olursa bir sonraki değişiklikte yeniden denenir
-            Debug.WriteLine($"Çalışma alanı kaydedilemedi: {ex.Message}");
+            // If saving fails, it's retried on the next change
+            Debug.WriteLine($"Couldn't save workspace: {ex.Message}");
         }
     }
 
@@ -112,7 +112,7 @@ public partial class MainViewModel : ObservableObject
 
     private void AddNode(TerminalNodeViewModel node)
     {
-        // Üst üste binen terminaller birbirini örttüğü için en yakın boş yere yerleştir
+        // Overlapping terminals cover each other, so place it in the nearest free spot
         var viewport = ViewportSize.IsEmpty || ViewportSize.Width <= 0 ? (Rect?)null : new Rect(ViewportLocation, ViewportSize);
         node.Location = NodePlacement.FindFreeSpot(Nodes.Select(n => n.Bounds).ToList(), node.Location, node.Bounds.Size, viewport);
         Nodes.Add(node);
@@ -135,8 +135,8 @@ public partial class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Profili bilinen düğümün komutu güncel profilden yeniden kurulur (CLI başka yere taşınmış olabilir).
-    /// Çalıştırılabilir dosya bulunamazsa terminal başlatılmaz, düğümde hata gösterilir.
+    /// For a node with a known profile, the command is rebuilt from the current profile (the CLI may have moved).
+    /// If the executable can't be found, the terminal isn't started and the node shows an error.
     /// </summary>
     private TerminalNodeViewModel RestoreNode(NodeState s)
     {
@@ -154,7 +154,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     private static string NotFoundMessage(string executable) =>
-        $"'{executable}' bulunamadı.\nKurulu olduğundan ve PATH'e eklendiğinden emin ol, sonra bu düğümü kapatıp yeniden aç.";
+        $"'{executable}' not found.\nMake sure it's installed and on PATH, then close this node and open it again.";
 
     private void AddDefaultNodes()
     {
@@ -164,7 +164,7 @@ public partial class MainViewModel : ObservableObject
         {
             var profile = _profiles.First(p => p.Id == id);
             if (_resolver.Resolve(profile.Executable) is not { } path) continue;
-            // 2 sütunlu ızgaraya diz
+            // Lay out in a 2-column grid
             AddNode(CreateNode(profile, path, home, new Point(40 + (i % 2) * 600, 40 + (i / 2) * 400)));
             i++;
         }
@@ -195,7 +195,7 @@ public partial class MainViewModel : ObservableObject
 
     private void OnNodePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // Durum (Status) kalıcı değil; yalnızca konum ve boyut değişince kaydet
+        // Status isn't persisted; save only when location or size changes
         if (e.PropertyName is nameof(TerminalNodeViewModel.Location) or nameof(TerminalNodeViewModel.Width) or nameof(TerminalNodeViewModel.Height))
             ScheduleSave();
     }

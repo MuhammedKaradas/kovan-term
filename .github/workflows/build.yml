@@ -1,4 +1,4 @@
-name: Derleme
+name: Build
 
 on:
   push:

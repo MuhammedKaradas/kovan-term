@@ -9,7 +9,7 @@ public sealed class TerminalNodeViewModelTests
     private static TerminalNodeViewModel Node() => new() { Title = "cmd", CommandLine = "cmd.exe", Location = new Point(10, 20) };
 
     [Fact]
-    public void ResizeBy_BoyutuDegistirirVeSinirlariUygular()
+    public void ResizeBy_ChangesSizeAndAppliesLimits()
     {
         var node = Node();
 
@@ -27,7 +27,7 @@ public sealed class TerminalNodeViewModelTests
     }
 
     [Fact]
-    public void Bounds_CerceveyiIcerirVeBoyutDegisinceBildirilir()
+    public void Bounds_IncludesChromeAndNotifiesOnResize()
     {
         var node = Node();
         var changed = new List<string?>();
@@ -41,7 +41,7 @@ public sealed class TerminalNodeViewModelTests
     }
 
     [Fact]
-    public void StateDonusumu_BoyutuKorurVeSinirDisiniDuzeltir()
+    public void StateRoundTrip_PreservesSizeAndClampsOutOfRange()
     {
         var node = Node();
         node.ResizeBy(200, 100);

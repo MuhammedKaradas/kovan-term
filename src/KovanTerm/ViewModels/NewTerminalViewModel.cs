@@ -5,7 +5,7 @@ using KovanTerm.Services;
 
 namespace KovanTerm.ViewModels;
 
-/// <summary>"Yeni terminal" diyaloğu: profil ve çalışma dizini seçimi.</summary>
+/// <summary>"New terminal" dialog: profile and working directory selection.</summary>
 public partial class NewTerminalViewModel : ObservableObject
 {
     private readonly IDialogService _dialogs;
@@ -23,7 +23,7 @@ public partial class NewTerminalViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ConfirmCommand))]
     public partial string WorkingDirectory { get; set; }
 
-    /// <summary>Diyalog kapanınca görünüm bunu izler: <c>true</c> onay, <c>false</c> iptal.</summary>
+    /// <summary>The view watches this to close the dialog: <c>true</c> confirm, <c>false</c> cancel.</summary>
     [ObservableProperty]
     public partial bool? DialogResult { get; set; }
 
@@ -40,10 +40,10 @@ public partial class NewTerminalViewModel : ObservableObject
     }
 
     public string? ValidationMessage =>
-        SelectedProfile == null ? "Bir profil seç."
+        SelectedProfile == null ? "Select a profile."
         : !SelectedProfile.IsAvailable ? SelectedProfile.Detail
-        : string.IsNullOrWhiteSpace(WorkingDirectory) ? "Çalışma dizini seç."
-        : !Directory.Exists(WorkingDirectory) ? "Bu klasör bulunamadı."
+        : string.IsNullOrWhiteSpace(WorkingDirectory) ? "Select a working directory."
+        : !Directory.Exists(WorkingDirectory) ? "This folder doesn't exist."
         : null;
 
     [RelayCommand(CanExecute = nameof(CanConfirm))]

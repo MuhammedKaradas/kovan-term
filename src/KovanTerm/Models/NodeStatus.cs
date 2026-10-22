@@ -1,6 +1,6 @@
 namespace KovanTerm.Models;
 
-/// <summary>Bir terminal/ajan düğümünün durumu. Gerçek değerler v0.2'de ajan hook'larından gelecek.</summary>
+/// <summary>Status of a terminal/agent node. Real values will come from agent hooks in v0.2.</summary>
 public enum NodeStatus
 {
     Idle,

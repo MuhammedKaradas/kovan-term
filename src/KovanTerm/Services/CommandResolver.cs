@@ -2,7 +2,7 @@ using System.IO;
 
 namespace KovanTerm.Services;
 
-/// <summary>Çalıştırılabilir dosyaları PATH/PATHEXT üzerinden bulur ve ConPTY'ye verilecek komut satırını kurar.</summary>
+/// <summary>Finds executables via PATH/PATHEXT and builds the command line passed to ConPTY.</summary>
 public sealed class CommandResolver
 {
     private readonly string[] _searchDirs;
@@ -16,12 +16,12 @@ public sealed class CommandResolver
             .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 
-    /// <summary>Dosyanın tam yolunu döndürür; bulunamazsa <c>null</c>.</summary>
+    /// <summary>Returns the file's full path, or <c>null</c> if not found.</summary>
     public string? Resolve(string executable)
     {
         if (string.IsNullOrWhiteSpace(executable)) return null;
 
-        // Tam ya da göreli yol verilmişse PATH'te arama
+        // If a full or relative path is given, don't search PATH
         if (executable.Contains(Path.DirectorySeparatorChar) || executable.Contains(Path.AltDirectorySeparatorChar))
             return WithExtensions(executable).FirstOrDefault(File.Exists);
 
@@ -34,8 +34,8 @@ public sealed class CommandResolver
     }
 
     /// <summary>
-    /// ConPTY'ye verilecek komut satırı. .cmd/.bat dosyaları doğrudan başlatılamadığı için
-    /// <c>cmd.exe /k</c> ile sarılır; ajan kapansa da terminal kullanılabilir kalır.
+    /// Command line passed to ConPTY. Since .cmd/.bat files can't be started directly, they're
+    /// wrapped in <c>cmd.exe /k</c>; the terminal stays usable even after the agent exits.
     /// </summary>
     public static string BuildCommandLine(string resolvedPath, string arguments)
     {
@@ -47,7 +47,7 @@ public sealed class CommandResolver
             : line;
     }
 
-    /// <summary>Komut satırındaki ilk öğe (çalıştırılabilir dosya); tırnaklı yolları destekler.</summary>
+    /// <summary>First token of the command line (the executable); supports quoted paths.</summary>
     public static string FirstToken(string commandLine)
     {
         var s = commandLine.TrimStart();
@@ -62,7 +62,7 @@ public sealed class CommandResolver
 
     private IEnumerable<string> WithExtensions(string pathWithoutExt)
     {
-        // Uzantı zaten verilmişse önce olduğu gibi dene
+        // If an extension is already given, try it as-is first
         if (Path.HasExtension(pathWithoutExt))
             yield return pathWithoutExt;
         foreach (var ext in _extensions)

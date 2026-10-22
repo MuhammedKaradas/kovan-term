@@ -9,11 +9,11 @@
     <AssemblyName>KovanTerm</AssemblyName>
     <Product>Kovan Term</Product>
     <Version>0.1.0</Version>
-    <!-- Kendi sembollerimiz dll'e gömülür: ayrı .pdb dağıtmadan hata raporlarında satır numarası kalır -->
+    <!-- Our own symbols are embedded in the dll: crash reports keep line numbers without shipping a separate .pdb -->
     <DebugType>embedded</DebugType>
   </PropertyGroup>
 
-  <!-- Paketlerden gelen .pdb dosyalarını (ör. 81 MB'lık Microsoft.Terminal.Control.pdb) yayına alma -->
+  <!-- Don't publish .pdb files that come from packages (e.g. the 81 MB Microsoft.Terminal.Control.pdb) -->
   <Target Name="KovanExcludePdbsFromPublish" AfterTargets="ComputeResolvedFilesToPublishList">
     <ItemGroup>
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb'" />

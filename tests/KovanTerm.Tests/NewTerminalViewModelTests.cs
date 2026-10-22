@@ -19,7 +19,7 @@ public sealed class NewTerminalViewModelTests
     private static readonly string ExistingDir = Path.GetTempPath();
 
     [Fact]
-    public void Baslangicta_TercihEdilenProfilVeSonDizinSecilir()
+    public void Initially_SelectsPreferredProfileAndLastDirectory()
     {
         var vm = new NewTerminalViewModel(new FakeDialogs(),
             [Option("powershell", true), Option("claude", true)], [ExistingDir], preferredProfileId: "claude");
@@ -30,7 +30,7 @@ public sealed class NewTerminalViewModelTests
     }
 
     [Fact]
-    public void TercihEdilenProfilBulunamadiysa_IlkKullanilabilirSecilir()
+    public void PreferredProfileUnavailable_SelectsFirstAvailable()
     {
         var vm = new NewTerminalViewModel(new FakeDialogs(),
             [Option("codex", false), Option("cmd", true)], [], preferredProfileId: "codex");
@@ -39,33 +39,33 @@ public sealed class NewTerminalViewModelTests
     }
 
     [Fact]
-    public void BulunamayanProfilSecilince_OnaylanamazVeSebepGosterilir()
+    public void UnavailableProfileSelected_CannotConfirmAndShowsReason()
     {
         var vm = new NewTerminalViewModel(new FakeDialogs(), [Option("cmd", true), Option("codex", false)], [ExistingDir]);
 
         vm.SelectedProfile = vm.Profiles[1];
 
         Assert.False(vm.ConfirmCommand.CanExecute(null));
-        Assert.Contains("bulunamadı", vm.ValidationMessage);
+        Assert.Contains("not found", vm.ValidationMessage);
     }
 
     [Fact]
-    public void OlmayanDizinde_OnaylanamazVeSebepGosterilir()
+    public void MissingDirectory_CannotConfirmAndShowsReason()
     {
         var vm = new NewTerminalViewModel(new FakeDialogs(), [Option("cmd", true)], [ExistingDir]);
 
         vm.WorkingDirectory = Path.Combine(ExistingDir, Guid.NewGuid().ToString("N"));
 
         Assert.False(vm.ConfirmCommand.CanExecute(null));
-        Assert.Equal("Bu klasör bulunamadı.", vm.ValidationMessage);
+        Assert.Equal("This folder doesn't exist.", vm.ValidationMessage);
     }
 
     [Fact]
-    public void Gozat_SecilenKlasoruYazar_IptaldeDegistirmez()
+    public void Browse_SetsPickedFolder_UnchangedOnCancel()
     {
-        var picked = new NewTerminalViewModel(new FakeDialogs(folder: @"C:\Secilen"), [Option("cmd", true)], [ExistingDir]);
+        var picked = new NewTerminalViewModel(new FakeDialogs(folder: @"C:\Picked"), [Option("cmd", true)], [ExistingDir]);
         picked.BrowseCommand.Execute(null);
-        Assert.Equal(@"C:\Secilen", picked.WorkingDirectory);
+        Assert.Equal(@"C:\Picked", picked.WorkingDirectory);
 
         var cancelled = new NewTerminalViewModel(new FakeDialogs(folder: null), [Option("cmd", true)], [ExistingDir]);
         cancelled.BrowseCommand.Execute(null);
@@ -73,7 +73,7 @@ public sealed class NewTerminalViewModelTests
     }
 
     [Fact]
-    public void OnayVeIptal_DialogResultuAyarlar()
+    public void ConfirmAndCancel_SetDialogResult()
     {
         var vm = new NewTerminalViewModel(new FakeDialogs(), [Option("cmd", true)], [ExistingDir]);
         vm.ConfirmCommand.Execute(null);

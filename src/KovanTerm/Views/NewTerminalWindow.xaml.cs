@@ -13,7 +13,7 @@ public partial class NewTerminalWindow : Window
     {
         InitializeComponent();
         DataContext = _vm = vm;
-        // ViewModel sonucu belirleyince pencereyi kapat
+        // Close the window once the ViewModel sets the result
         vm.PropertyChanged += OnViewModelPropertyChanged;
         Closed += (_, _) => vm.PropertyChanged -= OnViewModelPropertyChanged;
     }

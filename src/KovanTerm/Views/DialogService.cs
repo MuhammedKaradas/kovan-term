@@ -12,7 +12,7 @@ public sealed class DialogService(Window owner) : IDialogService
 
     public string? PickFolder(string? initialDirectory)
     {
-        var dialog = new OpenFolderDialog { Title = "Çalışma dizini seç", InitialDirectory = initialDirectory ?? "" };
+        var dialog = new OpenFolderDialog { Title = "Select working directory", InitialDirectory = initialDirectory ?? "" };
         return dialog.ShowDialog(owner) == true ? dialog.FolderName : null;
     }
 }
