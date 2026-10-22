@@ -30,10 +30,15 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     public partial long MemoryMb { get; set; }
 
+    /// <summary>Light/dark theme preference; the view applies it (see <c>Views/ThemeService</c>).</summary>
+    [ObservableProperty]
+    public partial ThemePreference Theme { get; set; }
+
     private readonly WorkspaceStore _store;
     private readonly IReadOnlyList<TerminalProfile> _profiles;
     private readonly CommandResolver _resolver;
     private readonly IDialogService _dialogs;
+    private readonly SettingsStore _settings;
     private readonly List<string> _recentDirectories = [];
     private string? _lastProfileId;
 
@@ -41,8 +46,10 @@ public partial class MainViewModel : ObservableObject
     // Saves this long after a change; bursts of changes such as dragging collapse into a single write
     private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
 
-    public MainViewModel(WorkspaceStore store, ProfileStore profiles, CommandResolver resolver, IDialogService dialogs)
+    public MainViewModel(WorkspaceStore store, ProfileStore profiles, CommandResolver resolver, IDialogService dialogs, SettingsStore settings)
     {
+        _settings = settings;
+        Theme = settings.Load().Theme;
         _store = store;
         _profiles = profiles.Load();
         _resolver = resolver;
@@ -78,6 +85,22 @@ public partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private void CloseNode(TerminalNodeViewModel node) => Nodes.Remove(node);
+
+    /// <summary>Cycles the theme: system → dark → light → system.</summary>
+    [RelayCommand]
+    private void CycleTheme() => Theme = NextTheme(Theme);
+
+    public static ThemePreference NextTheme(ThemePreference current) => current switch
+    {
+        ThemePreference.System => ThemePreference.Dark,
+        ThemePreference.Dark => ThemePreference.Light,
+        _ => ThemePreference.System,
+    };
+
+    partial void OnThemeChanged(ThemePreference value)
+    {
+        _settings.Save(_settings.Load() with { Theme = value });
+    }
 
     /// <summary>Writes any pending save immediately. Called when the app is closing.</summary>
     public void SaveNow()
