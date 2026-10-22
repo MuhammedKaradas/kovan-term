@@ -1,17 +1,21 @@
-<Window x:Class="KovanTerm.Views.MainWindow"
+<ui:FluentWindow x:Class="KovanTerm.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:nodify="https://miroiu.github.io/nodify"
         xmlns:term="clr-namespace:EasyWindowsTerminalControl;assembly=EasyWindowsTerminalControl"
         xmlns:vm="clr-namespace:KovanTerm.ViewModels"
+        xmlns:models="clr-namespace:KovanTerm.Models"
         xmlns:conv="clr-namespace:KovanTerm.Views.Converters"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         Title="Kovan Term" Height="900" Width="1500"
-        Background="#16171d">
-    <Window.Resources>
+        ExtendsContentIntoTitleBar="True"
+        WindowBackdropType="Mica"
+        WindowCornerPreference="Round">
+    <ui:FluentWindow.Resources>
         <conv:NodeStatusToBrushConverter x:Key="StatusToBrush"/>
 
         <!-- Node body: live terminal. During motion its snapshot is shown instead (TerminalCanvasController) -->
@@ -27,66 +31,139 @@
 
         <!-- Node body: terminal couldn't start (e.g. command not found); no terminal is created -->
         <DataTemplate x:Key="ErrorBody" DataType="{x:Type vm:TerminalNodeViewModel}">
-            <Border Background="#0c0c0c" Padding="16">
+            <Border Background="{DynamicResource TerminalBackgroundBrush}" Padding="16">
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="Couldn't start terminal" Foreground="#e5a04b" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
-                    <TextBlock Text="{Binding StartError}" Foreground="#c8cbd6" TextWrapping="Wrap"/>
+                    <TextBlock Text="Couldn't start terminal" Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                               FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
+                    <TextBlock Text="{Binding StartError}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
                 </StackPanel>
             </Border>
         </DataTemplate>
-    </Window.Resources>
+    </ui:FluentWindow.Resources>
 
-    <DockPanel>
-        <!-- Top bar -->
-        <Border DockPanel.Dock="Top" Background="#1f2029" Padding="10,6">
-            <StackPanel Orientation="Horizontal">
-                <Button Content="+ New terminal" Command="{Binding NewTerminalCommand}" Margin="0,0,16,0" Padding="10,4"
-                        ToolTip="Open a new terminal with a chosen profile and working directory (Ctrl+Shift+T). Right-click the canvas: open it where you clicked."/>
-                <TextBlock Foreground="#9aa0b4" VerticalAlignment="Center" FontFamily="Consolas">
-                    <TextBlock.Text>
-                        <MultiBinding StringFormat="App RAM: {0} MB   |   Terminals: {1}   |   Zoom: {2:0.00}">
-                            <Binding Path="MemoryMb"/>
-                            <Binding Path="Nodes.Count"/>
-                            <Binding Path="ViewportZoom"/>
-                        </MultiBinding>
-                    </TextBlock.Text>
-                </TextBlock>
-            </StackPanel>
-        </Border>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
-        <nodify:NodifyEditor x:Name="Editor"
+        <ui:TitleBar Grid.Row="0" Title="Kovan Term">
+            <ui:TitleBar.Icon>
+                <ui:SymbolIcon Symbol="Grid24"/>
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
+
+        <!-- Toolbar -->
+        <DockPanel Grid.Row="1" Margin="12,0,12,8" LastChildFill="False">
+            <ui:Button DockPanel.Dock="Left" Appearance="Primary" Content="New terminal" Command="{Binding NewTerminalCommand}"
+                       ToolTip="Open a new terminal with a chosen profile and working directory (Ctrl+Shift+T). Right-click the canvas: open it where you clicked.">
+                <ui:Button.Icon>
+                    <ui:SymbolIcon Symbol="Add24"/>
+                </ui:Button.Icon>
+            </ui:Button>
+
+            <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Command="{Binding CycleThemeCommand}" Margin="8,0,0,0"
+                       AutomationProperties.Name="Change theme">
+                <ui:Button.Style>
+                    <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                        <Setter Property="ToolTip" Value="Theme: follows Windows (click to change)"/>
+                        <Setter Property="Icon">
+                            <Setter.Value>
+                                <ui:SymbolIcon Symbol="DarkTheme24"/>
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Theme}" Value="{x:Static models:ThemePreference.Dark}">
+                                <Setter Property="ToolTip" Value="Theme: dark (click to change)"/>
+                                <Setter Property="Icon">
+                                    <Setter.Value>
+                                        <ui:SymbolIcon Symbol="WeatherMoon24"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Theme}" Value="{x:Static models:ThemePreference.Light}">
+                                <Setter Property="ToolTip" Value="Theme: light (click to change)"/>
+                                <Setter Property="Icon">
+                                    <Setter.Value>
+                                        <ui:SymbolIcon Symbol="WeatherSunny24"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ui:Button.Style>
+            </ui:Button>
+
+            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                <TextBlock.Text>
+                    <MultiBinding StringFormat="{}{1} terminals  ·  {0} MB  ·  {2:P0}">
+                        <Binding Path="MemoryMb"/>
+                        <Binding Path="Nodes.Count"/>
+                        <Binding Path="ViewportZoom"/>
+                    </MultiBinding>
+                </TextBlock.Text>
+            </TextBlock>
+        </DockPanel>
+
+        <!-- Transparent canvas: the Mica backdrop shows through -->
+        <nodify:NodifyEditor x:Name="Editor" Grid.Row="2"
                              ItemsSource="{Binding Nodes}"
                              ViewportZoom="{Binding ViewportZoom, Mode=TwoWay}"
                              ViewportLocation="{Binding ViewportLocation, Mode=TwoWay}"
-                             Background="#16171d"
+                             Background="Transparent"
                              MinViewportZoom="0.3" MaxViewportZoom="1.5"
                              ContextMenuOpening="Editor_ContextMenuOpening">
             <nodify:NodifyEditor.ContextMenu>
                 <ContextMenu>
-                    <MenuItem Header="New terminal here…" Click="NewTerminalHere_Click"/>
+                    <MenuItem Header="New terminal here…" Click="NewTerminalHere_Click">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon Symbol="Add24"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
                 </ContextMenu>
             </nodify:NodifyEditor.ContextMenu>
             <nodify:NodifyEditor.ItemContainerStyle>
                 <Style TargetType="{x:Type nodify:ItemContainer}">
                     <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}"/>
+                    <!-- Nodify's own square border would double up with the node's rounded one; selection is shown on the node instead -->
+                    <Setter Property="BorderBrush" Value="Transparent"/>
+                    <Setter Property="HighlightBrush" Value="Transparent"/>
+                    <Setter Property="SelectedBrush" Value="Transparent"/>
                 </Style>
             </nodify:NodifyEditor.ItemContainerStyle>
 
             <nodify:NodifyEditor.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:TerminalNodeViewModel}">
-                    <Border Background="#22232d" BorderBrush="#3a3c4a" BorderThickness="1" CornerRadius="8">
+                    <Border Background="{DynamicResource SolidBackgroundFillColorSecondaryBrush}" BorderThickness="1" CornerRadius="8">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=nodify:ItemContainer}}" Value="True">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
                         <DockPanel>
                             <!-- Header: drag from here -->
-                            <Border DockPanel.Dock="Top" Background="#2a2c38" CornerRadius="8,8,0,0" Padding="10,6"
+                            <Border DockPanel.Dock="Top" Background="{DynamicResource SolidBackgroundFillColorTertiaryBrush}"
+                                    CornerRadius="8,8,0,0" Padding="10,0,4,0" Height="32"
                                     MouseLeftButtonDown="NodeHeader_MouseLeftButtonDown" ToolTip="Double-click: zoom to this terminal">
                                 <DockPanel>
-                                    <Button DockPanel.Dock="Right" Content="✕"
-                                            Command="{Binding DataContext.CloseNodeCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
-                                            CommandParameter="{Binding}"
-                                            Background="Transparent" BorderThickness="0" Foreground="#9aa0b4" Padding="6,0"/>
-                                    <Ellipse Width="9" Height="9" Margin="0,0,8,0" VerticalAlignment="Center"
+                                    <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Width="26" Height="26" Padding="0"
+                                               ToolTip="Close terminal" AutomationProperties.Name="Close terminal"
+                                               Command="{Binding DataContext.CloseNodeCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
+                                               CommandParameter="{Binding}">
+                                        <ui:Button.Icon>
+                                            <ui:SymbolIcon Symbol="Dismiss16"/>
+                                        </ui:Button.Icon>
+                                    </ui:Button>
+                                    <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"
                                              Fill="{Binding Status, Converter={StaticResource StatusToBrush}}"/>
-                                    <TextBlock Text="{Binding Title}" Foreground="#e6e8f0" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                               FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                 </DockPanel>
                             </Border>
                             <!-- Profile color -->
@@ -98,8 +175,8 @@
                                     <Thumb.Template>
                                         <ControlTemplate TargetType="Thumb">
                                             <Border Background="Transparent">
-                                                <Path Data="M 4,8 L 12,0 M 12,8 L 20,0 M 20,8 L 26,2" Stroke="#6b6f80" StrokeThickness="1.2"
-                                                      HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                                                <Path Data="M 4,8 L 12,0 M 12,8 L 20,0 M 20,8 L 26,2" Stroke="{DynamicResource TextFillColorTertiaryBrush}"
+                                                      StrokeThickness="1.2" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,2,0"/>
                                             </Border>
                                         </ControlTemplate>
                                     </Thumb.Template>
@@ -122,5 +199,5 @@
                 </DataTemplate>
             </nodify:NodifyEditor.ItemTemplate>
         </nodify:NodifyEditor>
-    </DockPanel>
-</Window>
+    </Grid>
+</ui:FluentWindow>

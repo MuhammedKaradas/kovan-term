@@ -56,6 +56,7 @@ public sealed class TerminalCanvasController
     private bool _held;
     private readonly DispatcherTimer _snapshotCleanupTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private int _appliedFontSize = BaseFontSize;
+    private bool _dark = true;
 
     // Cache: snapshots of terminals whose output changed are refreshed in the background.
     // PrintWindow waits ~one DWM frame but doesn't block the UI thread.
@@ -203,7 +204,7 @@ public sealed class TerminalCanvasController
             .Select(e => (Entry: e, Target: TerminalSnapshot.GetTarget(e.Control, clip)))
             .Where(x => x.Target != null)
             .ToList();
-        var shots = TerminalSnapshot.CaptureAll(stale.Select(x => x.Target!).ToList(), TerminalThemes.DarkBackground);
+        var shots = TerminalSnapshot.CaptureAll(stale.Select(x => x.Target!).ToList(), TerminalThemes.BackgroundFor(_dark));
         for (var i = 0; i < stale.Count; i++)
         {
             if (shots[i] is not { } shot) continue;
@@ -339,7 +340,7 @@ public sealed class TerminalCanvasController
         _refreshInFlight = true;
         var ui = TaskScheduler.FromCurrentSynchronizationContext();
         var targets = batch.Select(b => b.Target).ToList();
-        Task.Run(() => TerminalSnapshot.CaptureAll(targets, TerminalThemes.DarkBackground))
+        Task.Run(() => TerminalSnapshot.CaptureAll(targets, TerminalThemes.BackgroundFor(_dark)))
             .ContinueWith(t =>
             {
                 _refreshInFlight = false;
@@ -365,6 +366,18 @@ public sealed class TerminalCanvasController
 
     private static int FontSizeForZoom(double zoom) => Math.Max(MinFontSize, (int)Math.Round(BaseFontSize * zoom));
 
-    private static void SetFont(EasyTerminalControl term, int size) =>
-        term.Terminal?.SetTheme(TerminalThemes.Dark, "Cascadia Code", (short)size);
+    /// <summary>Switches every terminal's color scheme; snapshots are retaken with the new colors.</summary>
+    public void SetDarkTheme(bool dark)
+    {
+        if (dark == _dark) return;
+        _dark = dark;
+        foreach (var entry in _byNode.Values)
+        {
+            SetFont(entry.Control, _appliedFontSize);
+            entry.Dirty = true;
+        }
+    }
+
+    private void SetFont(EasyTerminalControl term, int size) =>
+        term.Terminal?.SetTheme(TerminalThemes.For(_dark), "Cascadia Code", (short)size);
 }

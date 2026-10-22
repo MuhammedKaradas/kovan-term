@@ -24,6 +24,7 @@ about 3.5× less than an xterm.js-in-WebView2 equivalent
 - The workspace is saved automatically and restored on startup
 - Keyboard shortcuts: switch between terminals, fit all, zoom to a terminal ([docs/shortcuts.md](docs/shortcuts.md))
 - Smooth panning and zooming with "snapshot mode"; off-screen terminals sleep
+- Windows 11 look (Mica, Fluent controls) with light, dark or follow-Windows themes
 
 ## Requirements
 

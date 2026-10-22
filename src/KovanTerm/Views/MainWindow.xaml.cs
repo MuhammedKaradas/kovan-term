@@ -6,10 +6,11 @@ using EasyWindowsTerminalControl;
 using KovanTerm.Services;
 using KovanTerm.ViewModels;
 using Nodify;
+using Wpf.Ui.Controls;
 
 namespace KovanTerm.Views;
 
-public partial class MainWindow : Window
+public partial class MainWindow : FluentWindow
 {
     private readonly MainViewModel _vm;
     private readonly TerminalCanvasController _canvas;
@@ -18,9 +19,18 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        _vm = new MainViewModel(new WorkspaceStore(), new ProfileStore(), new CommandResolver(), new DialogService(this));
+        _vm = new MainViewModel(new WorkspaceStore(), new ProfileStore(), new CommandResolver(), new DialogService(this), new SettingsStore());
         DataContext = _vm;
         _canvas = new TerminalCanvasController(Editor);
+
+        // Theme: WPF-UI resources + terminal colors; re-applied when the preference changes
+        var theme = new ThemeService(this);
+        theme.IsDarkChanged += _canvas.SetDarkTheme;
+        Loaded += (_, _) => theme.Apply(_vm.Theme);
+        _vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MainViewModel.Theme)) theme.Apply(_vm.Theme);
+        };
         // When a node gets focus, Nodify pans the canvas to it; since terminals get focus on startup and on click,
         // the saved viewport was being lost (#35). The viewport should change only via the user or deliberate commands.
         NodifyEditor.AutoPanOnNodeFocus = false;

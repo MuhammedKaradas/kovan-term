@@ -24,6 +24,7 @@ Terminal'in GPU hızlandırmalı terminal bileşeniyle, düşük kaynak tüketim
 - Çalışma alanı otomatik kaydedilir ve açılışta geri gelir
 - Klavye kısayolları: terminaller arası geçiş, tümünü sığdır, yakınlaş ([docs/shortcuts.md](docs/shortcuts.md))
 - "Fotoğraf modu" ile akıcı kaydırma ve zoom; ekran dışındaki terminaller uyur
+- Windows 11 görünümü (Mica, Fluent kontroller); açık, koyu ya da Windows'a uyan tema
 
 ## Gereksinimler
 

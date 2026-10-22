@@ -1,70 +1,79 @@
-<Window x:Class="KovanTerm.Views.NewTerminalWindow"
+<ui:FluentWindow x:Class="KovanTerm.Views.NewTerminalWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:vm="clr-namespace:KovanTerm.ViewModels"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:NewTerminalViewModel}"
         Title="New terminal" Width="520" SizeToContent="Height"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False"
-        Background="#1f2029" Foreground="#e6e8f0"
+        ExtendsContentIntoTitleBar="True" WindowBackdropType="Mica" WindowCornerPreference="Round"
         FocusManager.FocusedElement="{Binding ElementName=ProfileList}">
-    <Window.InputBindings>
+    <ui:FluentWindow.InputBindings>
         <KeyBinding Key="Escape" Command="{Binding CancelCommand}"/>
-    </Window.InputBindings>
+    </ui:FluentWindow.InputBindings>
 
-    <StackPanel Margin="16">
-        <TextBlock Text="Profile" FontWeight="SemiBold" Margin="0,0,0,6"/>
-        <ListBox x:Name="ProfileList" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"
-                 Background="#16171d" BorderBrush="#3a3c4a" Foreground="#e6e8f0" MaxHeight="260">
-            <ListBox.ItemContainerStyle>
-                <Style TargetType="ListBoxItem">
-                    <Setter Property="Padding" Value="8,6"/>
-                    <!-- Double-click: select and open -->
-                    <EventSetter Event="MouseDoubleClick" Handler="ProfileItem_DoubleClick"/>
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsAvailable}" Value="False">
-                            <Setter Property="Opacity" Value="0.45"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </ListBox.ItemContainerStyle>
-            <ListBox.ItemTemplate>
-                <DataTemplate DataType="{x:Type vm:ProfileOptionViewModel}">
-                    <StackPanel>
-                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding Detail}" FontSize="11" Foreground="#9aa0b4" TextTrimming="CharacterEllipsis"/>
-                    </StackPanel>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+    <StackPanel>
+        <ui:TitleBar Title="New terminal" ShowMinimize="False" ShowMaximize="False"/>
 
-        <TextBlock Text="Working directory" FontWeight="SemiBold" Margin="0,14,0,6"/>
-        <DockPanel>
-            <Button DockPanel.Dock="Right" Content="Browse…" Command="{Binding BrowseCommand}" Margin="8,0,0,0" Padding="10,3"/>
-            <ComboBox IsEditable="True" ItemsSource="{Binding RecentDirectories}"
-                      Text="{Binding WorkingDirectory, UpdateSourceTrigger=PropertyChanged}"/>
-        </DockPanel>
+        <StackPanel Margin="16,4,16,16">
+            <TextBlock Text="Profile" FontWeight="SemiBold" Margin="0,0,0,6" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            <ListBox x:Name="ProfileList" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" MaxHeight="300">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                        <!-- Double-click: select and open -->
+                        <EventSetter Event="MouseDoubleClick" Handler="ProfileItem_DoubleClick"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsAvailable}" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:ProfileOptionViewModel}">
+                        <StackPanel Margin="0,2">
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="{Binding Detail}" FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
 
-        <TextBlock Text="{Binding ValidationMessage}" Foreground="#e5a04b" Margin="0,10,0,0" TextWrapping="Wrap">
-            <TextBlock.Style>
-                <Style TargetType="TextBlock">
-                    <Style.Triggers>
-                        <Trigger Property="Text" Value="">
-                            <Setter Property="Visibility" Value="Collapsed"/>
-                        </Trigger>
-                        <Trigger Property="Text" Value="{x:Null}">
-                            <Setter Property="Visibility" Value="Collapsed"/>
-                        </Trigger>
-                    </Style.Triggers>
-                </Style>
-            </TextBlock.Style>
-        </TextBlock>
+            <TextBlock Text="Working directory" FontWeight="SemiBold" Margin="0,16,0,6" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+            <DockPanel>
+                <ui:Button DockPanel.Dock="Right" Content="Browse…" Command="{Binding BrowseCommand}" Margin="8,0,0,0">
+                    <ui:Button.Icon>
+                        <ui:SymbolIcon Symbol="Folder24"/>
+                    </ui:Button.Icon>
+                </ui:Button>
+                <ComboBox IsEditable="True" ItemsSource="{Binding RecentDirectories}"
+                          Text="{Binding WorkingDirectory, UpdateSourceTrigger=PropertyChanged}"/>
+            </DockPanel>
 
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-            <Button Content="Cancel" Command="{Binding CancelCommand}" Padding="14,4" Margin="0,0,8,0"/>
-            <Button Content="Open" Command="{Binding ConfirmCommand}" IsDefault="True" Padding="18,4"/>
+            <TextBlock Text="{Binding ValidationMessage}" Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                       Margin="0,10,0,0" TextWrapping="Wrap">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Style.Triggers>
+                            <Trigger Property="Text" Value="">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </Trigger>
+                            <Trigger Property="Text" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+                <ui:Button Content="Cancel" Command="{Binding CancelCommand}" Margin="0,0,8,0" MinWidth="90"/>
+                <ui:Button Content="Open" Appearance="Primary" Command="{Binding ConfirmCommand}" IsDefault="True" MinWidth="90"/>
+            </StackPanel>
         </StackPanel>
     </StackPanel>
-</Window>
+</ui:FluentWindow>
