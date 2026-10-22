@@ -3,17 +3,17 @@ using System.Windows;
 namespace KovanTerm.ViewModels;
 
 /// <summary>
-/// Yeni düğüm için boş yer bulur. Terminaller HWND olduğu için üst üste binen düğümler birbirinin
-/// başlığını örter (airspace); bu yüzden yeni düğüm hiçbir düğümle kesişmeyecek şekilde yerleştirilir.
+/// Finds a free spot for a new node. Terminals are HWNDs, so overlapping nodes cover each other's
+/// headers (airspace); that's why a new node is placed so it doesn't intersect any node.
 /// </summary>
 public static class NodePlacement
 {
     public const double Gap = 40;
 
     /// <summary>
-    /// <paramref name="desired"/> boşsa onu, değilse en yakın boş konumu döndürür.
-    /// Adaylar: istenen noktanın etrafındaki ızgara ve mevcut düğümlerin sağı/altı/solu/üstü.
-    /// <paramref name="viewport"/> verilirse tamamen görünür adaylar tercih edilir.
+    /// Returns <paramref name="desired"/> if it's free, otherwise the nearest free location.
+    /// Candidates: a grid around the desired point and the right/bottom/left/top of existing nodes.
+    /// If <paramref name="viewport"/> is given, fully visible candidates are preferred.
     /// </summary>
     public static Point FindFreeSpot(IReadOnlyCollection<Rect> occupied, Point desired, Size size, Rect? viewport = null, int maxRings = 6)
     {
@@ -25,7 +25,7 @@ public static class NodePlacement
         {
             if (!IsFree(occupied, candidate, size)) continue;
             var score = (candidate - desired).LengthSquared;
-            if (!IsVisible(viewport, candidate, size)) score += 1e12; // görünmeyen yer ancak başka çare yoksa
+            if (!IsVisible(viewport, candidate, size)) score += 1e12; // an off-screen spot only as a last resort
             if (score < bestScore)
             {
                 best = candidate;
@@ -39,10 +39,10 @@ public static class NodePlacement
     {
         foreach (var o in occupied)
         {
-            yield return new Point(o.Right + Gap, o.Top);                 // sağı
-            yield return new Point(o.Left, o.Bottom + Gap);               // altı
-            yield return new Point(o.Left - Gap - size.Width, o.Top);     // solu
-            yield return new Point(o.Left, o.Top - Gap - size.Height);    // üstü
+            yield return new Point(o.Right + Gap, o.Top);                 // right
+            yield return new Point(o.Left, o.Bottom + Gap);               // below
+            yield return new Point(o.Left - Gap - size.Width, o.Top);     // left
+            yield return new Point(o.Left, o.Top - Gap - size.Height);    // above
         }
 
         double stepX = size.Width + Gap, stepY = size.Height + Gap;
@@ -53,7 +53,7 @@ public static class NodePlacement
 
     private static bool IsFree(IEnumerable<Rect> occupied, Point location, Size size)
     {
-        // Yarım boşluk payıyla kontrol et; böylece "sağı/altı" adayları tam Gap kadar uzakta kabul edilir
+        // Check with a half-gap margin so "right/below" candidates exactly Gap away are accepted
         var rect = new Rect(location.X - Gap / 2 + 1, location.Y - Gap / 2 + 1, size.Width + Gap - 2, size.Height + Gap - 2);
         return !occupied.Any(o => o.IntersectsWith(rect));
     }

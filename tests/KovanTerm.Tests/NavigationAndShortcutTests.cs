@@ -11,20 +11,20 @@ public sealed class NavigationAndShortcutTests
 
     private static N Node(string name, double x, double y) => new(name, new Rect(x, y, 560, 374));
 
-    // Izgara: üst satır biraz eğri (y 40 ve 90), alt satır y 500
+    // Grid: top row slightly uneven (y 40 and 90), bottom row at y 500
     private static readonly N A = Node("A", 640, 90), B = Node("B", 40, 40), C = Node("C", 1240, 60),
                               D = Node("D", 640, 500), E = Node("E", 40, 520);
     private static readonly N[] All = [A, B, C, D, E];
 
     [Fact]
-    public void ReadingOrder_SatirSatirSoldanSaga()
+    public void ReadingOrder_RowByRowLeftToRight()
     {
         var order = NodeNavigation.ReadingOrder(All, n => n.Bounds).Select(n => n.Name);
         Assert.Equal(["B", "A", "C", "E", "D"], order);
     }
 
     [Fact]
-    public void Next_IleriVeGeri_SonundaBasaDoner()
+    public void Next_ForwardAndBackward_WrapsAround()
     {
         Assert.Same(A, NodeNavigation.Next(All, n => n.Bounds, B, forward: true, default));
         Assert.Same(B, NodeNavigation.Next(All, n => n.Bounds, D, forward: true, default));
@@ -32,14 +32,14 @@ public sealed class NavigationAndShortcutTests
     }
 
     [Fact]
-    public void Next_OdaktaDugumYoksa_MerkezeEnYakindanBaslar()
+    public void Next_NoFocusedNode_StartsNearestToCenter()
     {
-        var center = new Point(900, 700); // D'nin merkezine yakın
+        var center = new Point(900, 700); // near D's center
         Assert.Same(D, NodeNavigation.Next(All, n => n.Bounds, null, forward: true, center));
     }
 
     [Fact]
-    public void Next_BosListede_NullDoner()
+    public void Next_EmptyList_ReturnsNull()
     {
         Assert.Null(NodeNavigation.Next(Array.Empty<N>(), n => n.Bounds, null, forward: true, default));
     }
@@ -51,24 +51,24 @@ public sealed class NavigationAndShortcutTests
     [InlineData(Key.Enter, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.ZoomToFocused)]
     [InlineData(Key.T, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.NewTerminal)]
     [InlineData(Key.T, ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Windows, ShortcutAction.NewTerminal)]
-    public void Match_KisayoluEslesir(Key key, ModifierKeys modifiers, ShortcutAction expected)
+    public void Match_MatchesShortcut(Key key, ModifierKeys modifiers, ShortcutAction expected)
     {
         Assert.Equal(expected, Shortcuts.Match(key, modifiers));
     }
 
     [Theory]
-    [InlineData(Key.T, ModifierKeys.Control)]       // bash: karakter yer değiştirme
-    [InlineData(Key.Tab, ModifierKeys.None)]        // kabukta tamamlama
-    [InlineData(Key.F, ModifierKeys.Control)]       // readline: ileri git
-    [InlineData(Key.C, ModifierKeys.Control)]       // kesme sinyali
+    [InlineData(Key.T, ModifierKeys.Control)]       // bash: transpose characters
+    [InlineData(Key.Tab, ModifierKeys.None)]        // shell completion
+    [InlineData(Key.F, ModifierKeys.Control)]       // readline: move forward
+    [InlineData(Key.C, ModifierKeys.Control)]       // interrupt signal
     [InlineData(Key.Enter, ModifierKeys.None)]
-    public void Match_TerminalinKullandigiTuslaraKarismaz(Key key, ModifierKeys modifiers)
+    public void Match_IgnoresKeysUsedByTerminal(Key key, ModifierKeys modifiers)
     {
         Assert.Null(Shortcuts.Match(key, modifiers));
     }
 
     [Fact]
-    public void Kisayollar_BirbiriyleCakismaz()
+    public void Shortcuts_DoNotConflict()
     {
         var keys = Shortcuts.All.Select(s => (s.Key, s.Modifiers)).ToList();
         Assert.Equal(keys.Count, keys.Distinct().Count());

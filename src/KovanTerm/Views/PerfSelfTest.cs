@@ -7,13 +7,13 @@ using Nodify;
 namespace KovanTerm.Views;
 
 /// <summary>
-/// Fare girdisi olmadan tekrarlanabilir akıcılık ölçümü. <c>KOVAN_PERF_SELFTEST=&lt;log dosyası&gt;</c>
-/// ortam değişkeniyle açılır: terminaller başladıktan sonra programatik zoom ve kaydırma yapar,
-/// kare aralıklarını ve fotoğraf modu sürelerini dosyaya yazar, sonra pencereyi kapatır.
+/// Repeatable smoothness measurement without mouse input. Enabled with the
+/// <c>KOVAN_PERF_SELFTEST=&lt;log file&gt;</c> environment variable: after the terminals start it zooms and pans
+/// programmatically, writes frame intervals and snapshot mode timings to the file, then closes the window.
 /// </summary>
 internal sealed class PerfSelfTest
 {
-    // Her ekran karesinde bir adım: kare aralıkları gerçek çizim maliyetini gösterir
+    // One step per rendered frame: frame intervals reflect the real rendering cost
     private const int Steps = 60;
 
     private readonly Window _window;
@@ -43,18 +43,18 @@ internal sealed class PerfSelfTest
 
     private async Task RunAsync()
     {
-        // Terminallerin başlayıp ilk çıktılarını çizmesini bekle
+        // Wait for the terminals to start and render their first output
         await Task.Delay(8000);
 
         await MeasureAsync("zoom 1.0 → 0.5 → 1.0", i => _editor.ViewportZoom = 1.0 - 0.5 * Math.Sin(Math.PI * i / Steps));
 
         var start = _editor.ViewportLocation;
-        await MeasureAsync("kaydırma 600 birim sağa ve geri", i => _editor.ViewportLocation = start + new Vector(600 * Math.Sin(Math.PI * i / Steps), 0));
+        await MeasureAsync("pan 600 units right and back", i => _editor.ViewportLocation = start + new Vector(600 * Math.Sin(Math.PI * i / Steps), 0));
 
-        // Art arda iki hareket: ikincisi önbellek yenilenmeden başlarsa görüntüler anında alınır
-        await MeasureAsync("hemen ardından tekrar zoom", i => _editor.ViewportZoom = 1.0 - 0.3 * Math.Sin(Math.PI * i / Steps), settleMs: 2000);
+        // Two moves back to back: if the second starts before the cache refreshes, snapshots are captured on the spot
+        await MeasureAsync("zoom again right after", i => _editor.ViewportZoom = 1.0 - 0.3 * Math.Sin(Math.PI * i / Steps), settleMs: 2000);
 
-        _log.Insert(0, $"Kovan Term akıcılık öz-testi {DateTime.Now:yyyy-MM-dd HH:mm:ss}{Environment.NewLine}");
+        _log.Insert(0, $"Kovan Term smoothness self-test {DateTime.Now:yyyy-MM-dd HH:mm:ss}{Environment.NewLine}");
         File.WriteAllText(_logPath, _log.ToString());
         _window.Close();
     }
@@ -68,7 +68,7 @@ internal sealed class PerfSelfTest
         var i = 0;
         EventHandler onFrame = (_, e) =>
         {
-            // RenderingTime aynı kare için birden çok kez gelebilir
+            // RenderingTime can fire more than once for the same frame
             if (e is not RenderingEventArgs r || r.RenderingTime == _lastFrame) return;
             if (_lastFrame != TimeSpan.Zero) _frameGapsMs.Add((r.RenderingTime - _lastFrame).TotalMilliseconds);
             _lastFrame = r.RenderingTime;
@@ -80,8 +80,8 @@ internal sealed class PerfSelfTest
         CompositionTarget.Rendering -= onFrame;
         var sorted = _frameGapsMs.Order().ToList();
         if (sorted.Count > 0)
-            _log.AppendLine($"kare: {sorted.Count} | ort {sorted.Average():F1} ms (~{1000 / sorted.Average():F0} fps) | p95 {sorted[(int)(sorted.Count * 0.95)]:F1} ms | en kötü {sorted[^1]:F1} ms | 33 ms üstü {sorted.Count(g => g > 33)}");
-        // Fotoğraf modundan çıkışı da ölçebilmek için yerleşmesini bekle
+            _log.AppendLine($"frames: {sorted.Count} | avg {sorted.Average():F1} ms (~{1000 / sorted.Average():F0} fps) | p95 {sorted[(int)(sorted.Count * 0.95)]:F1} ms | worst {sorted[^1]:F1} ms | over 33 ms {sorted.Count(g => g > 33)}");
+        // Wait for things to settle so leaving snapshot mode is measured too
         await Task.Delay(settleMs);
     }
 

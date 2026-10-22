@@ -8,13 +8,13 @@ public sealed class NodePlacementTests
     private static readonly Size NodeSize = new(560, 374);
 
     [Fact]
-    public void BosAlanda_IstenenKonumuDoner()
+    public void EmptyCanvas_ReturnsDesiredLocation()
     {
         Assert.Equal(new Point(100, 100), NodePlacement.FindFreeSpot([], new Point(100, 100), NodeSize));
     }
 
     [Fact]
-    public void DoluKonumda_KesismeyenEnYakinYeriDoner()
+    public void OccupiedLocation_ReturnsNearestNonOverlappingSpot()
     {
         var occupied = new List<Rect> { new(new Point(100, 100), NodeSize) };
 
@@ -26,9 +26,9 @@ public sealed class NodePlacementTests
     }
 
     [Fact]
-    public void KalabalikIzgarada_HicbirDugumleKesismez()
+    public void CrowdedGrid_OverlapsNoNode()
     {
-        // 3x3 dolu ızgara, ortasına yerleştirmeye çalış
+        // Full 3x3 grid, try placing in the middle
         var occupied = new List<Rect>();
         for (var x = 0; x < 3; x++)
         for (var y = 0; y < 3; y++)
@@ -41,9 +41,9 @@ public sealed class NodePlacementTests
     }
 
     [Fact]
-    public void GorunurAlanVerilince_IzgaradakiBoslugaYerlestirir()
+    public void WithViewport_PlacesInGridGap()
     {
-        // 2x2 ızgaranın sağ alt hücresi boş; görünür alan ızgarayı tam kapsıyor
+        // The bottom-right cell of a 2x2 grid is empty; the viewport covers the grid exactly
         var occupied = new List<Rect>
         {
             new(new Point(40, 40), NodeSize), new(new Point(640, 40), NodeSize), new(new Point(40, 454), NodeSize),
@@ -56,7 +56,7 @@ public sealed class NodePlacementTests
     }
 
     [Fact]
-    public void GorunurAlandaYerYoksa_YineDeKesismeyenBirYerBulur()
+    public void NoRoomInViewport_StillFindsNonOverlappingSpot()
     {
         var occupied = new List<Rect> { new(new Point(0, 0), NodeSize) };
         var tinyViewport = new Rect(0, 0, 600, 400);

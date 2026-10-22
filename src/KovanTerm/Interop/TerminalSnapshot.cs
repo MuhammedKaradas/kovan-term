@@ -6,21 +6,21 @@ using System.Windows.Media.Imaging;
 namespace KovanTerm.Interop;
 
 /// <summary>
-/// Terminal kontrolü kendi HWND'sinde DirectX ile çizildiği için WPF dönüşümleriyle
-/// ölçeklenmez. Kaydırma/zoom sırasında canlı terminal yerine bu sınıfın aldığı
-/// anlık görüntü gösterilir.
+/// The terminal control renders with DirectX in its own HWND, so it doesn't scale with
+/// WPF transforms. While panning/zooming, a snapshot taken by this class is shown
+/// instead of the live terminal.
 /// </summary>
 internal static class TerminalSnapshot
 {
-    // PW_RENDERFULLCONTENT: DirectX ile çizilen içeriği de yakalar
+    // PW_RENDERFULLCONTENT: also captures DirectX-rendered content
     private const uint PwRenderFullContent = 2;
 
     /// <summary>
-    /// Terminallerin görüntülerini alır. PrintWindow her çağrıda yaklaşık bir DWM karesi beklediği
-    /// için (terminal başına ~12-20 ms) görüntüler paralel alınır; toplam süre terminal sayısından
-    /// bağımsız olarak ~bir kareye iner. Alınamayanlar için sonuç <c>null</c>.
+    /// Captures the terminals. Since PrintWindow waits roughly one DWM frame per call
+    /// (~12-20 ms per terminal), captures run in parallel; the total time drops to ~one frame
+    /// regardless of the terminal count. The result is <c>null</c> for any that can't be captured.
     /// </summary>
-    /// <summary>HWND ve görünür alan bilgisi; arayüz iş parçacığında alınmalı.</summary>
+    /// <summary>HWND and visible-area info; must be obtained on the UI thread.</summary>
     public static Target? GetTarget(DependencyObject terminal)
     {
         var host = FindDescendant<HwndHost>(terminal);
@@ -30,9 +30,9 @@ internal static class TerminalSnapshot
     }
 
     /// <summary>
-    /// Hedefin görüntüsünü alır. Herhangi bir iş parçacığında çağrılabilir; dönen görüntü dondurulmuş
-    /// (<see cref="Freezable.Freeze"/>) olduğu için başka iş parçacığında kullanılabilir.
-    /// PrintWindow terminal başına ~12-20 ms sürer (DWM karesini bekler).
+    /// Captures the target. Can be called on any thread; the returned image is frozen
+    /// (<see cref="Freezable.Freeze"/>), so it can be used from another thread.
+    /// PrintWindow takes ~12-20 ms per terminal (it waits for a DWM frame).
     /// </summary>
     public static BitmapSource? Capture(Target target, Color background)
     {
@@ -52,7 +52,7 @@ internal static class TerminalSnapshot
 
     public sealed record Target(IntPtr Hwnd, Native.RECT Window, Native.RECT Visible);
 
-    /// <summary>HWND'nin üst pencerenin istemci alanında kalan kısmı (ekran koordinatı).</summary>
+    /// <summary>The part of the HWND that lies within the top-level window's client area (screen coordinates).</summary>
     private static Native.RECT VisibleRect(IntPtr hwnd, Native.RECT r)
     {
         var root = Native.GetAncestor(hwnd, Native.GA_ROOT);
@@ -71,7 +71,7 @@ internal static class TerminalSnapshot
     private static IntPtr CaptureHBitmap(Target t, Color background)
     {
         int w = t.Window.Right - t.Window.Left, h = t.Window.Bottom - t.Window.Top;
-        // Görünür alan, bitmap koordinatlarında
+        // Visible area, in bitmap coordinates
         int vl = t.Visible.Left - t.Window.Left, vt = t.Visible.Top - t.Window.Top;
         int vw = t.Visible.Right - t.Visible.Left, vh = t.Visible.Bottom - t.Visible.Top;
 
@@ -82,8 +82,8 @@ internal static class TerminalSnapshot
         try
         {
             Native.PrintWindow(t.Hwnd, memDc, PwRenderFullContent);
-            // Pencere soldan/üstten kırpılmışsa PrintWindow yalnızca görünür kısmı sol üst köşeye
-            // yaslanmış olarak çizer; doğru konumuna kaydır
+            // If the window is clipped on the left/top, PrintWindow draws only the visible part
+            // aligned to the top-left corner; shift it to its correct position
             if ((vl > 0 || vt > 0) && vw > 0 && vh > 0)
                 Native.BitBlt(memDc, vl, vt, vw, vh, memDc, 0, 0, Native.SRCCOPY);
             FillOutsideVisible(memDc, vl, vt, vl + vw, vt + vh, w, h, background);
@@ -98,8 +98,8 @@ internal static class TerminalSnapshot
     }
 
     /// <summary>
-    /// Pencere dışına taşan kısım PrintWindow'da boş/gri gelir; terminal arka planıyla boyanır ki
-    /// hareket sırasında gri şerit görünmesin. (vl, vt, vr, vb): görünür alan, bitmap koordinatlarında.
+    /// The part outside the window comes back blank/gray from PrintWindow; it's painted with the terminal
+    /// background so no gray strip shows while moving. (vl, vt, vr, vb): visible area, in bitmap coordinates.
     /// </summary>
     private static void FillOutsideVisible(IntPtr dc, int vl, int vt, int vr, int vb, int w, int h, Color background)
     {
@@ -110,7 +110,7 @@ internal static class TerminalSnapshot
         {
             if (vr <= vl || vb <= vt)
             {
-                Fill(0, 0, w, h); // tamamen görünmüyor
+                Fill(0, 0, w, h); // entirely hidden
                 return;
             }
             if (vt > 0) Fill(0, 0, w, vt);

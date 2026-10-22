@@ -2,13 +2,13 @@ using System.Windows;
 
 namespace KovanTerm.ViewModels;
 
-/// <summary>Terminaller arasında klavyeyle gezinme sırası: satır satır, her satırda soldan sağa.</summary>
+/// <summary>Keyboard navigation order between terminals: row by row, left to right within each row.</summary>
 public static class NodeNavigation
 {
-    /// <summary>Üst kenarları bu kadar yakın olan düğümler aynı satırda sayılır (tuval birimi).</summary>
+    /// <summary>Nodes whose top edges are this close are counted as the same row (canvas units).</summary>
     public const double RowTolerance = 120;
 
-    /// <summary>Düğümleri okuma sırasına dizer.</summary>
+    /// <summary>Sorts nodes into reading order.</summary>
     public static IReadOnlyList<T> ReadingOrder<T>(IEnumerable<T> nodes, Func<T, Rect> bounds)
     {
         var rows = new List<List<T>>();
@@ -26,8 +26,8 @@ public static class NodeNavigation
     }
 
     /// <summary>
-    /// <paramref name="current"/>'tan sonraki (ya da önceki) düğüm; sona gelince başa döner.
-    /// Odakta düğüm yoksa <paramref name="viewportCenter"/>'a en yakın düğümden başlanır.
+    /// The node after (or before) <paramref name="current"/>; wraps around at the end.
+    /// If no node is focused, starts from the node closest to <paramref name="viewportCenter"/>.
     /// </summary>
     public static T? Next<T>(IEnumerable<T> nodes, Func<T, Rect> bounds, T? current, bool forward, Point viewportCenter) where T : class
     {

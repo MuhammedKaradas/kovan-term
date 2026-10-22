@@ -5,7 +5,7 @@ using KovanTerm.Models;
 
 namespace KovanTerm.Services;
 
-/// <summary>Çalışma alanını JSON olarak okur/yazar. Varsayılan konum: <c>%APPDATA%\KovanTerm\workspace.json</c>.</summary>
+/// <summary>Reads/writes the workspace as JSON. Default location: <c>%APPDATA%\KovanTerm\workspace.json</c>.</summary>
 public sealed class WorkspaceStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -22,8 +22,8 @@ public sealed class WorkspaceStore
     }
 
     /// <summary>
-    /// Kayıtlı çalışma alanını döndürür; dosya yoksa <c>null</c>.
-    /// Dosya bozuksa ya da daha yeni bir sürümle yazılmışsa yanına yedeklenir ve <c>null</c> döner.
+    /// Returns the saved workspace, or <c>null</c> if there's no file.
+    /// If the file is corrupt or was written by a newer version, it's backed up next to it and <c>null</c> is returned.
     /// </summary>
     public WorkspaceState? Load()
     {
@@ -32,12 +32,12 @@ public sealed class WorkspaceStore
         {
             var state = JsonSerializer.Deserialize<WorkspaceState>(File.ReadAllText(FilePath), JsonOptions);
             if (state == null || state.Version > WorkspaceState.CurrentVersion)
-                throw new JsonException($"Desteklenmeyen çalışma alanı sürümü: {state?.Version}");
+                throw new JsonException($"Unsupported workspace version: {state?.Version}");
             return state;
         }
         catch (Exception ex) when (ex is JsonException or NotSupportedException)
         {
-            Debug.WriteLine($"Çalışma alanı okunamadı, yedekleniyor: {ex.Message}");
+            Debug.WriteLine($"Couldn't read workspace, backing it up: {ex.Message}");
             BackupUnreadableFile();
             return null;
         }
@@ -46,7 +46,7 @@ public sealed class WorkspaceStore
     public void Save(WorkspaceState state)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        // Yarım yazılmış dosya kalmasın diye önce geçici dosyaya yaz, sonra yer değiştir
+        // Write to a temp file first, then swap, so a half-written file is never left behind
         var temp = FilePath + ".tmp";
         File.WriteAllText(temp, JsonSerializer.Serialize(state, JsonOptions));
         File.Move(temp, FilePath, overwrite: true);
@@ -54,7 +54,7 @@ public sealed class WorkspaceStore
 
     private void BackupUnreadableFile()
     {
-        var backup = Path.ChangeExtension(FilePath, $".bozuk-{DateTime.Now:yyyyMMdd-HHmmss}.json");
+        var backup = Path.ChangeExtension(FilePath, $".corrupt-{DateTime.Now:yyyyMMdd-HHmmss}.json");
         File.Move(FilePath, backup, overwrite: true);
     }
 }

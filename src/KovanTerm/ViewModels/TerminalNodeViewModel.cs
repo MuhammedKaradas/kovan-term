@@ -11,7 +11,7 @@ public partial class TerminalNodeViewModel : ObservableObject
     public const double MinWidth = 240;
     public const double MinHeight = 120;
     public const double MaxSize = 4000;
-    /// <summary>Terminal dışındaki çerçevenin yüksekliği (başlık + renk çizgisi + boyutlandırma şeridi); yerleşim hesaplarında kullanılır.</summary>
+    /// <summary>Height of the chrome around the terminal (header + color stripe + resize strip); used in layout calculations.</summary>
     public const double ChromeHeight = 46;
 
     public Guid Id { get; init; } = Guid.NewGuid();
@@ -19,19 +19,19 @@ public partial class TerminalNodeViewModel : ObservableObject
     public required string Title { get; init; }
     public required string CommandLine { get; init; }
     public string? WorkingDirectory { get; init; }
-    /// <summary>Başlık vurgu rengi (#RRGGBB); boşsa varsayılan.</summary>
+    /// <summary>Header accent color (#RRGGBB); default if empty.</summary>
     public string? Color { get; init; }
-    /// <summary>Terminal alanının genişliği (tuval birimi).</summary>
+    /// <summary>Width of the terminal area (canvas units).</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Bounds))]
     public partial double Width { get; set; } = DefaultWidth;
 
-    /// <summary>Terminal alanının yüksekliği (tuval birimi); başlık hariç.</summary>
+    /// <summary>Height of the terminal area (canvas units), excluding the header.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Bounds))]
     public partial double Height { get; set; } = DefaultHeight;
 
-    /// <summary>Terminal başlatılamayacaksa (ör. komut bulunamadı) kullanıcıya gösterilecek açıklama.</summary>
+    /// <summary>Explanation shown to the user if the terminal can't be started (e.g. command not found).</summary>
     public string? StartError { get; init; }
     public bool HasStartError => StartError != null;
 
@@ -39,10 +39,10 @@ public partial class TerminalNodeViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(Bounds))]
     public partial Point Location { get; set; }
 
-    /// <summary>Düğümün tuvaldeki dış sınırı (başlık dahil).</summary>
+    /// <summary>Outer bounds of the node on the canvas (including the header).</summary>
     public Rect Bounds => new(Location, new Size(Width, Height + ChromeHeight));
 
-    /// <summary>Boyutu verilen miktar kadar değiştirir; en küçük/en büyük sınırlar uygulanır.</summary>
+    /// <summary>Changes the size by the given amount; min/max limits apply.</summary>
     public void ResizeBy(double dx, double dy)
     {
         Width = Math.Clamp(Width + dx, MinWidth, MaxSize);
@@ -76,7 +76,7 @@ public partial class TerminalNodeViewModel : ObservableObject
         WorkingDirectory = s.WorkingDirectory,
         StartError = startError,
         Location = new Point(s.X, s.Y),
-        // Eski/eksik kayıtta boyut 0 gelebilir
+        // Size may be 0 in old/incomplete saves
         Width = s.Width > 0 ? Math.Clamp(s.Width, MinWidth, MaxSize) : DefaultWidth,
         Height = s.Height > 0 ? Math.Clamp(s.Height, MinHeight, MaxSize) : DefaultHeight,
     };

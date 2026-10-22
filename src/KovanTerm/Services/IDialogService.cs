@@ -2,12 +2,12 @@ using KovanTerm.ViewModels;
 
 namespace KovanTerm.Services;
 
-/// <summary>ViewModel'lerin pencere/diyalog açabilmesi için görünüm katmanının sağladığı servis.</summary>
+/// <summary>Service provided by the view layer so ViewModels can open windows/dialogs.</summary>
 public interface IDialogService
 {
-    /// <summary>"Yeni terminal" diyaloğunu gösterir; kullanıcı onaylarsa <c>true</c>.</summary>
+    /// <summary>Shows the "New terminal" dialog; <c>true</c> if the user confirms.</summary>
     bool ShowNewTerminal(NewTerminalViewModel viewModel);
 
-    /// <summary>Klasör seçtirir; iptalde <c>null</c>.</summary>
+    /// <summary>Lets the user pick a folder; <c>null</c> on cancel.</summary>
     string? PickFolder(string? initialDirectory);
 }

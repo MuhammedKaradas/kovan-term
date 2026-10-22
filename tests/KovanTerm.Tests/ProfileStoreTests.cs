@@ -11,18 +11,18 @@ public sealed class ProfileStoreTests : IDisposable
     public void Dispose() => Directory.Delete(_dir, recursive: true);
 
     [Fact]
-    public void Load_DosyaYoksa_VarsayilanlariDoner()
+    public void Load_FileMissing_ReturnsDefaults()
     {
         Assert.Equal(ProfileStore.Defaults, new ProfileStore(FilePath).Load());
     }
 
     [Fact]
-    public void Load_KullaniciProfilleri_EklenirVeAyniIdVarsayilaniEzer()
+    public void Load_UserProfiles_AreAddedAndSameIdOverridesDefault()
     {
         File.WriteAllText(FilePath, """
             [
-              // yorumlar ve sondaki virgül desteklenir
-              { "id": "claude", "name": "Claude (izinsiz)", "executable": "claude", "arguments": "--permission-mode plan" },
+              // comments and trailing commas are supported
+              { "id": "claude", "name": "Claude (plan mode)", "executable": "claude", "arguments": "--permission-mode plan" },
               { "id": "aider", "name": "Aider", "executable": "aider", "color": "#14B014" },
             ]
             """);
@@ -36,9 +36,9 @@ public sealed class ProfileStoreTests : IDisposable
     }
 
     [Fact]
-    public void Load_BozukDosyada_VarsayilanlariDoner()
+    public void Load_CorruptFile_ReturnsDefaults()
     {
-        File.WriteAllText(FilePath, "[ { bozuk");
+        File.WriteAllText(FilePath, "[ { corrupt");
         Assert.Equal(ProfileStore.Defaults, new ProfileStore(FilePath).Load());
     }
 }

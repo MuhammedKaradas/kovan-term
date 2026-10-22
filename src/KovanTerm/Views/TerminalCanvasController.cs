@@ -11,62 +11,62 @@ using Nodify;
 namespace KovanTerm.Views;
 
 /// <summary>
-/// Tuval üzerindeki terminal kontrollerinin HwndHost kısıtlarını yönetir:
+/// Handles the HwndHost limitations of the terminal controls on the canvas:
 /// <list type="bullet">
-/// <item>Kaydırma/zoom/sürükleme sırasında canlı terminaller yerine anlık görüntülerini gösterir ("fotoğraf modu").</item>
-/// <item>Görüntüleri boştayken arka planda önbelleğe alır; böylece harekete geçiş anlık olur.</item>
-/// <item>Görünür alanın dışındaki terminalleri uyutur; çok uzaklaştırılınca canlı terminal yerine son görüntüyü gösterir.</item>
-/// <item>HWND, WPF zoom'uyla ölçeklenmediği için yazı boyutunu zoom'a göre ayarlar.</item>
-/// <item>Düğüm kapanınca terminalin işlem ağacını sonlandırır.</item>
+/// <item>While panning/zooming/dragging, shows snapshots instead of the live terminals ("snapshot mode").</item>
+/// <item>Caches snapshots in the background while idle, so switching into motion is instant.</item>
+/// <item>Puts terminals outside the viewport to sleep; when zoomed far out, shows the last snapshot instead of the live terminal.</item>
+/// <item>Since the HWND doesn't scale with WPF zoom, adjusts the font size to the zoom.</item>
+/// <item>Kills the terminal's process tree when the node closes.</item>
 /// </list>
-/// Terminal kontrolünün, kardeşi bir <see cref="Image"/> olan bir <see cref="Grid"/> içinde durması beklenir.
+/// The terminal control is expected to sit inside a <see cref="Grid"/> with an <see cref="Image"/> sibling.
 /// </summary>
 public sealed class TerminalCanvasController
 {
     private const int BaseFontSize = 13;
     private const int MinFontSize = 4;
-    /// <summary>Bu zoom'un altında yazı okunamaz (≤5 pt); canlı terminaller yerine son görüntüler gösterilir.</summary>
+    /// <summary>Below this zoom text is unreadable (≤5 pt); the last snapshots are shown instead of the live terminals.</summary>
     public const double SleepZoomThreshold = 0.4;
 
-    /// <summary>Tuvaldeki bir terminal ve önbellekteki görüntüsü.</summary>
+    /// <summary>A terminal on the canvas and its cached snapshot.</summary>
     private sealed class Entry(EasyTerminalControl control)
     {
         public EasyTerminalControl Control { get; } = control;
-        /// <summary>Son görüntüden sonra terminal çıktısı değişti mi? Okuma iş parçacığından yazılır.</summary>
+        /// <summary>Has the terminal output changed since the last snapshot? Written from the reader thread.</summary>
         public volatile bool Dirty = true;
         public BitmapSource? Snapshot;
         /// <summary>
-        /// Uyuyan terminalin HWND'si gizlidir: çizilmez, görüntüsü yenilenmez. İşlem çalışmaya ve çıktı
-        /// terminal arabelleğine yazılmaya devam eder; uyanınca güncel hali çizilir.
+        /// A sleeping terminal's HWND is hidden: it isn't rendered and its snapshot isn't refreshed. The process keeps
+        /// running and output keeps going into the terminal buffer; the current state is rendered on wake.
         /// </summary>
         public bool Sleeping;
     }
 
     private readonly NodifyEditor _editor;
-    // Anahtar: terminalin DataContext'i (düğüm ViewModel'i). Görsel ağaçtan bağımsız
-    // tutulur ki düğüm listeden çıkarıldığında terminal hâlâ bulunabilsin.
+    // Key: the terminal's DataContext (the node ViewModel). Kept independent of the visual tree
+    // so the terminal can still be found after the node is removed from the list.
     private readonly Dictionary<object, Entry> _byNode = new();
 
-    // Hareket bittikten bu kadar sonra canlı terminallere geri dönülür
+    // Switch back to the live terminals this long after motion stops
     private readonly DispatcherTimer _settleTimer = new() { Interval = TimeSpan.FromMilliseconds(150) };
     private bool _frozen;
-    // Boyutlandırma gibi süresi belli olmayan etkileşimlerde, etkileşim bitene kadar fotoğraf modunda kal
+    // For open-ended interactions such as resizing, stay in snapshot mode until the interaction ends
     private bool _held;
     private readonly DispatcherTimer _snapshotCleanupTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private int _appliedFontSize = BaseFontSize;
 
-    // Önbellek: çıktısı değişen terminallerin görüntüsü arka planda yenilenir.
-    // PrintWindow ~bir DWM karesi bekler ama arayüz iş parçacığını meşgul etmez.
+    // Cache: snapshots of terminals whose output changed are refreshed in the background.
+    // PrintWindow waits ~one DWM frame but doesn't block the UI thread.
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(150) };
     private bool _refreshInFlight;
 
-    // Odaklanacak düğüm; uyuyor ya da fotoğraf modundaysa canlı terminale dönülünce odaklanır
+    // Node to focus; if it's sleeping or in snapshot mode, it's focused once the live terminal is back
     private object? _pendingFocus;
 
-    /// <summary>Bir terminal klavye odağını aldığında (tıklama, kısayol); argüman düğüm ViewModel'i.</summary>
+    /// <summary>Raised when a terminal gets keyboard focus (click, shortcut); the argument is the node ViewModel.</summary>
     public event Action<object>? NodeFocused;
 
-    /// <summary>Fotoğraf moduna giriş/çıkış süreleri (ölçüm için; bkz. <see cref="PerfSelfTest"/>).</summary>
+    /// <summary>Snapshot mode enter/exit timings (for measurement; see <see cref="PerfSelfTest"/>).</summary>
     public event Action<string, TimeSpan>? Timing;
 
     public TerminalCanvasController(NodifyEditor editor)
@@ -89,7 +89,7 @@ public sealed class TerminalCanvasController
         if (term.DataContext is not { } node || _byNode.ContainsKey(node)) return;
         var entry = new Entry(term);
         _byNode[node] = entry;
-        // Çıktı geldikçe görüntü eskir; boyut değişince de (boyutlandırma, yazı boyutu) yeniden alınmalı
+        // The snapshot goes stale as output arrives; it must also be retaken when the size changes (resize, font size)
         if (term.ConPTYTerm != null)
             term.ConPTYTerm.TerminalOutput += (_, _) => entry.Dirty = true;
         term.SizeChanged += (_, _) => entry.Dirty = true;
@@ -97,7 +97,7 @@ public sealed class TerminalCanvasController
         {
             if (e.NewValue is true) NodeFocused?.Invoke(node);
         };
-        // Terminal hazır olunca mevcut zoom'a uygun yazı boyutunu uygula (çalışma alanı farklı bir zoom'la açılmış olabilir)
+        // Once the terminal is ready, apply the font size for the current zoom (the workspace may have opened at a different zoom)
         term.Dispatcher.BeginInvoke(() =>
         {
             _appliedFontSize = FontSizeForZoom(_editor.ViewportZoom);
@@ -106,7 +106,7 @@ public sealed class TerminalCanvasController
         }, DispatcherPriority.ApplicationIdle);
     }
 
-    /// <summary>Düğümün terminalini ve altındaki tüm işlemleri (ör. cmd → claude → MCP sunucuları) sonlandırır.</summary>
+    /// <summary>Kills the node's terminal and every process under it (e.g. cmd → claude → MCP servers).</summary>
     public void Terminate(object node)
     {
         if (!_byNode.Remove(node, out var entry)) return;
@@ -132,22 +132,22 @@ public sealed class TerminalCanvasController
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or ArgumentException)
         {
-            // İşlem bu arada kendiliğinden kapanmış olabilir
-            Debug.WriteLine($"Terminal işlemi sonlandırılamadı: {ex.Message}");
+            // The process may have exited on its own in the meantime
+            Debug.WriteLine($"Couldn't kill terminal process: {ex.Message}");
         }
 
-        // Kütüphane işlem bitince pseudo-console'u kapatmıyor, conhost.exe açık kalıyor.
-        // ClosePseudoConsole bloklayabildiği için arayüz iş parçacığında çağrılmaz.
+        // The library doesn't close the pseudo-console when the process ends, leaving conhost.exe running.
+        // ClosePseudoConsole can block, so it isn't called on the UI thread.
         Task.Run(() =>
         {
             try { ((ITerminalConnection)pty).Close(); }
-            catch (Exception ex) { Debug.WriteLine($"Pseudo-console kapatılamadı: {ex.Message}"); }
+            catch (Exception ex) { Debug.WriteLine($"Couldn't close pseudo-console: {ex.Message}"); }
         });
     }
 
     /// <summary>
-    /// Düğümün terminaline klavye odağını verir. Terminal o an gizliyse (fotoğraf modu ya da uyuyor)
-    /// canlı terminale dönülünce odaklanır.
+    /// Gives keyboard focus to the node's terminal. If the terminal is currently hidden (snapshot mode or sleeping),
+    /// it's focused once the live terminal is back.
     /// </summary>
     public void FocusNode(object node)
     {
@@ -158,19 +158,19 @@ public sealed class TerminalCanvasController
             return;
         }
         _pendingFocus = null;
-        // Terminal kontrolü HwndHost'u içeren TerminalControl'dür; odağı ona vermek HWND'ye SetFocus yapar
+        // The terminal control is the TerminalControl containing the HwndHost; focusing it calls SetFocus on the HWND
         if (entry.Control.Terminal?.Focus() != true)
             entry.Control.Focus();
     }
 
-    /// <summary>Etkileşim boyunca (ör. boyutlandırma) terminalleri anlık görüntüyle değiştirir.</summary>
+    /// <summary>Replaces terminals with snapshots for the duration of an interaction (e.g. resizing).</summary>
     public void BeginInteraction()
     {
         _held = true;
         Freeze();
     }
 
-    /// <summary>Etkileşim bitti; kısa bir süre sonra canlı terminallere dönülür.</summary>
+    /// <summary>Interaction ended; switches back to the live terminals shortly after.</summary>
     public void EndInteraction()
     {
         _held = false;
@@ -196,8 +196,8 @@ public sealed class TerminalCanvasController
         foreach (var entry in _byNode.Values)
         {
             if (GetSnapshotImage(entry.Control) is not { } image) continue;
-            // Önbellekteki görüntü güncelse onu kullan; değilse (ör. hiç alınmamış) şimdi al.
-            // Uyuyan terminal gizli olduğu için görüntüsü alınamaz; eldeki görüntü kullanılır.
+            // Use the cached snapshot if it's up to date; otherwise (e.g. never taken) capture it now.
+            // A sleeping terminal is hidden and can't be captured; the existing snapshot is used.
             var shot = entry.Sleeping || (!entry.Dirty && entry.Snapshot != null) ? entry.Snapshot : null;
             if (shot != null) fromCache++;
             else if (!entry.Sleeping && TerminalSnapshot.GetTarget(entry.Control) is { } target)
@@ -206,14 +206,14 @@ public sealed class TerminalCanvasController
                 entry.Dirty = false;
                 captured++;
             }
-            // Eski de olsa bir görüntü, hiç görüntü olmamasından iyidir
+            // A stale snapshot is better than none
             shot ??= entry.Snapshot;
             if (shot == null) continue;
             image.Source = shot;
             image.Visibility = Visibility.Visible;
             entry.Control.Visibility = Visibility.Hidden;
         }
-        Timing?.Invoke($"fotoğraf moduna giriş ({_byNode.Count} terminal: {fromCache} önbellekten, {captured} anında)", sw.Elapsed);
+        Timing?.Invoke($"enter snapshot mode ({_byNode.Count} terminals: {fromCache} from cache, {captured} captured now)", sw.Elapsed);
     }
 
     private void Unfreeze()
@@ -224,16 +224,16 @@ public sealed class TerminalCanvasController
         ApplyZoomToTerminals();
         foreach (var entry in _byNode.Values)
         {
-            // Konum/yazı boyutu değişmiş olabilir; görüntü yeniden alınmalı
+            // Location/font size may have changed; the snapshot must be retaken
             entry.Dirty = true;
             entry.Sleeping = false;
         }
         var sleeping = UpdateSleepStates();
-        Timing?.Invoke($"canlı terminale dönüş ({_byNode.Count} terminal, {sleeping} uyuyor)", sw.Elapsed);
+        Timing?.Invoke($"back to live terminals ({_byNode.Count} terminals, {sleeping} sleeping)", sw.Elapsed);
         if (_pendingFocus is { } pending)
             FocusNode(pending);
-        // Terminal (özellikle yazı boyutu değiştiyse) ilk karesini çizene kadar görüntü arkada kalsın;
-        // hemen kaldırılırsa kısa bir boş kare görünüyor
+        // Keep the snapshot behind until the terminal renders its first frame (especially if the font size changed);
+        // removing it immediately shows a brief blank frame
         _snapshotCleanupTimer.Start();
     }
 
@@ -243,16 +243,16 @@ public sealed class TerminalCanvasController
         if (_frozen) return;
         foreach (var entry in _byNode.Values)
         {
-            // Uyuyan terminalin görüntüsü (çok uzaklaştırılmışken) yerinde kalır
+            // A sleeping terminal's snapshot (when zoomed far out) stays in place
             if (entry.Sleeping) continue;
             if (GetSnapshotImage(entry.Control) is { } image) { image.Visibility = Visibility.Collapsed; image.Source = null; }
         }
     }
 
     /// <summary>
-    /// Görünür alanın dışındaki terminalleri uyutur, içeri girenleri uyandırır. Çok uzaklaştırılmışken
-    /// (<see cref="SleepZoomThreshold"/>) görüntüsü olan tüm terminaller uyur ve son görüntüleri gösterilir.
-    /// Fotoğraf modundayken çağrılmaz; hareket bitince <see cref="Unfreeze"/> çağırır. Uyuyan sayısını döndürür.
+    /// Puts terminals outside the viewport to sleep and wakes those that come into view. When zoomed far out
+    /// (<see cref="SleepZoomThreshold"/>), all terminals that have a snapshot sleep and their last snapshots are shown.
+    /// Not called in snapshot mode; <see cref="Unfreeze"/> calls it when motion stops. Returns the number of sleeping terminals.
     /// </summary>
     private int UpdateSleepStates()
     {
@@ -264,7 +264,7 @@ public sealed class TerminalCanvasController
         {
             if (entry.Control.DataContext is not ViewModels.TerminalNodeViewModel node) continue;
             var offscreen = !viewport.IntersectsWith(node.Bounds);
-            // Görüntüsü olmayan terminal uzaklaştırılmışken uyutulmaz, yoksa yerinde boşluk görünür
+            // A terminal without a snapshot isn't put to sleep when zoomed out, otherwise a blank would show in its place
             var sleep = offscreen || (lowZoom && entry.Snapshot != null);
             var image = GetSnapshotImage(entry.Control);
             if (sleep)
@@ -279,7 +279,7 @@ public sealed class TerminalCanvasController
             }
             else
             {
-                if (entry.Sleeping) entry.Dirty = true; // uyurken çıktı gelmiş olabilir
+                if (entry.Sleeping) entry.Dirty = true; // output may have arrived while sleeping
                 entry.Sleeping = false;
                 entry.Control.Visibility = Visibility.Visible;
             }
@@ -288,9 +288,9 @@ public sealed class TerminalCanvasController
     }
 
     /// <summary>
-    /// Çıktısı değişmiş tüm görünür terminallerin görüntüsünü tek bir arka plan turunda yeniler.
-    /// PrintWindow çağrıları sıraya girdiği için (terminal başına ~15 ms) arka planda sırayla alınır;
-    /// arayüz iş parçacığı yalnızca hedef bilgisini toplarken kısa bir süre kullanılır.
+    /// Refreshes the snapshots of all visible terminals whose output changed in a single background pass.
+    /// PrintWindow calls are serialized (~15 ms per terminal), so they're captured one by one in the background;
+    /// the UI thread is used only briefly to collect the target info.
     /// </summary>
     private void RefreshDirtySnapshots()
     {
@@ -300,7 +300,7 @@ public sealed class TerminalCanvasController
         {
             if (!entry.Dirty || entry.Control.Visibility != Visibility.Visible) continue;
             if (TerminalSnapshot.GetTarget(entry.Control) is not { } target) continue;
-            // Görüntü alınırken gelen çıktı tekrar işaretlesin diye bayrağı önce indir
+            // Clear the flag first so output arriving during capture marks it dirty again
             entry.Dirty = false;
             batch.Add((entry, target));
         }

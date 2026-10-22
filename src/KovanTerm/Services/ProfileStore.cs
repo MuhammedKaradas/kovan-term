@@ -6,8 +6,8 @@ using KovanTerm.Models;
 namespace KovanTerm.Services;
 
 /// <summary>
-/// Varsayılan profiller + kullanıcının <c>%APPDATA%\KovanTerm\profiles.json</c> dosyasındaki profilleri.
-/// Kullanıcı profili aynı <see cref="TerminalProfile.Id"/> ile varsayılanı ezer.
+/// Default profiles + the profiles in the user's <c>%APPDATA%\KovanTerm\profiles.json</c> file.
+/// A user profile with the same <see cref="TerminalProfile.Id"/> overrides the default.
 /// </summary>
 public sealed class ProfileStore
 {
@@ -35,7 +35,7 @@ public sealed class ProfileStore
         FilePath = filePath ?? Path.Combine(AppPaths.DataDirectory, "profiles.json");
     }
 
-    /// <summary>Profiller; kullanıcı dosyası okunamazsa yalnızca varsayılanlar (uygulama açılmaya devam eder).</summary>
+    /// <summary>Profiles; only the defaults if the user file can't be read (the app still starts).</summary>
     public IReadOnlyList<TerminalProfile> Load()
     {
         var result = Defaults.ToList();
@@ -57,7 +57,7 @@ public sealed class ProfileStore
         }
         catch (Exception ex) when (ex is JsonException or IOException or NotSupportedException)
         {
-            Debug.WriteLine($"profiles.json okunamadı, yalnızca varsayılanlar kullanılıyor: {ex.Message}");
+            Debug.WriteLine($"Couldn't read profiles.json, using defaults only: {ex.Message}");
             return [];
         }
     }
