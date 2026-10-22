@@ -2,7 +2,9 @@
 
 ## Overview
 
-The app is written with MVVM ([CommunityToolkit.Mvvm](https://learn.microsoft.com/dotnet/communitytoolkit/mvvm/)).
+The app is written with MVVM ([CommunityToolkit.Mvvm](https://learn.microsoft.com/dotnet/communitytoolkit/mvvm/))
+and uses [WPF-UI](https://github.com/lepoco/wpfui) for the Windows 11 look (Mica backdrop, Fluent controls,
+light/dark themes).
 State and commands live in view models; anything specific to `HwndHost` stays in the view layer.
 
 ```
@@ -18,11 +20,11 @@ MainWindow  (DataContext: MainViewModel)
 
 ```
 src/KovanTerm/
-├─ Models/        Plain data: NodeStatus, TerminalProfile, WorkspaceState
+├─ Models/        Plain data: NodeStatus, TerminalProfile, WorkspaceState, AppSettings
 ├─ ViewModels/    MainViewModel, TerminalNodeViewModel, NewTerminalViewModel, NodePlacement, NodeNavigation
 ├─ Views/         MainWindow (+ .Shortcuts), NewTerminalWindow, DialogService, TerminalCanvasController,
-│                 Shortcuts, PerfSelfTest, Converters/
-├─ Services/      WorkspaceStore, ProfileStore, CommandResolver, AppPaths, IDialogService
+│                 ThemeService, TerminalThemes, Shortcuts, PerfSelfTest, Converters/
+├─ Services/      WorkspaceStore, SettingsStore, ProfileStore, CommandResolver, AppPaths, IDialogService
 └─ Interop/       Win32 P/Invoke (Native) and HWND capture (TerminalSnapshot)
 tests/KovanTerm.Tests/   xUnit unit tests
 ```
@@ -40,6 +42,8 @@ tests/KovanTerm.Tests/   xUnit unit tests
 | `Views/MainWindow.xaml(.cs)` | Canvas and node template; code-behind only registers terminals with the controller |
 | `Views/MainWindow.Shortcuts.cs` | Keyboard shortcuts ([shortcuts.md](shortcuts.md)) |
 | `Views/TerminalCanvasController.cs` | Snapshot mode, snapshot cache, sleeping, zoom → font size, process cleanup |
+| `Views/ThemeService.cs` | Applies the light/dark theme (WPF-UI + Mica) and tells the terminal layer which one is active |
+| `Views/TerminalThemes.cs` | Terminal color schemes for dark and light |
 | `Views/PerfSelfTest.cs` | Reproducible smoothness benchmark (`KOVAN_PERF_SELFTEST`) |
 | `Interop/TerminalSnapshot.cs` | Captures a terminal HWND |
 
@@ -105,9 +109,26 @@ Processes are started through ConPTY. Consequences:
    WPF `KeyBinding`s. The terminal HWND lives on the UI thread, so key messages are caught in
    `ComponentDispatcher.ThreadPreprocessMessage` before the terminal sees them.
 
+## Theming
+
+`ThemePreference` (system / dark / light) lives in the view model and is saved in `settings.json`; the
+toolbar button cycles through it. `ThemeService` applies it with WPF-UI's `ApplicationThemeManager`
+(following Windows via `SystemThemeWatcher` for "system") and raises `IsDarkChanged`, which
+`TerminalCanvasController` uses to switch terminal color schemes, since terminal colors aren't WPF
+resources. UI colors come from WPF-UI's theme resources (`DynamicResource`), never hard-coded.
+
+- The canvas is transparent so the Mica backdrop shows through; terminals stay opaque.
+- Light scheme caveat: legacy console apps (cmd, Windows PowerShell) paint "default" text with explicit
+  palette entries (background 0, foreground 7), so the light palette maps entry 0 to the light
+  background and entry 7 to the dark foreground.
+- Nodify's own square item border is made transparent; the node's rounded border shows selection with
+  the accent color instead.
+- Cost: WPF-UI adds ~19 MB working set (4 terminals: 198 → 217 MB); smoothness is unchanged.
+
 ## Persistence
 
-The workspace is stored in `%APPDATA%\KovanTerm\workspace.json` (`WorkspaceStore`).
+The workspace is stored in `%APPDATA%\KovanTerm\workspace.json` (`WorkspaceStore`); app-wide
+preferences such as the theme in `settings.json` (`SettingsStore`).
 
 - **What's saved:** nodes (id, profile, title, command, color, working directory, location, size),
   the viewport (zoom, location), recent directories and the last used profile. Terminal contents and
