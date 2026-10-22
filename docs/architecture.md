@@ -73,15 +73,18 @@ Processes are started through ConPTY. Consequences:
    - For interactions of unknown length, such as resizing, `BeginInteraction()`/`EndInteraction()`
      keep snapshot mode on until the interaction ends; the snapshot stretches to the new size and the
      terminal redraws at the real size on release.
-   - **Snapshot cache:** `PrintWindow(PW_RENDERFULLCONTENT)` waits for a DWM frame, so it takes ~12-20 ms
-     per terminal, and calls can't be parallelized (they serialize). Capturing at the start of a
-     gesture froze the UI for ~100-170 ms with 10 terminals. Instead, the terminal's `TerminalOutput`
-     event and size changes set a "dirty" flag, and every 150 ms the snapshots of changed terminals are
-     captured **on a background thread**. `Freeze()` uses the cached snapshot (<1 ms) and only captures
-     stale ones on the spot.
-   - **Clipped terminals:** for an HWND that extends past the window, `PrintWindow` draws only the
-     visible part, aligned to the top-left corner. `TerminalSnapshot` shifts the visible part to its
-     real position and paints the clipped part with the terminal background.
+   - **Snapshot cache:** `PrintWindow(PW_RENDERFULLCONTENT)` waits for a DWM frame (~15 ms). Capturing
+     at the start of a gesture froze the UI for ~100-170 ms with 10 terminals. Instead, the terminal's
+     `TerminalOutput` event and size changes set a "dirty" flag, and every 150 ms the snapshots of
+     changed terminals are refreshed **on a background thread**. `Freeze()` uses the cached snapshots
+     and only captures stale ones on the spot.
+   - **How snapshots are captured:** the top-level window is captured once and each terminal control
+     (HWND plus its WPF scrollbar) is cropped out of it; the part outside the canvas is painted with the
+     terminal background. Capturing each terminal HWND directly was unreliable once a terminal was
+     clipped: depending on timing, `PrintWindow` returned the visible part either in place or aligned
+     to the top-left corner. Cropping the whole control (not just the HWND) also keeps the snapshot
+     from being stretched over the scrollbar. Live and frozen screenshots of clipped terminals are
+     pixel-identical.
    - Benchmark: `KOVAN_PERF_SELFTEST` (see CLAUDE.md). ~58 fps with 10 terminals, worst frame ~35 ms
      (~200 ms before the cache).
    - Known limitation: the font size is an integer (`SetTheme` takes a `short`), so after a gesture
@@ -95,7 +98,10 @@ Processes are started through ConPTY. Consequences:
      didn't change (~3 cores): almost all of it is VT parsing, which has to happen even while hidden.
 5. **Resize grip**: since WPF can't draw over a terminal, the grip sits in a thin strip below it.
    `Thumb.DragDelta` values are measured inside the node, so they're already in canvas units.
-6. **Shortcuts while a terminal has focus**: keys go straight to the terminal's HWND and never reach
+6. **Clipping to the canvas**: an HWND ignores WPF clipping, so a terminal panned past the canvas edge
+   would draw over the toolbar (#41). Each awake terminal gets a window region (`SetWindowRgn`, see
+   `TerminalClip`) equal to its intersection with the canvas, updated after the viewport settles.
+7. **Shortcuts while a terminal has focus**: keys go straight to the terminal's HWND and never reach
    WPF `KeyBinding`s. The terminal HWND lives on the UI thread, so key messages are caught in
    `ComponentDispatcher.ThreadPreprocessMessage` before the terminal sees them.
 

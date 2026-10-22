@@ -40,6 +40,8 @@ public sealed class TerminalCanvasController
         /// running and output keeps going into the terminal buffer; the current state is rendered on wake.
         /// </summary>
         public bool Sleeping;
+        /// <summary>Window region currently applied to the HWND (<see cref="TerminalClip"/>); <c>null</c> = none.</summary>
+        public Native.RECT? Region;
     }
 
     private readonly NodifyEditor _editor;
@@ -103,6 +105,7 @@ public sealed class TerminalCanvasController
             _appliedFontSize = FontSizeForZoom(_editor.ViewportZoom);
             SetFont(term, _appliedFontSize);
             UpdateSleepStates();
+            UpdateClipRegions();
         }, DispatcherPriority.ApplicationIdle);
     }
 
@@ -192,27 +195,31 @@ public sealed class TerminalCanvasController
         _frozen = true;
         _snapshotCleanupTimer.Stop();
         var sw = Stopwatch.StartNew();
-        int fromCache = 0, captured = 0;
+        // Use cached snapshots that are up to date; capture the rest now in one go. A sleeping terminal is
+        // hidden and can't be captured; its existing snapshot is used.
+        var clip = CanvasScreenRect();
+        var stale = _byNode.Values
+            .Where(e => !e.Sleeping && (e.Dirty || e.Snapshot == null))
+            .Select(e => (Entry: e, Target: TerminalSnapshot.GetTarget(e.Control, clip)))
+            .Where(x => x.Target != null)
+            .ToList();
+        var shots = TerminalSnapshot.CaptureAll(stale.Select(x => x.Target!).ToList(), TerminalThemes.DarkBackground);
+        for (var i = 0; i < stale.Count; i++)
+        {
+            if (shots[i] is not { } shot) continue;
+            stale[i].Entry.Snapshot = shot;
+            stale[i].Entry.Dirty = false;
+        }
+
         foreach (var entry in _byNode.Values)
         {
-            if (GetSnapshotImage(entry.Control) is not { } image) continue;
-            // Use the cached snapshot if it's up to date; otherwise (e.g. never taken) capture it now.
-            // A sleeping terminal is hidden and can't be captured; the existing snapshot is used.
-            var shot = entry.Sleeping || (!entry.Dirty && entry.Snapshot != null) ? entry.Snapshot : null;
-            if (shot != null) fromCache++;
-            else if (!entry.Sleeping && TerminalSnapshot.GetTarget(entry.Control) is { } target)
-            {
-                shot = entry.Snapshot = TerminalSnapshot.Capture(target, TerminalThemes.DarkBackground);
-                entry.Dirty = false;
-                captured++;
-            }
             // A stale snapshot is better than none
-            shot ??= entry.Snapshot;
-            if (shot == null) continue;
+            if (entry.Snapshot is not { } shot || GetSnapshotImage(entry.Control) is not { } image) continue;
             image.Source = shot;
             image.Visibility = Visibility.Visible;
             entry.Control.Visibility = Visibility.Hidden;
         }
+        int captured = stale.Count, fromCache = _byNode.Count - captured;
         Timing?.Invoke($"enter snapshot mode ({_byNode.Count} terminals: {fromCache} from cache, {captured} captured now)", sw.Elapsed);
     }
 
@@ -235,12 +242,15 @@ public sealed class TerminalCanvasController
         // Keep the snapshot behind until the terminal renders its first frame (especially if the font size changed);
         // removing it immediately shows a brief blank frame
         _snapshotCleanupTimer.Start();
+        // HWNDs are repositioned in the next layout pass; clip them once that has happened
+        _editor.Dispatcher.BeginInvoke(UpdateClipRegions, DispatcherPriority.Loaded);
     }
 
     private void RemoveSnapshots()
     {
         _snapshotCleanupTimer.Stop();
         if (_frozen) return;
+        UpdateClipRegions();
         foreach (var entry in _byNode.Values)
         {
             // A sleeping terminal's snapshot (when zoomed far out) stays in place
@@ -254,6 +264,26 @@ public sealed class TerminalCanvasController
     /// (<see cref="SleepZoomThreshold"/>), all terminals that have a snapshot sleep and their last snapshots are shown.
     /// Not called in snapshot mode; <see cref="Unfreeze"/> calls it when motion stops. Returns the number of sleeping terminals.
     /// </summary>
+    /// <summary>Clips every awake terminal to the canvas so it can't draw over the toolbar/title bar (#41).</summary>
+    private void UpdateClipRegions()
+    {
+        if (_frozen || CanvasScreenRect() is not { } clip) return;
+        foreach (var entry in _byNode.Values)
+        {
+            if (entry.Sleeping || TerminalSnapshot.FindHwnd(entry.Control) is not { } hwnd) continue;
+            entry.Region = TerminalClip.Apply(hwnd, clip, entry.Region);
+        }
+    }
+
+    /// <summary>The canvas area in screen (device) coordinates, or <c>null</c> if it isn't on screen.</summary>
+    private Native.RECT? CanvasScreenRect()
+    {
+        if (PresentationSource.FromVisual(_editor) == null) return null;
+        var topLeft = _editor.PointToScreen(new Point(0, 0));
+        var bottomRight = _editor.PointToScreen(new Point(_editor.ActualWidth, _editor.ActualHeight));
+        return new Native.RECT { Left = (int)topLeft.X, Top = (int)topLeft.Y, Right = (int)bottomRight.X, Bottom = (int)bottomRight.Y };
+    }
+
     private int UpdateSleepStates()
     {
         if (_frozen) return 0;
@@ -288,18 +318,18 @@ public sealed class TerminalCanvasController
     }
 
     /// <summary>
-    /// Refreshes the snapshots of all visible terminals whose output changed in a single background pass.
-    /// PrintWindow calls are serialized (~15 ms per terminal), so they're captured one by one in the background;
-    /// the UI thread is used only briefly to collect the target info.
+    /// Refreshes the snapshots of all visible terminals whose output changed, with one capture of the window
+    /// on a background thread (~one DWM frame). The UI thread is used only briefly to collect the target info.
     /// </summary>
     private void RefreshDirtySnapshots()
     {
         if (_frozen || _refreshInFlight) return;
+        var clip = CanvasScreenRect();
         var batch = new List<(Entry Entry, TerminalSnapshot.Target Target)>();
         foreach (var entry in _byNode.Values)
         {
             if (!entry.Dirty || entry.Control.Visibility != Visibility.Visible) continue;
-            if (TerminalSnapshot.GetTarget(entry.Control) is not { } target) continue;
+            if (TerminalSnapshot.GetTarget(entry.Control, clip) is not { } target) continue;
             // Clear the flag first so output arriving during capture marks it dirty again
             entry.Dirty = false;
             batch.Add((entry, target));
@@ -308,7 +338,8 @@ public sealed class TerminalCanvasController
 
         _refreshInFlight = true;
         var ui = TaskScheduler.FromCurrentSynchronizationContext();
-        Task.Run(() => batch.Select(b => TerminalSnapshot.Capture(b.Target, TerminalThemes.DarkBackground)).ToList())
+        var targets = batch.Select(b => b.Target).ToList();
+        Task.Run(() => TerminalSnapshot.CaptureAll(targets, TerminalThemes.DarkBackground))
             .ContinueWith(t =>
             {
                 _refreshInFlight = false;
