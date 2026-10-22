@@ -2,10 +2,11 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 using KovanTerm.ViewModels;
+using Wpf.Ui.Controls;
 
 namespace KovanTerm.Views;
 
-public partial class NewTerminalWindow : Window
+public partial class NewTerminalWindow : FluentWindow
 {
     private readonly NewTerminalViewModel _vm;
 

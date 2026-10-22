@@ -1,13 +1,18 @@
 <Application x:Class="KovanTerm.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:KovanTerm"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              StartupUri="Views/MainWindow.xaml">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <!-- WPF-UI (Fluent / Windows 11 look); the theme is switched at runtime by Views/ThemeService -->
+                <ui:ThemesDictionary Theme="Dark"/>
+                <ui:ControlsDictionary/>
                 <ResourceDictionary Source="pack://application:,,,/Nodify;component/Themes/Dark.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+            <!-- Terminal background for non-terminal node bodies; updated by ThemeService -->
+            <SolidColorBrush x:Key="TerminalBackgroundBrush" Color="#0C0C0C"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
