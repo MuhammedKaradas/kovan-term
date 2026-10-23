@@ -38,6 +38,7 @@ public partial class MainViewModel : ObservableObject
     private readonly WorkspaceStore _store;
     private readonly IReadOnlyList<TerminalProfile> _profiles;
     private readonly CommandResolver _resolver;
+    private readonly WslLauncher _wsl;
     private readonly IDialogService _dialogs;
     private readonly SettingsStore _settings;
     private readonly List<string> _recentDirectories = [];
@@ -67,7 +68,8 @@ public partial class MainViewModel : ObservableObject
     /// <summary>Text to type into a node's terminal (e.g. the answer to a permission prompt).</summary>
     public event Action<TerminalNodeViewModel, string>? TerminalInputRequested;
 
-    public MainViewModel(WorkspaceStore store, ProfileStore profiles, CommandResolver resolver, IDialogService dialogs, SettingsStore settings,
+    public MainViewModel(WorkspaceStore store, ProfileStore profiles, CommandResolver resolver, WslLauncher wsl,
+        IDialogService dialogs, SettingsStore settings,
         AgentHookServer? hookServer = null, ClaudeSessions? sessions = null, ClaudeUsage? usage = null)
     {
         _sessions = sessions ?? new ClaudeSessions();
@@ -104,7 +106,8 @@ public partial class MainViewModel : ObservableObject
         };
         Changes.SendRequested += (node, message) => TerminalInputRequested?.Invoke(node, ChangesViewModel.BracketedPaste(message));
         _store = store;
-        _profiles = profiles.Load();
+        _wsl = wsl;
+        _profiles = profiles.Load(wsl.Distros);
         _resolver = resolver;
         _dialogs = dialogs;
 
@@ -128,7 +131,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task NewTerminal(Point? location)
     {
-        var options = _profiles.Select(p => new ProfileOptionViewModel(p, _resolver.Resolve(p.Executable))).ToList();
+        var options = _profiles.Select(p => new ProfileOptionViewModel(p, Resolve(p))).ToList();
         var setups = _settings.Load().WorktreeSetupCommands;
         var dialog = new NewTerminalViewModel(_dialogs, options, _recentDirectories, _lastProfileId)
         {
@@ -139,7 +142,7 @@ public partial class MainViewModel : ObservableObject
         if (!_dialogs.ShowNewTerminal(dialog) || dialog.SelectedProfile is not { IsAvailable: true } choice) return;
         var at = location ?? ViewportCenterForNewNode();
 
-        var directory = Path.GetFullPath(dialog.WorkingDirectory);
+        var directory = NormalizeDirectory(dialog.WorkingDirectory.Trim());
         RememberDirectory(directory);
         _lastProfileId = choice.Profile.Id;
 
@@ -159,6 +162,7 @@ public partial class MainViewModel : ObservableObject
         }
         var setup = worktree != null ? dialog.SetupCommand.Trim() : "";
         var node = CreateNode(choice.Profile, choice.ResolvedPath!, directory, at, worktree, setup);
+        if (choice.Profile.Wsl) StartDistroFirst(node, choice.Profile.Distro);
         AddNode(node);
         // The terminal just opened is the one the user is about to work with
         CurrentNode = node;
@@ -636,7 +640,7 @@ public partial class MainViewModel : ObservableObject
         var id = Guid.NewGuid();
         // A saved conversation is resumed (ClaudeSessions finds its transcript); otherwise a new one gets an id now
         var sessionId = ClaudeHooks.IsClaude(resolvedPath) ? existingSessionId ?? Guid.NewGuid().ToString() : null;
-        var commandLine = CommandResolver.BuildCommandLine(resolvedPath, profile.Arguments);
+        var commandLine = BuildCommandLine(profile, resolvedPath, directory);
         var launch = LaunchCommandLine(id, resolvedPath, profile.Arguments, sessionId);
         // A new worktree's setup runs once, before the agent's first start; later launches run the agent directly
         if (worktree != null && setup.Length > 0) launch = GitWorktrees.WithSetup(launch ?? commandLine, setup, worktree.RepoRoot);
@@ -649,6 +653,7 @@ public partial class MainViewModel : ObservableObject
             LaunchCommandLine = launch,
             SessionId = sessionId,
             Worktree = worktree,
+            IsWsl = profile.Wsl,
             Color = profile.Color,
             WorkingDirectory = directory,
             Location = location,
@@ -661,6 +666,8 @@ public partial class MainViewModel : ObservableObject
     /// </summary>
     private string? LaunchCommandLine(Guid nodeId, string resolvedPath, string arguments, string? sessionId)
     {
+        // WSL agents get none of this yet: they can't read the Windows settings files, and WSL2's default
+        // network can't reach Kovan's 127.0.0.1 listener (resolvedPath is wsl.exe, so nothing matches below)
         var extra = new List<string> { arguments };
         // A resolved path, not a command line: it may contain spaces ("C:\Program Files\nodejs\claude.cmd")
         var agent = ScreenRules.AgentOfExecutable(resolvedPath);
@@ -680,6 +687,30 @@ public partial class MainViewModel : ObservableObject
         return all == arguments ? null : CommandResolver.BuildCommandLine(resolvedPath, all);
     }
 
+    /// <summary>
+    /// Holds a WSL node's terminal until its distro is running: started inside a pseudo console while the distro is
+    /// still stopped, wsl.exe shows nothing at all. The node shows "Starting …" meanwhile.
+    /// </summary>
+    private void StartDistroFirst(TerminalNodeViewModel node, string? distro)
+    {
+        node.StartingText = $"Starting {distro ?? "WSL"}… (waiting for its services to finish booting)";
+        node.IsStarting = true;
+        _wsl.StartDistroAsync(distro).ContinueWith(_ => _dispatcher.BeginInvoke(() => node.IsStarting = false));
+    }
+
+    /// <summary>Full path of the executable, or of <c>wsl.exe</c> for a WSL profile whose distro is installed; <c>null</c> if unavailable.</summary>
+    private string? Resolve(TerminalProfile profile) =>
+        profile.Wsl ? (_wsl.IsInstalled(profile.Distro) ? _wsl.WslPath : null) : _resolver.Resolve(profile.Executable);
+
+    private static string BuildCommandLine(TerminalProfile profile, string resolvedPath, string? directory) =>
+        profile.Wsl
+            ? WslLauncher.BuildCommandLine(resolvedPath, profile.Distro, directory ?? WslLauncher.HomeDirectory, profile.Executable, profile.Arguments)
+            : CommandResolver.BuildCommandLine(resolvedPath, profile.Arguments);
+
+    private static string NormalizeDirectory(string directory) =>
+        !WslLauncher.IsLinuxPath(directory) ? Path.GetFullPath(directory)
+        : directory.Length > 1 ? directory.TrimEnd('/') : directory;
+
     private void AddNode(TerminalNodeViewModel node)
     {
         // Overlapping terminals cover each other, so place it in the nearest free spot
@@ -697,7 +728,12 @@ public partial class MainViewModel : ObservableObject
     private void Restore(WorkspaceState state)
     {
         foreach (var s in state.Nodes)
-            Nodes.Add(RestoreNode(s));
+        {
+            var node = RestoreNode(s);
+            if (node.IsWsl && !node.HasStartError)
+                StartDistroFirst(node, _profiles.FirstOrDefault(p => p.Id == s.ProfileId)?.Distro);
+            Nodes.Add(node);
+        }
         ViewportZoom = state.Viewport.Zoom > 0 ? state.Viewport.Zoom : 1;
         ViewportLocation = new Point(state.Viewport.X, state.Viewport.Y);
         _recentDirectories.AddRange(state.RecentDirectories.Take(MaxRecentDirectories));
@@ -718,18 +754,19 @@ public partial class MainViewModel : ObservableObject
 
         // A missing folder (e.g. a worktree deleted outside Kovan) would make the terminal start in Kovan's own
         // folder, and an agent would work in the wrong place; don't start it
-        if (s.WorkingDirectory is { Length: > 0 } dir && !Directory.Exists(dir))
+        if (s.WorkingDirectory is { Length: > 0 } dir && !s.Wsl && !WslLauncher.IsLinuxPath(dir) && !Directory.Exists(dir))
             return TerminalNodeViewModel.FromState(s, startError: s.Worktree != null
                 ? $"The worktree folder no longer exists:\n{dir}\n\nClose this node; the branch {s.Worktree.Branch} may still exist."
                 : $"The working folder no longer exists:\n{dir}\n\nClose this node and open a new one.");
 
         if (_profiles.FirstOrDefault(p => p.Id == s.ProfileId) is { } profile)
         {
-            if (_resolver.Resolve(profile.Executable) is not { } path)
-                return TerminalNodeViewModel.FromState(s, startError: NotFoundMessage(profile.Executable));
+            var state = s with { Wsl = profile.Wsl };
+            if (Resolve(profile) is not { } path)
+                return TerminalNodeViewModel.FromState(state, startError: profile.Wsl ? WslNotFoundMessage(profile.Distro) : NotFoundMessage(profile.Executable));
             // Nodes saved before sessions were tracked get a fresh conversation, as they did before
-            var state = ClaudeHooks.IsClaude(path) && s.SessionId == null ? s with { SessionId = Guid.NewGuid().ToString() } : s;
-            return TerminalNodeViewModel.FromState(state, CommandResolver.BuildCommandLine(path, profile.Arguments),
+            if (ClaudeHooks.IsClaude(path) && state.SessionId == null) state = state with { SessionId = Guid.NewGuid().ToString() };
+            return TerminalNodeViewModel.FromState(state, BuildCommandLine(profile, path, s.WorkingDirectory),
                 launchCommandLine: LaunchCommandLine(s.Id, path, profile.Arguments, state.SessionId));
         }
 
@@ -741,6 +778,10 @@ public partial class MainViewModel : ObservableObject
 
     private static string NotFoundMessage(string executable) =>
         $"'{executable}' not found.\nMake sure it's installed and on PATH, then close this node and open it again.";
+
+    private string WslNotFoundMessage(string? distro) =>
+        _wsl.WslPath == null ? "WSL isn't installed.\nInstall it with 'wsl --install', then close this node and open it again."
+        : $"WSL distro '{distro}' not found.\nCheck 'wsl --list', then close this node and open it again.";
 
     private void AddDefaultNodes()
     {
@@ -758,7 +799,9 @@ public partial class MainViewModel : ObservableObject
 
     private void RememberDirectory(string directory)
     {
-        _recentDirectories.RemoveAll(d => string.Equals(d, directory, StringComparison.OrdinalIgnoreCase));
+        // Linux paths are case sensitive
+        var comparison = WslLauncher.IsLinuxPath(directory) ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        _recentDirectories.RemoveAll(d => string.Equals(d, directory, comparison));
         _recentDirectories.Insert(0, directory);
         if (_recentDirectories.Count > MaxRecentDirectories)
             _recentDirectories.RemoveRange(MaxRecentDirectories, _recentDirectories.Count - MaxRecentDirectories);

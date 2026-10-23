@@ -20,6 +20,7 @@ about 3.5× less than an xterm.js-in-WebView2 equivalent
 - Infinite canvas you can pan and zoom
 - Real terminals as draggable, resizable nodes on the canvas
 - Profiles: PowerShell, cmd, Claude Code, Codex, Gemini CLI, plus your own ([docs/profiles.md](docs/profiles.md))
+- WSL: a shell and Claude Code for each installed distro, started in a Linux directory
 - Pick a working directory; right-click the canvas for "New terminal here"
 - The workspace is saved automatically and restored on startup
 - Keyboard shortcuts: switch between terminals, fit all, zoom to a terminal ([docs/shortcuts.md](docs/shortcuts.md))

@@ -36,6 +36,31 @@ public sealed class ProfileStoreTests : IDisposable
     }
 
     [Fact]
+    public void Load_AddsShellAndClaudeForEachWslDistro()
+    {
+        var profiles = new ProfileStore(FilePath).Load(["Debian"]);
+
+        var wsl = profiles.Skip(ProfileStore.Defaults.Count).ToList();
+        Assert.Equal(["wsl-Debian", "claude-wsl-Debian"], wsl.Select(p => p.Id));
+        Assert.All(wsl, p => Assert.True(p.Wsl && p.Distro == "Debian"));
+        Assert.Equal("", wsl[0].Executable);
+        Assert.Equal("claude", wsl[1].Executable);
+    }
+
+    [Fact]
+    public void Load_UserWslProfile_IsRead()
+    {
+        File.WriteAllText(FilePath, """
+            [{ "id": "codex-wsl", "name": "Codex (WSL)", "executable": "codex", "wsl": true, "distro": "Ubuntu" }]
+            """);
+
+        var codex = new ProfileStore(FilePath).Load()[^1];
+
+        Assert.True(codex.Wsl);
+        Assert.Equal("Ubuntu", codex.Distro);
+    }
+
+    [Fact]
     public void Load_CorruptFile_ReturnsDefaults()
     {
         File.WriteAllText(FilePath, "[ { corrupt");

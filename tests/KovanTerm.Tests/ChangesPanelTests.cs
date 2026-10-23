@@ -133,4 +133,19 @@ public sealed class ChangesPanelTests : IDisposable
         p.WaitForExit();
         Assert.Equal(0, p.ExitCode);
     }
+
+    [Fact]
+    public async Task WslNode_WithLinuxFolder_ExplainsInsteadOfRunningGit()
+    {
+        var vm = new ChangesViewModel(new GitChanges());
+        var node = TerminalNodeViewModel.FromState(new KovanTerm.Models.NodeState
+        {
+            Id = Guid.NewGuid(), Title = "Debian", CommandLine = "wsl", WorkingDirectory = "/srv/app", Wsl = true,
+        });
+
+        await vm.ShowAsync(node);
+
+        Assert.Equal("Changes of folders inside WSL aren't shown yet.", vm.Message);
+        Assert.Empty(vm.Files);
+    }
 }

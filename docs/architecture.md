@@ -24,7 +24,7 @@ src/KovanTerm/
 ├─ ViewModels/    MainViewModel, TerminalNodeViewModel, NewTerminalViewModel, NodePlacement, NodeNavigation
 ├─ Views/         MainWindow (+ .Shortcuts), NewTerminalWindow, DialogService, TerminalCanvasController,
 │                 ThemeService, TerminalThemes, Shortcuts, PerfSelfTest, Converters/
-├─ Services/      WorkspaceStore, SettingsStore, ProfileStore, CommandResolver, AppPaths, IDialogService
+├─ Services/      WorkspaceStore, SettingsStore, ProfileStore, CommandResolver, WslLauncher, AppPaths, IDialogService
 └─ Interop/       Win32 P/Invoke (Native) and HWND capture (TerminalSnapshot)
 tests/KovanTerm.Tests/   xUnit unit tests
 ```
@@ -38,6 +38,7 @@ tests/KovanTerm.Tests/   xUnit unit tests
 | `ViewModels/TerminalNodeViewModel.cs` | Node: title, command, size, location, status |
 | `Services/CommandResolver.cs` | Resolves programs via `PATH`/`PATHEXT`, builds the ConPTY command line |
 | `Services/ProfileStore.cs` | Built-in profiles + `profiles.json` ([profiles.md](profiles.md)) |
+| `Services/WslLauncher.cs` | Lists WSL distros, builds the `wsl.exe` command line, converts `\\wsl.localhost` paths, waits for a distro to finish booting before its terminals start |
 | `Services/AppPaths.cs` | Data folder (`%APPDATA%\KovanTerm`, overridable with `KOVAN_DATA_DIR`) |
 | `Views/MainWindow.xaml(.cs)` | Canvas and node template; code-behind only registers terminals with the controller |
 | `Views/MainWindow.Shortcuts.cs` | Keyboard shortcuts ([shortcuts.md](shortcuts.md)) |
@@ -130,7 +131,7 @@ resources. UI colors come from WPF-UI's theme resources (`DynamicResource`), nev
 The workspace is stored in `%APPDATA%\KovanTerm\workspace.json` (`WorkspaceStore`); app-wide
 preferences such as the theme in `settings.json` (`SettingsStore`).
 
-- **What's saved:** nodes (id, profile, title, command, color, working directory, location, size),
+- **What's saved:** nodes (id, profile, title, command, color, working directory, WSL or not, location, size),
   the viewport (zoom, location), recent directories and the last used profile. Terminal contents and
   agent state aren't saved; on startup terminals restart with the same command.
 - **When:** 500 ms after a node is added/closed/moved/resized or the viewport changes, and on window close.
