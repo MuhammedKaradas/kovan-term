@@ -17,12 +17,13 @@
         WindowCornerPreference="Round">
     <ui:FluentWindow.Resources>
         <conv:NodeStatusToBrushConverter x:Key="StatusToBrush"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
 
         <!-- Node body: live terminal. During motion its snapshot is shown instead (TerminalCanvasController) -->
         <DataTemplate x:Key="TerminalBody" DataType="{x:Type vm:TerminalNodeViewModel}">
             <Grid>
                 <Image Visibility="Collapsed" Stretch="Fill"/>
-                <term:EasyTerminalControl StartupCommandLine="{Binding CommandLine}"
+                <term:EasyTerminalControl StartupCommandLine="{Binding StartupCommandLine}"
                                           WorkingDirectory="{Binding WorkingDirectory}"
                                           FontSizeWhenSettingTheme="13"
                                           Loaded="Terminal_Loaded"/>
@@ -95,12 +96,31 @@
                 </ui:Button.Style>
             </ui:Button>
 
+            <!-- Agents waiting for the user: each click goes to the next one -->
+            <ui:Button DockPanel.Dock="Left" Margin="8,0,0,0" Appearance="Caution" Command="{Binding GoToWaitingCommand}"
+                       ToolTip="Go to the next agent waiting for you" AutomationProperties.Name="Go to waiting agent">
+                <ui:Button.Style>
+                    <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding WaitingCount}" Value="0">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ui:Button.Style>
+                <ui:Button.Icon>
+                    <ui:SymbolIcon Symbol="AlertUrgent24"/>
+                </ui:Button.Icon>
+                <TextBlock Text="{Binding WaitingCount, StringFormat={}{0} waiting}"/>
+            </ui:Button>
+
             <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}">
                 <TextBlock.Text>
-                    <MultiBinding StringFormat="{}{1} terminals  ·  {0} MB  ·  {2:P0}">
+                    <MultiBinding StringFormat="{}{3} working  ·  {1} terminals  ·  {0} MB  ·  {2:P0}">
                         <Binding Path="MemoryMb"/>
                         <Binding Path="Nodes.Count"/>
                         <Binding Path="ViewportZoom"/>
+                        <Binding Path="WorkingCount"/>
                     </MultiBinding>
                 </TextBlock.Text>
             </TextBlock>
@@ -143,6 +163,11 @@
                                     <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=nodify:ItemContainer}}" Value="True">
                                         <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
                                     </DataTrigger>
+                                    <!-- Waiting for the user wins over selection. Only the color changes: a thicker border
+                                         would shrink the terminal and make it reflow. -->
+                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static models:NodeStatus.Waiting}">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCautionBrush}"/>
+                                    </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </Border.Style>
@@ -160,10 +185,24 @@
                                             <ui:SymbolIcon Symbol="Dismiss16"/>
                                         </ui:Button.Icon>
                                     </ui:Button>
+                                    <!-- Answers the agent's permission prompt without clicking into the terminal -->
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="0,0,6,0"
+                                                Visibility="{Binding AwaitsPermission, Converter={StaticResource BoolToVisibility}}">
+                                        <ui:Button Content="Allow" Appearance="Success" Height="24" Padding="10,0" FontSize="12" Margin="0,0,4,0"
+                                                   ToolTip="Answer the permission prompt with Yes (once)"
+                                                   Command="{Binding DataContext.AllowPermissionCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
+                                                   CommandParameter="{Binding}"/>
+                                        <ui:Button Content="Deny" Appearance="Secondary" Height="24" Padding="10,0" FontSize="12"
+                                                   ToolTip="Answer No; then tell the agent what to do instead"
+                                                   Command="{Binding DataContext.DenyPermissionCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
+                                                   CommandParameter="{Binding}"/>
+                                    </StackPanel>
                                     <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"
                                              Fill="{Binding Status, Converter={StaticResource StatusToBrush}}"/>
                                     <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                                               FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                               FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                               Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                 </DockPanel>
                             </Border>
                             <!-- Profile color -->

@@ -147,7 +147,12 @@ terminal control that Microsoft doesn't publish officially. Risks, a memory comp
 WebView2 + xterm.js fallback, and mitigations: [decision record 0002](decisions/0002-terminal-dependency-risk.md).
 In short: package versions are pinned and updates are tested by hand.
 
+## Agent status
+
+Claude Code nodes are started with `--settings <data dir>\hooks\<node id>.json`, whose HTTP hooks post to
+`AgentHookServer` (127.0.0.1, random port, per-run token). `AgentStatusReducer` turns the events into the
+node's status; Allow/Deny type into the terminal. Details and alternatives: [0003](decisions/0003-agent-status-via-http-hooks.md).
+
 ## Planned components
 
-- **Agent status bridge** (v0.2): Claude Code hooks → local named pipe → node status.
 - **Voice** (v0.4): local speech recognition with Whisper.net.

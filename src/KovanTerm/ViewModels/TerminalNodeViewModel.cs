@@ -1,6 +1,7 @@
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using KovanTerm.Models;
+using KovanTerm.Services;
 
 namespace KovanTerm.ViewModels;
 
@@ -18,6 +19,12 @@ public partial class TerminalNodeViewModel : ObservableObject
     public string? ProfileId { get; init; }
     public required string Title { get; init; }
     public required string CommandLine { get; init; }
+    /// <summary>
+    /// What the terminal actually runs: <see cref="CommandLine"/> plus per-run arguments such as the hook settings.
+    /// Not persisted; the saved command stays reusable on the next run.
+    /// </summary>
+    public string? LaunchCommandLine { get; init; }
+    public string StartupCommandLine => LaunchCommandLine ?? CommandLine;
     public string? WorkingDirectory { get; init; }
     /// <summary>Header accent color (#RRGGBB); default if empty.</summary>
     public string? Color { get; init; }
@@ -52,6 +59,44 @@ public partial class TerminalNodeViewModel : ObservableObject
     [ObservableProperty]
     public partial NodeStatus Status { get; set; }
 
+    /// <summary>Short status text for the header, e.g. "Needs you · Bash"; <c>null</c> when there's nothing to say.</summary>
+    [ObservableProperty]
+    public partial string? StatusText { get; set; }
+
+    /// <summary>The agent is asking a yes/no tool permission, which the header's Allow/Deny buttons can answer.</summary>
+    [ObservableProperty]
+    public partial bool AwaitsPermission { get; set; }
+
+    /// <summary>The agent's conversation id, from its last event.</summary>
+    public string? SessionId { get; private set; }
+
+    private AgentStatus _agent = AgentStatus.Idle;
+
+    /// <summary>Updates the status from an agent event (see <see cref="AgentStatusReducer"/>).</summary>
+    public void ApplyAgentEvent(AgentEvent e)
+    {
+        if (e.SessionId != null) SessionId = e.SessionId;
+        SetAgentStatus(AgentStatusReducer.Apply(_agent, e));
+    }
+
+    /// <summary>
+    /// The prompt was answered. Allowed: the agent carries on. Otherwise (or unknown, when the user answered in the
+    /// terminal) it's idle: a refusal sends no event, and an approval is followed by PostToolUse, which sets Working.
+    /// </summary>
+    public void PromptAnswered(bool allowed)
+    {
+        if (Status == NodeStatus.Waiting)
+            SetAgentStatus(allowed ? new AgentStatus(NodeStatus.Working) : AgentStatus.Idle);
+    }
+
+    private void SetAgentStatus(AgentStatus s)
+    {
+        _agent = s;
+        Status = s.Status;
+        StatusText = AgentStatusReducer.Describe(s);
+        AwaitsPermission = s.AwaitsPermission;
+    }
+
     public NodeState ToState() => new()
     {
         Id = Id,
@@ -66,12 +111,13 @@ public partial class TerminalNodeViewModel : ObservableObject
         Height = Height,
     };
 
-    public static TerminalNodeViewModel FromState(NodeState s, string? commandLine = null, string? startError = null) => new()
+    public static TerminalNodeViewModel FromState(NodeState s, string? commandLine = null, string? startError = null, string? launchCommandLine = null) => new()
     {
         Id = s.Id,
         ProfileId = s.ProfileId,
         Title = s.Title,
         CommandLine = commandLine ?? s.CommandLine,
+        LaunchCommandLine = launchCommandLine,
         Color = s.Color,
         WorkingDirectory = s.WorkingDirectory,
         StartError = startError,

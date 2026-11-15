@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using EasyWindowsTerminalControl;
+using KovanTerm.Interop;
 using KovanTerm.Services;
 using KovanTerm.ViewModels;
 using Nodify;
@@ -19,9 +20,15 @@ public partial class MainWindow : FluentWindow
     public MainWindow()
     {
         InitializeComponent();
-        _vm = new MainViewModel(new WorkspaceStore(), new ProfileStore(), new CommandResolver(), new DialogService(this), new SettingsStore());
+        // Before any terminal starts: they inherit this process's environment
+        AgentEnvironment.RemoveSessionMarkers();
+        _vm = new MainViewModel(new WorkspaceStore(), new ProfileStore(), new CommandResolver(), new DialogService(this), new SettingsStore(),
+            _hookServer);
         DataContext = _vm;
         _canvas = new TerminalCanvasController(Editor);
+        _vm.TerminalInputRequested += _canvas.SendInput;
+        _canvas.AnswerKeyTyped += node => _vm.OnAnswerKeyTyped((TerminalNodeViewModel)node);
+        _vm.AttentionNeeded += _ => FlashIfInactive();
 
         // Theme: WPF-UI resources + terminal colors; re-applied when the preference changes
         var theme = new ThemeService(this);
@@ -36,6 +43,7 @@ public partial class MainWindow : FluentWindow
         NodifyEditor.AutoPanOnNodeFocus = false;
         PerfSelfTest.AttachIfRequested(this, Editor, _canvas);
         InitShortcuts();
+        _vm.GoToNodeRequested += GoToNode;
 
         // ViewportSize is read-only so it can't be bound; pass it to the ViewModel to center new nodes
         Editor.ViewportUpdated += (_, _) => _vm.ViewportSize = Editor.ViewportSize;
@@ -46,7 +54,23 @@ public partial class MainWindow : FluentWindow
         {
             _vm.SaveNow();
             _canvas.TerminateAll();
+            _hookServer.Dispose();
         };
+    }
+
+    private readonly AgentHookServer _hookServer = new();
+
+    /// <summary>Flashes the taskbar button until the window is activated; nothing if it's already in front.</summary>
+    private void FlashIfInactive()
+    {
+        if (IsActive || _hwnd == IntPtr.Zero) return;
+        var info = new Native.FLASHWINFO
+        {
+            cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf<Native.FLASHWINFO>(),
+            hwnd = _hwnd,
+            dwFlags = Native.FLASHW_TRAY | Native.FLASHW_TIMERNOFG,
+        };
+        Native.FlashWindowEx(ref info);
     }
 
     private void OnNodesChanged(object? sender, NotifyCollectionChangedEventArgs e)
