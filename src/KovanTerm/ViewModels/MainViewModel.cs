@@ -46,8 +46,33 @@ public partial class MainViewModel : ObservableObject
     // Saves this long after a change; bursts of changes such as dragging collapse into a single write
     private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
 
-    public MainViewModel(WorkspaceStore store, ProfileStore profiles, CommandResolver resolver, IDialogService dialogs, SettingsStore settings)
+    private readonly ClaudeHooks? _hooks;
+    private readonly Dispatcher _dispatcher = Dispatcher.CurrentDispatcher;
+
+    /// <summary>Agents currently working / waiting for the user (toolbar summary).</summary>
+    [ObservableProperty]
+    public partial int WorkingCount { get; set; }
+
+    [ObservableProperty]
+    public partial int WaitingCount { get; set; }
+
+    /// <summary>The view pans to and focuses this node.</summary>
+    public event Action<TerminalNodeViewModel>? GoToNodeRequested;
+
+    /// <summary>An agent started waiting for the user; the view flashes the taskbar if the window isn't active.</summary>
+    public event Action<TerminalNodeViewModel>? AttentionNeeded;
+
+    /// <summary>Text to type into a node's terminal (e.g. the answer to a permission prompt).</summary>
+    public event Action<TerminalNodeViewModel, string>? TerminalInputRequested;
+
+    public MainViewModel(WorkspaceStore store, ProfileStore profiles, CommandResolver resolver, IDialogService dialogs, SettingsStore settings,
+        AgentHookServer? hookServer = null)
     {
+        if (hookServer != null)
+        {
+            _hooks = new ClaudeHooks(hookServer);
+            hookServer.EventReceived += (id, e) => _dispatcher.BeginInvoke(() => OnAgentEvent(id, e));
+        }
         _settings = settings;
         Theme = settings.Load().Theme;
         _store = store;
@@ -84,7 +109,62 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void CloseNode(TerminalNodeViewModel node) => Nodes.Remove(node);
+    private void CloseNode(TerminalNodeViewModel node)
+    {
+        Nodes.Remove(node);
+        _hooks?.Remove(node.Id);
+    }
+
+    /// <summary>Goes to the next node waiting for the user, in reading order after the last one visited.</summary>
+    [RelayCommand]
+    private void GoToWaiting()
+    {
+        var waiting = NodeNavigation.ReadingOrder(Nodes.Where(n => n.Status == NodeStatus.Waiting), n => n.Bounds);
+        if (waiting.Count == 0) return;
+        var next = waiting.SkipWhile(n => n != _lastWaitingVisited).Skip(1).FirstOrDefault() ?? waiting[0];
+        _lastWaitingVisited = next;
+        GoToNodeRequested?.Invoke(next);
+    }
+
+    private TerminalNodeViewModel? _lastWaitingVisited;
+
+    // Claude Code's permission prompt: "1" picks "Yes" wherever the highlight is (Enter would take the highlighted
+    // row, which may be "allow for this session"); Escape is "No, and tell Claude what to do differently".
+    [RelayCommand]
+    private void AllowPermission(TerminalNodeViewModel node) => AnswerPermission(node, "1", allowed: true);
+
+    [RelayCommand]
+    private void DenyPermission(TerminalNodeViewModel node) => AnswerPermission(node, "\x1b", allowed: false);
+
+    private void AnswerPermission(TerminalNodeViewModel node, string keys, bool allowed)
+    {
+        if (!node.AwaitsPermission) return;
+        TerminalInputRequested?.Invoke(node, keys);
+        node.PromptAnswered(allowed);
+        UpdateAgentCounts();
+    }
+
+    /// <summary>The user pressed a key that answers prompts (Enter, Escape, a digit) in the node's terminal.</summary>
+    public void OnAnswerKeyTyped(TerminalNodeViewModel node)
+    {
+        node.PromptAnswered(allowed: false);
+        UpdateAgentCounts();
+    }
+
+    private void OnAgentEvent(Guid nodeId, AgentEvent e)
+    {
+        if (Nodes.FirstOrDefault(n => n.Id == nodeId) is not { } node) return;
+        var wasWaiting = node.Status == NodeStatus.Waiting;
+        node.ApplyAgentEvent(e);
+        UpdateAgentCounts();
+        if (!wasWaiting && node.Status == NodeStatus.Waiting) AttentionNeeded?.Invoke(node);
+    }
+
+    private void UpdateAgentCounts()
+    {
+        WorkingCount = Nodes.Count(n => n.Status == NodeStatus.Working);
+        WaitingCount = Nodes.Count(n => n.Status == NodeStatus.Waiting);
+    }
 
     /// <summary>Cycles the theme: system → dark → light → system.</summary>
     [RelayCommand]
@@ -123,15 +203,29 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private static TerminalNodeViewModel CreateNode(TerminalProfile profile, string resolvedPath, string directory, Point location) => new()
+    private TerminalNodeViewModel CreateNode(TerminalProfile profile, string resolvedPath, string directory, Point location)
     {
-        ProfileId = profile.Id,
-        Title = profile.Name,
-        CommandLine = CommandResolver.BuildCommandLine(resolvedPath, profile.Arguments),
-        Color = profile.Color,
-        WorkingDirectory = directory,
-        Location = location,
-    };
+        var id = Guid.NewGuid();
+        return new()
+        {
+            Id = id,
+            ProfileId = profile.Id,
+            Title = profile.Name,
+            CommandLine = CommandResolver.BuildCommandLine(resolvedPath, profile.Arguments),
+            LaunchCommandLine = LaunchCommandLine(id, resolvedPath, profile.Arguments),
+            Color = profile.Color,
+            WorkingDirectory = directory,
+            Location = location,
+        };
+    }
+
+    /// <summary>For Claude Code: the command line with this run's hook settings; otherwise <c>null</c> (run the saved command).</summary>
+    private string? LaunchCommandLine(Guid nodeId, string resolvedPath, string arguments)
+    {
+        if (_hooks == null || !ClaudeHooks.IsClaude(resolvedPath)) return null;
+        var hookArgs = _hooks.PrepareArguments(nodeId);
+        return hookArgs.Length == 0 ? null : CommandResolver.BuildCommandLine(resolvedPath, $"{arguments} {hookArgs}".Trim());
+    }
 
     private void AddNode(TerminalNodeViewModel node)
     {
@@ -166,7 +260,8 @@ public partial class MainViewModel : ObservableObject
         if (_profiles.FirstOrDefault(p => p.Id == s.ProfileId) is { } profile)
         {
             return _resolver.Resolve(profile.Executable) is { } path
-                ? TerminalNodeViewModel.FromState(s, CommandResolver.BuildCommandLine(path, profile.Arguments))
+                ? TerminalNodeViewModel.FromState(s, CommandResolver.BuildCommandLine(path, profile.Arguments),
+                    launchCommandLine: LaunchCommandLine(s.Id, path, profile.Arguments))
                 : TerminalNodeViewModel.FromState(s, startError: NotFoundMessage(profile.Executable));
         }
 
@@ -213,6 +308,7 @@ public partial class MainViewModel : ObservableObject
             foreach (TerminalNodeViewModel n in e.NewItems) n.PropertyChanged += OnNodePropertyChanged;
         if (e.OldItems != null)
             foreach (TerminalNodeViewModel n in e.OldItems) n.PropertyChanged -= OnNodePropertyChanged;
+        UpdateAgentCounts();
         ScheduleSave();
     }
 

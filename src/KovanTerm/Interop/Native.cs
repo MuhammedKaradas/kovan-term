@@ -10,6 +10,12 @@ internal static class Native
     [StructLayout(LayoutKind.Sequential)]
     public struct POINT { public int X, Y; }
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct FLASHWINFO { public uint cbSize; public IntPtr hwnd; public uint dwFlags; public uint uCount; public uint dwTimeout; }
+
+    public const uint FLASHW_TRAY = 2;
+    /// <summary>Flash until the window comes to the foreground.</summary>
+    public const uint FLASHW_TIMERNOFG = 12;
     public const uint GA_ROOT = 2;
     public const uint SRCCOPY = 0x00CC0020;
 
@@ -18,6 +24,7 @@ internal static class Native
     [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr hWnd, ref POINT point);
     [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr hWnd, uint flags);
     [DllImport("user32.dll")] public static extern bool IsChild(IntPtr parent, IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern bool FlashWindowEx(ref FLASHWINFO info);
     [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr hWnd, IntPtr hdc, uint flags);
     [DllImport("user32.dll")] public static extern int SetWindowRgn(IntPtr hWnd, IntPtr hRgn, bool redraw);
     /// <summary>Returns 0 (ERROR) when the window has no region.</summary>

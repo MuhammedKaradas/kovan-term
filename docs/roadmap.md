@@ -29,7 +29,7 @@ Goal: see at a glance which agent is working and which one is waiting for you.
 
 | # | Item |
 |---|---|
-| #10 | Detect agent status through a Claude Code hook bridge |
+| #10 | Detect agent status through a Claude Code hook bridge ([0003](decisions/0003-agent-status-via-http-hooks.md)) |
 | #11 | Waiting-agent notifications and a control panel |
 | #12 | Codex and Gemini CLI status support |
 | #13 | Resume agent sessions |

@@ -5,6 +5,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using EasyWindowsTerminalControl;
 using KovanTerm.Interop;
+using KovanTerm.Services;
 using Microsoft.Terminal.Wpf;
 using Nodify;
 
@@ -69,6 +70,9 @@ public sealed class TerminalCanvasController
     /// <summary>Raised when a terminal gets keyboard focus (click, shortcut); the argument is the node ViewModel.</summary>
     public event Action<object>? NodeFocused;
 
+    /// <summary>The user typed a key that answers a prompt (Enter, Escape, a digit) into a terminal (see <see cref="PromptKeys"/>).</summary>
+    public event Action<object>? AnswerKeyTyped;
+
     /// <summary>Snapshot mode enter/exit timings (for measurement; see <see cref="PerfSelfTest"/>).</summary>
     public event Action<string, TimeSpan>? Timing;
 
@@ -94,7 +98,14 @@ public sealed class TerminalCanvasController
         _byNode[node] = entry;
         // The snapshot goes stale as output arrives; it must also be retaken when the size changes (resize, font size)
         if (term.ConPTYTerm != null)
+        {
             term.ConPTYTerm.TerminalOutput += (_, _) => entry.Dirty = true;
+            term.ConPTYTerm.InterceptInputToTermApp += (ref Span<char> input) =>
+            {
+                if (PromptKeys.IsAnswer(input))
+                    term.Dispatcher.BeginInvoke(() => AnswerKeyTyped?.Invoke(node));
+            };
+        }
         term.SizeChanged += (_, _) => entry.Dirty = true;
         term.IsKeyboardFocusWithinChanged += (_, e) =>
         {
@@ -108,6 +119,13 @@ public sealed class TerminalCanvasController
             UpdateSleepStates();
             UpdateClipRegions();
         }, DispatcherPriority.ApplicationIdle);
+    }
+
+    /// <summary>Types text into the node's terminal as if the user had (works while it sleeps too).</summary>
+    public void SendInput(object node, string text)
+    {
+        if (_byNode.TryGetValue(node, out var entry))
+            entry.Control.ConPTYTerm?.WriteToTerm(text);
     }
 
     /// <summary>Kills the node's terminal and every process under it (e.g. cmd → claude → MCP servers).</summary>
