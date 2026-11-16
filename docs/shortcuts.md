@@ -10,12 +10,14 @@ use, most of them use `Ctrl+Shift` (e.g. `Ctrl+T` transposes characters in bash/
 | `Ctrl+Shift+F` | Fit all terminals |
 | `Ctrl+Shift+Enter` | Zoom to the current terminal (~90% of the visible area, at most 100% zoom) |
 | `Ctrl+Shift+T` | New terminal |
+| `Ctrl+Shift+A` | Show/hide the Agents panel |
 
 **Mouse:**
 
 | | |
 |---|---|
 | Double-click a header | Zoom to that terminal and focus it |
+| Click a row in the Agents panel | Go to that terminal and focus it |
 | Right-click the canvas | "New terminal here…" |
 | Bottom-right grip | Resize the terminal |
 | Wheel | Zoom in / out |

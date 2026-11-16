@@ -5,4 +5,14 @@ namespace KovanTerm.Models;
 /// <param name="SessionId">The agent's conversation id, if it sent one.</param>
 /// <param name="ToolName">The tool the event is about (tool and permission events).</param>
 /// <param name="NotificationType">For <c>Notification</c>: <c>permission_prompt</c>, <c>idle_prompt</c>…</param>
-public sealed record AgentEvent(string Name, string? SessionId = null, string? ToolName = null, string? NotificationType = null);
+/// <param name="TranscriptPath">The conversation's transcript file (<c>.jsonl</c>).</param>
+/// <param name="AgentId">For subagent events: the subagent's id.</param>
+/// <param name="AgentType">For subagent events: its type, e.g. <c>Explore</c>.</param>
+public sealed record AgentEvent(
+    string Name,
+    string? SessionId = null,
+    string? ToolName = null,
+    string? NotificationType = null,
+    string? TranscriptPath = null,
+    string? AgentId = null,
+    string? AgentType = null);

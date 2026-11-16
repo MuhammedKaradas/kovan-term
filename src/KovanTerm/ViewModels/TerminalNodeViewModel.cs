@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using KovanTerm.Models;
@@ -93,8 +94,62 @@ public partial class TerminalNodeViewModel : ObservableObject
     public void ApplyAgentEvent(AgentEvent e)
     {
         if (e.SessionId != null) SessionId = e.SessionId;
+        if (e.TranscriptPath != null) TranscriptPath = e.TranscriptPath;
+        if (e.AgentId != null)
+        {
+            if (e.Name == "SubagentStart") _subagents[e.AgentId] = e.AgentType is { Length: > 0 } t ? t : "agent";
+            else if (e.Name == "SubagentStop") _subagents.Remove(e.AgentId);
+            SubagentsText = DescribeSubagents(_subagents.Values);
+        }
+        // A new conversation starts without subagents (e.g. after /clear)
+        if (e.Name == "SessionStart" && _subagents.Count > 0)
+        {
+            _subagents.Clear();
+            SubagentsText = null;
+        }
         SetAgentStatus(AgentStatusReducer.Apply(_agent, e));
     }
+
+    // ---- Agents panel ----
+
+    /// <summary>The conversation's transcript file, from the agent's events.</summary>
+    public string? TranscriptPath { get; private set; }
+
+    /// <summary>Context the agent's conversation uses, e.g. "ctx 65k"; <c>null</c> until known.</summary>
+    [ObservableProperty]
+    public partial string? ContextText { get; private set; }
+
+    public void SetContextTokens(long? tokens) => ContextText = tokens is { } t ? $"ctx {TranscriptUsage.Format(t)}" : null;
+
+    private readonly Dictionary<string, string> _subagents = new();
+
+    /// <summary>Running subagents, e.g. "2 subagents: Explore, Plan"; <c>null</c> when none.</summary>
+    [ObservableProperty]
+    public partial string? SubagentsText { get; private set; }
+
+    public static string? DescribeSubagents(IEnumerable<string> types)
+    {
+        var list = types.ToList();
+        if (list.Count == 0) return null;
+        var names = string.Join(", ", list.GroupBy(t => t).Select(g => g.Count() > 1 ? $"{g.Key} ×{g.Count()}" : g.Key));
+        return list.Count == 1 ? $"1 subagent: {names}" : $"{list.Count} subagents: {names}";
+    }
+
+    /// <summary>Panel grouping: the working folder's name.</summary>
+    public string GroupName => WorkingDirectory is { Length: > 0 } dir
+        ? Path.GetFileName(dir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)) is { Length: > 0 } name ? name : dir
+        : "(no folder)";
+
+    /// <summary>Panel order within a group: waiting first, then working, then the rest.</summary>
+    public int StatusOrder => Status switch
+    {
+        NodeStatus.Waiting => 0,
+        NodeStatus.Working => 1,
+        NodeStatus.Error => 2,
+        _ => 3,
+    };
+
+    partial void OnStatusChanged(NodeStatus value) => OnPropertyChanged(nameof(StatusOrder));
 
     /// <summary>
     /// The prompt was answered. Allowed: the agent carries on. Otherwise (or unknown, when the user answered in the

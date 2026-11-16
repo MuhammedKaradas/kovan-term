@@ -142,7 +142,8 @@ public sealed class AgentHookServer : IDisposable
             using var doc = JsonDocument.Parse(json.ToArray());
             var root = doc.RootElement;
             if (root.ValueKind != JsonValueKind.Object || Str(root, "hook_event_name") is not { } name) return null;
-            return new AgentEvent(name, Str(root, "session_id"), Str(root, "tool_name"), Str(root, "notification_type"));
+            return new AgentEvent(name, Str(root, "session_id"), Str(root, "tool_name"), Str(root, "notification_type"),
+                Str(root, "transcript_path"), Str(root, "agent_id"), Str(root, "agent_type"));
         }
         catch (JsonException)
         {

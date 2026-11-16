@@ -77,6 +77,7 @@ public partial class MainViewModel : ObservableObject
         }
         _settings = settings;
         Theme = settings.Load().Theme;
+        ShowAgentsPanel = settings.Load().ShowAgentsPanel;
         _store = store;
         _profiles = profiles.Load();
         _resolver = resolver;
@@ -115,6 +116,7 @@ public partial class MainViewModel : ObservableObject
     {
         Nodes.Remove(node);
         _hooks?.Remove(node.Id);
+        _usage.Remove(node);
     }
 
     /// <summary>Goes to the next node waiting for the user, in reading order after the last one visited.</summary>
@@ -159,6 +161,44 @@ public partial class MainViewModel : ObservableObject
         if (Nodes.FirstOrDefault(n => n.Id == nodeId) is not { } node) return;
         StatusLog($"{node.Title} hook {e.Name} {e.ToolName}");
         UpdateStatus(node, () => node.ApplyAgentEvent(e));
+        // A reply was just written to the transcript
+        if (e.Name is "Stop" or "PostToolUse" or "PostToolUseFailure" or "SessionStart" && node.TranscriptPath != null)
+            RefreshContext(node);
+    }
+
+    // ---- Agents panel ----
+
+    [ObservableProperty]
+    public partial bool ShowAgentsPanel { get; set; }
+
+    partial void OnShowAgentsPanelChanged(bool value) => _settings.Save(_settings.Load() with { ShowAgentsPanel = value });
+
+    [RelayCommand]
+    private void ToggleAgentsPanel() => ShowAgentsPanel = !ShowAgentsPanel;
+
+    [RelayCommand]
+    private void GoToNode(TerminalNodeViewModel node) => GoToNodeRequested?.Invoke(node);
+
+    private readonly Dictionary<TerminalNodeViewModel, TranscriptUsage> _usage = new();
+    // Nodes with a read in flight, and those that got another event meanwhile (read once more afterwards)
+    private readonly HashSet<TerminalNodeViewModel> _usageReading = new(), _usageAgain = new();
+
+    /// <summary>Reads the node's new transcript lines off the UI thread and updates its context size.</summary>
+    private void RefreshContext(TerminalNodeViewModel node)
+    {
+        if (!_usageReading.Add(node))
+        {
+            _usageAgain.Add(node);
+            return;
+        }
+        if (!_usage.TryGetValue(node, out var usage)) _usage[node] = usage = new TranscriptUsage();
+        var path = node.TranscriptPath!;
+        Task.Run(() => usage.Update(path)).ContinueWith(t =>
+        {
+            _usageReading.Remove(node);
+            if (t.Result && Nodes.Contains(node)) node.SetContextTokens(usage.ContextTokens);
+            if (_usageAgain.Remove(node)) RefreshContext(node);
+        }, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
     /// <summary>The program in the node's terminal reported its status (OSC 7501, e.g. Codex).</summary>

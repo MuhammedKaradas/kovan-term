@@ -161,6 +161,16 @@ A profile that passes its own `--resume`, `--continue` or `--session-id` is left
 Programs that write OSC 7501 status reports without waiting for the terminal's answer (Codex) are read from
 the terminal output by `ProgramStatusParser`; Allow types the program's own "Yes" key (`y` for Codex).
 
+## Agents panel
+
+A list of every node beside the canvas (left), grouped by working folder, with the agents waiting for the user first
+(`ListCollectionView` with live sorting on `StatusOrder`). Each row shows the status, the context the conversation
+uses (`TranscriptUsage` reads only what was appended to the transcript, off the UI thread, on `Stop`/`PostToolUse`
+hooks) and running subagents (`SubagentStart`/`SubagentStop`). It updates only on status events.
+
+The panel is square and flush with the window edge: a large rounded, bordered panel at this spot dropped canvas
+motion from ~59 to ~34 fps. Keep large static chrome next to the canvas free of `CornerRadius`, and measure.
+
 ## Planned components
 
 - **Voice** (v0.4): local speech recognition with Whisper.net.

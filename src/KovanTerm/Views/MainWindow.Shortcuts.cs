@@ -64,6 +64,9 @@ public partial class MainWindow
             case ShortcutAction.NewTerminal:
                 _vm.NewTerminalCommand.Execute(null);
                 break;
+            case ShortcutAction.ToggleAgentsPanel:
+                _vm.ToggleAgentsPanelCommand.Execute(null);
+                break;
         }
     }
 

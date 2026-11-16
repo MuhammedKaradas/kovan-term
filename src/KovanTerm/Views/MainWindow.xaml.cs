@@ -1,4 +1,9 @@
+using System.Collections;
 using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Windows.Data;
+using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -45,6 +50,7 @@ public partial class MainWindow : FluentWindow
         PerfSelfTest.AttachIfRequested(this, Editor, _canvas);
         InitShortcuts();
         _vm.GoToNodeRequested += GoToNode;
+        AgentsList.ItemsSource = CreateAgentsView(_vm.Nodes);
 
         // ViewportSize is read-only so it can't be bound; pass it to the ViewModel to center new nodes
         Editor.ViewportUpdated += (_, _) => _vm.ViewportSize = Editor.ViewportSize;
@@ -60,6 +66,36 @@ public partial class MainWindow : FluentWindow
     }
 
     private readonly AgentHookServer _hookServer = new();
+
+    /// <summary>
+    /// Agents panel list: grouped by working folder; within a group, agents waiting for the user first, then working
+    /// ones, re-sorted live as statuses change.
+    /// </summary>
+    private static ListCollectionView CreateAgentsView(IList nodes)
+    {
+        var view = new ListCollectionView(nodes);
+        view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(TerminalNodeViewModel.GroupName)));
+        view.SortDescriptions.Add(new SortDescription(nameof(TerminalNodeViewModel.GroupName), ListSortDirection.Ascending));
+        view.SortDescriptions.Add(new SortDescription(nameof(TerminalNodeViewModel.StatusOrder), ListSortDirection.Ascending));
+        view.SortDescriptions.Add(new SortDescription(nameof(TerminalNodeViewModel.Title), ListSortDirection.Ascending));
+        view.LiveSortingProperties.Add(nameof(TerminalNodeViewModel.StatusOrder));
+        view.IsLiveSorting = true;
+        return view;
+    }
+
+    // A row in the Agents panel: go to that terminal (but not when Allow/Deny inside the row was clicked)
+    private void AgentRow_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject source && FindAncestor<ButtonBase>(source) != null) return;
+        if (sender is FrameworkElement { DataContext: TerminalNodeViewModel node }) GoToNode(node);
+    }
+
+    private static T? FindAncestor<T>(DependencyObject? d) where T : DependencyObject
+    {
+        for (; d != null; d = d is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d))
+            if (d is T match) return match;
+        return null;
+    }
 
     /// <summary>Flashes the taskbar button until the window is activated; nothing if it's already in front.</summary>
     private void FlashIfInactive()
