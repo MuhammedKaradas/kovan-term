@@ -1,0 +1,14 @@
+SYNTHETIC: built from strings in @google/gemini-cli 0.68.0 (no Gemini CLI on the test machine)
+╭──────────────────────────────────────────────────────────────╮
+│ ✓  ReadFolder .                                               │
+╰──────────────────────────────────────────────────────────────╯
+╭──────────────────────────────────────────────────────────────╮
+│ ?  Shell npm test                                             │
+│                                                               │
+│ Allow execution of: 'npm'?                                    │
+│                                                               │
+│ ● 1. Allow once                                               │
+│   2. Allow for this session                                   │
+│   3. No, suggest changes (esc)                                │
+╰──────────────────────────────────────────────────────────────╯
+⠏ Waiting for user confirmation...

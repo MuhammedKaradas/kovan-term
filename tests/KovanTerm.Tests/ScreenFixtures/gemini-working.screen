@@ -1,0 +1,7 @@
+SYNTHETIC: built from strings in @google/gemini-cli 0.68.0 (no Gemini CLI on the test machine)
+✦ I'll look at the test setup first.
+⠼ Reading the project structure (esc to cancel, 4s)
+╭──────────────────────────────────────────────────────────────╮
+│ >   Type your message or @path/to/file                        │
+╰──────────────────────────────────────────────────────────────╯
+~/shop (main*)        no sandbox         gemini-2.5-pro (98% context left)

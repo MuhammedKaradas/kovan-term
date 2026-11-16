@@ -21,6 +21,10 @@
   </Target>
 
   <ItemGroup>
+    <EmbeddedResource Include="Resources\screen-rules.json" LogicalName="KovanTerm.Resources.screen-rules.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
     <PackageReference Include="EasyWindowsTerminalControl" Version="1.0.38" />
     <PackageReference Include="Nodify" Version="7.3.0" />

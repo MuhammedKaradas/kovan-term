@@ -349,6 +349,23 @@ public partial class MainViewModel : ObservableObject
         if (reports.Any(r => r.State is "done" or "idle")) ScheduleChangesRefresh(node);
     }
 
+    // ---- Screen rules ----
+
+    private readonly ScreenRules _screenRules = ScreenRules.Load();
+
+    /// <summary>Should the node's screen be read? Only agents with screen rules.</summary>
+    public bool WatchesScreen(TerminalNodeViewModel node) => _screenRules.HasRulesFor(node.AgentKind);
+
+    /// <summary>The bottom of the node's screen was read: match it against the screen rules.</summary>
+    public void OnScreenRead(TerminalNodeViewModel node, string screen)
+    {
+        if (!Nodes.Contains(node)) return;
+        var rule = _screenRules.Match(node.AgentKind, screen);
+        var status = ScreenRules.ToStatus(rule);
+        UpdateStatus(node, () => node.ApplyScreen(status));
+        if (rule != null) StatusLog($"{node.Title} screen {rule.Id} -> {node.Status}");
+    }
+
     // KOVAN_STATUS_LOG=<file>: every status event and the resulting status, for diagnosing agent integrations
     private static readonly string? StatusLogPath = Environment.GetEnvironmentVariable("KOVAN_STATUS_LOG");
 

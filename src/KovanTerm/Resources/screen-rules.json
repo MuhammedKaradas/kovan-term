@@ -1,0 +1,101 @@
+{
+  "//": "Screen rules: an agent's state read from the bottom of its terminal screen, for prompts that send no hook or status report. Matching ignores case, line breaks and repeated spaces. The highest priority match wins; no match means 'no opinion'. Each rule has captured screens in tests/KovanTerm.Tests/ScreenFixtures. Users can add or override rules (same id) in screen-rules.json in Kovan's data folder.",
+  "rules": [
+    {
+      "id": "claude-trust",
+      "agent": "claude",
+      "state": "blocked",
+      "kind": "trust",
+      "detail": "Trust this folder?",
+      "priority": 90,
+      "all": ["trust this folder", "enter to confirm"]
+    },
+    {
+      "id": "claude-permission",
+      "agent": "claude",
+      "state": "blocked",
+      "kind": "permission",
+      "priority": 80,
+      "all": ["do you want to", "esc to cancel"]
+    },
+    {
+      "id": "claude-working",
+      "agent": "claude",
+      "state": "working",
+      "priority": 50,
+      "any": ["esc to interrupt"]
+    },
+    {
+      "id": "codex-trust",
+      "agent": "codex",
+      "state": "blocked",
+      "kind": "trust",
+      "detail": "Trust this folder?",
+      "priority": 90,
+      "all": ["trust this folder?", "trust and continue"]
+    },
+    {
+      "id": "codex-hooks-review",
+      "agent": "codex",
+      "state": "blocked",
+      "kind": "question",
+      "detail": "Hooks need review",
+      "priority": 90,
+      "all": ["hooks are new or changed", "continue without trusting"]
+    },
+    {
+      "id": "codex-approval",
+      "agent": "codex",
+      "state": "blocked",
+      "kind": "permission",
+      "priority": 80,
+      "any": ["would you like to run the following command?", "would you like to make the following edits?"],
+      "all": ["press enter to confirm"]
+    },
+    {
+      "id": "codex-working",
+      "agent": "codex",
+      "state": "working",
+      "priority": 50,
+      "any": ["esc to interrupt"]
+    },
+    {
+      "id": "codex-idle",
+      "agent": "codex",
+      "state": "idle",
+      "priority": 10,
+      "any": ["ask codex to do anything"]
+    },
+    {
+      "id": "gemini-trust",
+      "agent": "gemini",
+      "state": "blocked",
+      "kind": "trust",
+      "detail": "Trust this folder?",
+      "priority": 90,
+      "any": ["do you trust the files in this folder?"]
+    },
+    {
+      "id": "gemini-permission",
+      "agent": "gemini",
+      "state": "blocked",
+      "kind": "permission",
+      "priority": 80,
+      "any": ["allow once", "apply this change?", "allow execution of"]
+    },
+    {
+      "id": "gemini-working",
+      "agent": "gemini",
+      "state": "working",
+      "priority": 50,
+      "any": ["esc to cancel"]
+    },
+    {
+      "id": "gemini-idle",
+      "agent": "gemini",
+      "state": "idle",
+      "priority": 10,
+      "any": ["type your message"]
+    }
+  ]
+}
