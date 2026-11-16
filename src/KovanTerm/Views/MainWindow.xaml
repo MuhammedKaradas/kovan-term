@@ -57,6 +57,12 @@
 
         <!-- Toolbar -->
         <DockPanel Grid.Row="1" Margin="12,0,12,8" LastChildFill="False">
+            <ui:Button DockPanel.Dock="Left" Appearance="Transparent" Margin="0,0,8,0" Command="{Binding ToggleAgentsPanelCommand}"
+                       ToolTip="Show/hide the Agents panel (Ctrl+Shift+A)" AutomationProperties.Name="Toggle Agents panel">
+                <ui:Button.Icon>
+                    <ui:SymbolIcon Symbol="PanelLeft24"/>
+                </ui:Button.Icon>
+            </ui:Button>
             <ui:Button DockPanel.Dock="Left" Appearance="Primary" Content="New terminal" Command="{Binding NewTerminalCommand}"
                        ToolTip="Open a new terminal with a chosen profile and working directory (Ctrl+Shift+T). Right-click the canvas: open it where you clicked.">
                 <ui:Button.Icon>
@@ -126,8 +132,110 @@
             </TextBlock>
         </DockPanel>
 
+        <Grid Grid.Row="2">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Agents panel: beside the canvas, never over it (terminals are HWNDs; nothing can be drawn on top).
+             Square and flush with the window on purpose: a large rounded, bordered panel here dropped canvas
+             motion from ~59 to ~34 fps (KOVAN_PERF_SELFTEST, 10 terminals). -->
+        <Border Grid.Column="0" Width="280" BorderThickness="0,1,1,0"
+                Background="{DynamicResource SolidBackgroundFillColorSecondaryBrush}"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                Visibility="{Binding ShowAgentsPanel, Converter={StaticResource BoolToVisibility}}">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Text="Agents" FontWeight="SemiBold" Margin="12,10,12,6"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <!-- An ItemsControl, not a ListBox: rows aren't "selected", a click goes to the node -->
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="4,0,4,8">
+                <ItemsControl x:Name="AgentsList" AutomationProperties.Name="Agents">
+                    <ItemsControl.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.HeaderTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" Margin="8,10,8,2" FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                </DataTemplate>
+                            </GroupStyle.HeaderTemplate>
+                        </GroupStyle>
+                    </ItemsControl.GroupStyle>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:TerminalNodeViewModel}">
+                            <Border BorderThickness="2,0,0,0" Padding="8,6" Margin="0,1" CornerRadius="4" Cursor="Hand"
+                                    MouseLeftButtonUp="AgentRow_Click" AutomationProperties.Name="{Binding Title}"
+                                    ToolTip="Go to this terminal">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="BorderBrush" Value="Transparent"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding Status}" Value="{x:Static models:NodeStatus.Waiting}">
+                                                <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCautionBrush}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <StackPanel>
+                                    <DockPanel>
+                                        <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"
+                                                 Fill="{Binding Status, Converter={StaticResource StatusToBrush}}"/>
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding ContextText}" FontSize="11" Margin="8,0,0,0"
+                                                   VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                                   ToolTip="Context the conversation uses (input of the latest reply)"/>
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                    </DockPanel>
+                                    <TextBlock Text="{Binding StatusText}" Margin="16,2,0,0" FontSize="12" TextTrimming="CharacterEllipsis"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding StatusText}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding SubagentsText}" Margin="16,2,0,0" FontSize="11" TextTrimming="CharacterEllipsis"
+                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}" ToolTip="{Binding SubagentsText}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SubagentsText}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <StackPanel Orientation="Horizontal" Margin="16,6,0,0"
+                                                Visibility="{Binding AwaitsPermission, Converter={StaticResource BoolToVisibility}}">
+                                        <ui:Button Content="Allow" Appearance="Success" Height="24" Padding="10,0" FontSize="12" Margin="0,0,4,0"
+                                                   AutomationProperties.Name="{Binding Title, StringFormat=Allow {0}}"
+                                                   Command="{Binding DataContext.AllowPermissionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                   CommandParameter="{Binding}"/>
+                                        <ui:Button Content="Deny" Appearance="Secondary" Height="24" Padding="10,0" FontSize="12"
+                                                   AutomationProperties.Name="{Binding Title, StringFormat=Deny {0}}"
+                                                   Command="{Binding DataContext.DenyPermissionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                   CommandParameter="{Binding}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
         <!-- Transparent canvas: the Mica backdrop shows through -->
-        <nodify:NodifyEditor x:Name="Editor" Grid.Row="2"
+        <nodify:NodifyEditor x:Name="Editor" Grid.Column="1"
                              ItemsSource="{Binding Nodes}"
                              ViewportZoom="{Binding ViewportZoom, Mode=TwoWay}"
                              ViewportLocation="{Binding ViewportLocation, Mode=TwoWay}"
@@ -238,5 +346,6 @@
                 </DataTemplate>
             </nodify:NodifyEditor.ItemTemplate>
         </nodify:NodifyEditor>
+        </Grid>
     </Grid>
 </ui:FluentWindow>
