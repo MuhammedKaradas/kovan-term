@@ -43,10 +43,24 @@ Hooks, delivered over HTTP to Kovan:
   environment at startup, so agents started in Kovan don't think they're nested in the session that
   launched Kovan.
 
+## Addendum: Codex (2026-11-16, #12)
+
+Codex (tested with 0.169) writes OSC 7501 reports **without** waiting for the probe's answer:
+`state=working:app=codex`, `state=blocked:app=codex:kind=permission`, `state=idle`, `state=done`. ConPTY passes
+them through, so `ProgramStatusParser` reads them from the terminal output (one vectorized search per output
+chunk; nothing is allocated unless a report is found). Any program that reports this way gets a status.
+
+Allow types `y` for Codex (its "Yes, proceed (y)" row), Deny types Escape; Codex then reports its new state
+itself. The app-server protocol (`codex app-server` + `codex --remote`) was also tried: a second client sees
+thread status changes, but approval requests only go to the client that owns the thread, so answering them from
+Kovan would mean Kovan driving the conversation. The terminal reports are enough for status and Allow/Deny.
+
+`KOVAN_STATUS_LOG=<file>` logs every status event and the resulting node status.
+
 ## Consequences
 
-- Status works for Claude Code only. Other agents need their own source (e.g. Codex's app-server
-  protocol, or screen rules as a fallback) — separate issues.
+- Status works for Claude Code (hooks) and Codex (OSC 7501). Other agents (Gemini CLI…) need another source,
+  e.g. screen rules (#47).
 - A user profile that passes its own `--settings` gets two; Claude uses both.
 - The hook URL contains the node id; the token keeps other local programs from faking events.
 - If Claude Code ever forwards OSC 7501 through ConPTY (or adds a way to force it), it can become a second

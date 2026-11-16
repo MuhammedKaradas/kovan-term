@@ -133,7 +133,7 @@ public partial class MainViewModel : ObservableObject
     // Claude Code's permission prompt: "1" picks "Yes" wherever the highlight is (Enter would take the highlighted
     // row, which may be "allow for this session"); Escape is "No, and tell Claude what to do differently".
     [RelayCommand]
-    private void AllowPermission(TerminalNodeViewModel node) => AnswerPermission(node, "1", allowed: true);
+    private void AllowPermission(TerminalNodeViewModel node) => AnswerPermission(node, node.AllowKey, allowed: true);
 
     [RelayCommand]
     private void DenyPermission(TerminalNodeViewModel node) => AnswerPermission(node, "\x1b", allowed: false);
@@ -143,6 +143,7 @@ public partial class MainViewModel : ObservableObject
         if (!node.AwaitsPermission) return;
         TerminalInputRequested?.Invoke(node, keys);
         node.PromptAnswered(allowed);
+        StatusLog($"{node.Title} answered allowed={allowed} -> {node.Status}");
         UpdateAgentCounts();
     }
 
@@ -156,8 +157,33 @@ public partial class MainViewModel : ObservableObject
     private void OnAgentEvent(Guid nodeId, AgentEvent e)
     {
         if (Nodes.FirstOrDefault(n => n.Id == nodeId) is not { } node) return;
+        StatusLog($"{node.Title} hook {e.Name} {e.ToolName}");
+        UpdateStatus(node, () => node.ApplyAgentEvent(e));
+    }
+
+    /// <summary>The program in the node's terminal reported its status (OSC 7501, e.g. Codex).</summary>
+    public void OnProgramStatus(TerminalNodeViewModel node, IReadOnlyList<ProgramStatusReport> reports)
+    {
+        if (!Nodes.Contains(node)) return;
+        foreach (var r in reports) StatusLog($"{node.Title} osc {r.State} {r.Kind} {r.Id}");
+        UpdateStatus(node, () => { foreach (var r in reports) node.ApplyProgramStatus(r); });
+    }
+
+    // KOVAN_STATUS_LOG=<file>: every status event and the resulting status, for diagnosing agent integrations
+    private static readonly string? StatusLogPath = Environment.GetEnvironmentVariable("KOVAN_STATUS_LOG");
+
+    private static void StatusLog(string line)
+    {
+        if (StatusLogPath == null) return;
+        try { File.AppendAllText(StatusLogPath, $"{DateTime.Now:HH:mm:ss.fff} {line}{Environment.NewLine}"); }
+        catch (IOException) { }
+    }
+
+    private void UpdateStatus(TerminalNodeViewModel node, Action apply)
+    {
         var wasWaiting = node.Status == NodeStatus.Waiting;
-        node.ApplyAgentEvent(e);
+        apply();
+        StatusLog($"{node.Title} -> {node.Status} {node.StatusText}");
         UpdateAgentCounts();
         if (!wasWaiting && node.Status == NodeStatus.Waiting) AttentionNeeded?.Invoke(node);
     }

@@ -158,6 +158,9 @@ Each Claude Code node keeps its conversation: a new node is started with `--sess
 (`ClaudeSessions`). Hook events carry the current id, so `/clear` moves the node to the new conversation.
 A profile that passes its own `--resume`, `--continue` or `--session-id` is left alone.
 
+Programs that write OSC 7501 status reports without waiting for the terminal's answer (Codex) are read from
+the terminal output by `ProgramStatusParser`; Allow types the program's own "Yes" key (`y` for Codex).
+
 ## Planned components
 
 - **Voice** (v0.4): local speech recognition with Whisper.net.

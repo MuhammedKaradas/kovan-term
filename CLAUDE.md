@@ -31,6 +31,8 @@ dotnet test                         # unit tests (tests/KovanTerm.Tests)
 - `KOVAN_PERF_SELFTEST=<log file>`: 8 s after startup, zooms/pans programmatically, writes frame times
   and snapshot-mode timings to the file, then closes the window. Run it before and after every change
   that can affect smoothness and put the results in the PR. Needs no mouse input.
+- `KOVAN_STATUS_LOG=<log file>`: appends every agent status event (hooks, OSC 7501 reports, Allow/Deny)
+  and the resulting node status. Use it to debug agent integrations.
 - Don't send **real mouse/keyboard input** on the user's machine (SetCursorPos, mouse_event,
   SendInput): it goes to whatever window is in front. Only use UI Automation patterns (Invoke,
   SelectionItem) and window messages (`CloseMainWindow`).
