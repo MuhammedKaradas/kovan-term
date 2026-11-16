@@ -11,6 +11,9 @@ public sealed class DialogService(Window owner) : IDialogService
     public bool ShowNewTerminal(NewTerminalViewModel viewModel) =>
         new NewTerminalWindow(viewModel) { Owner = owner }.ShowDialog() == true;
 
+    public bool ShowRecentConversations(RecentConversationsViewModel viewModel) =>
+        new RecentConversationsWindow(viewModel) { Owner = owner }.ShowDialog() == true;
+
     public string? PickFolder(string? initialDirectory)
     {
         var dialog = new OpenFolderDialog { Title = "Select working directory", InitialDirectory = initialDirectory ?? "" };

@@ -172,6 +172,46 @@ public partial class MainViewModel : ObservableObject
 
     private static string Plural(int n, string word) => n == 1 ? $"1 {word}" : $"{n} {word}s";
 
+    // ---- Recent conversations ----
+
+    private readonly ClaudeConversations _conversations = new();
+
+    /// <summary>Lists saved Claude Code conversations and reopens the one picked as a node, where it left off.</summary>
+    [RelayCommand]
+    private async Task OpenRecentConversation(Point? location)
+    {
+        var at = location ?? ViewportCenterForNewNode();
+        var claude = _profiles.Where(p => p.Id == "claude").Concat(_profiles)
+            .Select(p => (Profile: p, Path: _resolver.Resolve(p.Executable)))
+            .FirstOrDefault(x => x.Path != null && ClaudeHooks.IsClaude(x.Path));
+        if (claude.Path == null)
+        {
+            await _dialogs.ShowMessageAsync("Recent conversations", "Claude Code ('claude') wasn't found. Make sure it's installed and on PATH.");
+            return;
+        }
+
+        var list = await Task.Run(() => _conversations.List());
+        var open = Nodes.Select(n => n.SessionId).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var dialog = new RecentConversationsViewModel(list, open, DateTime.Now);
+        if (!_dialogs.ShowRecentConversations(dialog) || dialog.Selected is not { Info: var picked }) return;
+
+        // Already on the canvas: go there instead of opening it twice
+        if (Nodes.FirstOrDefault(n => string.Equals(n.SessionId, picked.SessionId, StringComparison.OrdinalIgnoreCase)) is { } existing)
+        {
+            GoToNodeRequested?.Invoke(existing);
+            return;
+        }
+        if (picked.Folder is not { } folder || !Directory.Exists(folder))
+        {
+            await _dialogs.ShowMessageAsync("Recent conversations", $"The conversation's folder no longer exists:\n{picked.Folder}");
+            return;
+        }
+        RememberDirectory(folder);
+        var node = CreateNode(claude.Profile, claude.Path, folder, at, existingSessionId: picked.SessionId);
+        AddNode(node);
+        CurrentNode = node;
+    }
+
     private void RememberSetupCommand(string repoRoot, string command)
     {
         var settings = _settings.Load();
@@ -429,10 +469,11 @@ public partial class MainViewModel : ObservableObject
     }
 
     private TerminalNodeViewModel CreateNode(TerminalProfile profile, string resolvedPath, string directory, Point location,
-        WorktreeInfo? worktree = null, string setup = "")
+        WorktreeInfo? worktree = null, string setup = "", string? existingSessionId = null)
     {
         var id = Guid.NewGuid();
-        var sessionId = ClaudeHooks.IsClaude(resolvedPath) ? Guid.NewGuid().ToString() : null;
+        // A saved conversation is resumed (ClaudeSessions finds its transcript); otherwise a new one gets an id now
+        var sessionId = ClaudeHooks.IsClaude(resolvedPath) ? existingSessionId ?? Guid.NewGuid().ToString() : null;
         var commandLine = CommandResolver.BuildCommandLine(resolvedPath, profile.Arguments);
         var launch = LaunchCommandLine(id, resolvedPath, profile.Arguments, sessionId);
         // A new worktree's setup runs once, before the agent's first start; later launches run the agent directly

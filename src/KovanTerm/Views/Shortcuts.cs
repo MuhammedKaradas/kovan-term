@@ -11,6 +11,7 @@ public enum ShortcutAction
     NewTerminal,
     ToggleAgentsPanel,
     ToggleChangesPanel,
+    RecentConversations,
 }
 
 /// <summary>
@@ -29,6 +30,7 @@ public static class Shortcuts
         (Key.T, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.NewTerminal, "New terminal"),
         (Key.A, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.ToggleAgentsPanel, "Show/hide the Agents panel"),
         (Key.G, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.ToggleChangesPanel, "Show/hide the Changes panel"),
+        (Key.O, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.RecentConversations, "Reopen a recent Claude Code conversation"),
     ];
 
     public static ShortcutAction? Match(Key key, ModifierKeys modifiers)

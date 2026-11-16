@@ -116,6 +116,13 @@
                 </ui:Button.Style>
             </ui:Button>
 
+            <ui:Button DockPanel.Dock="Left" Appearance="Secondary" Content="Recent" Margin="8,0,0,0" Command="{Binding OpenRecentConversationCommand}"
+                       ToolTip="Reopen a recent Claude Code conversation (Ctrl+Shift+O)" AutomationProperties.Name="Recent conversations">
+                <ui:Button.Icon>
+                    <ui:SymbolIcon Symbol="History24"/>
+                </ui:Button.Icon>
+            </ui:Button>
+
             <!-- Agents waiting for the user: each click goes to the next one -->
             <ui:Button DockPanel.Dock="Left" Margin="8,0,0,0" Appearance="Caution" Command="{Binding GoToWaitingCommand}"
                        ToolTip="Go to the next agent waiting for you" AutomationProperties.Name="Go to waiting agent">
@@ -484,6 +491,11 @@
                     <MenuItem Header="New terminal here…" Click="NewTerminalHere_Click">
                         <MenuItem.Icon>
                             <ui:SymbolIcon Symbol="Add24"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="Open a recent conversation here…" Click="RecentConversationHere_Click">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon Symbol="History24"/>
                         </MenuItem.Icon>
                     </MenuItem>
                 </ContextMenu>

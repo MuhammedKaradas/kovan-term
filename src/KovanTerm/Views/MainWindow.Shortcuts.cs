@@ -76,6 +76,9 @@ public partial class MainWindow
             case ShortcutAction.ToggleChangesPanel:
                 _vm.ToggleChangesPanelCommand.Execute(null);
                 break;
+            case ShortcutAction.RecentConversations:
+                _vm.OpenRecentConversationCommand.Execute(null);
+                break;
         }
     }
 

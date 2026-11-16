@@ -12,6 +12,7 @@ use, most of them use `Ctrl+Shift` (e.g. `Ctrl+T` transposes characters in bash/
 | `Ctrl+Shift+T` | New terminal |
 | `Ctrl+Shift+A` | Show/hide the Agents panel |
 | `Ctrl+Shift+G` | Show/hide the Changes panel (git changes of the current terminal's folder) |
+| `Ctrl+Shift+O` | Reopen a recent Claude Code conversation as a new terminal |
 
 **Mouse:**
 

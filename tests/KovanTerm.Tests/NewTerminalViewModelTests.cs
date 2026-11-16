@@ -10,6 +10,7 @@ public sealed class NewTerminalViewModelTests
     private sealed class FakeDialogs(string? folder = null) : IDialogService
     {
         public bool ShowNewTerminal(NewTerminalViewModel viewModel) => true;
+        public bool ShowRecentConversations(RecentConversationsViewModel viewModel) => false;
         public string? PickFolder(string? initialDirectory) => folder;
         public Task<WorktreeCloseChoice> AskCloseWorktreeAsync(string title, string message) => Task.FromResult(WorktreeCloseChoice.Keep);
         public Task ShowMessageAsync(string title, string message) => Task.CompletedTask;

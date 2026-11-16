@@ -158,6 +158,11 @@ Each Claude Code node keeps its conversation: a new node is started with `--sess
 (`ClaudeSessions`). Hook events carry the current id, so `/clear` moves the node to the new conversation.
 A profile that passes its own `--resume`, `--continue` or `--session-id` is left alone.
 
+**Recent** (`Ctrl+Shift+O`) lists saved Claude Code conversations (`ClaudeConversations`): the 300 most recently written
+transcripts in `<claude config dir>\projects\*\*.jsonl`, reading only each file's first 128 KB (folder, first prompt)
+and last 64 KB (latest `custom-title` / `ai-title`), since transcripts add up to hundreds of MB. Picking one opens a
+node in its folder with that session id, so it's resumed; one already on the canvas is gone to instead.
+
 Programs that write OSC 7501 status reports without waiting for the terminal's answer (Codex) are read from
 the terminal output by `ProgramStatusParser`; Allow types the program's own "Yes" key (`y` for Codex).
 
