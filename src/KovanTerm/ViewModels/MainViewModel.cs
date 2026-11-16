@@ -106,26 +106,63 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>Asks for a profile and working directory, then opens a new terminal. Places it at the center of the viewport if <paramref name="location"/> is null.</summary>
     [RelayCommand]
-    private void NewTerminal(Point? location)
+    private async Task NewTerminal(Point? location)
     {
         var options = _profiles.Select(p => new ProfileOptionViewModel(p, _resolver.Resolve(p.Executable))).ToList();
         var dialog = new NewTerminalViewModel(_dialogs, options, _recentDirectories, _lastProfileId);
         if (!_dialogs.ShowNewTerminal(dialog) || dialog.SelectedProfile is not { IsAvailable: true } choice) return;
+        var at = location ?? ViewportCenterForNewNode();
 
         var directory = Path.GetFullPath(dialog.WorkingDirectory);
         RememberDirectory(directory);
         _lastProfileId = choice.Profile.Id;
-        AddNode(CreateNode(choice.Profile, choice.ResolvedPath!, directory, location ?? ViewportCenterForNewNode()));
+
+        WorktreeInfo? worktree = null;
+        if (dialog.CreatesWorktree)
+        {
+            var created = await GitWorktrees.CreateAsync(dialog.RepoRoot!, dialog.BranchName);
+            if (created.Value == null)
+            {
+                await _dialogs.ShowErrorAsync("Couldn't create the worktree", created.Error ?? "git failed.");
+                return;
+            }
+            worktree = created.Value;
+            // Same place inside the repository: a subfolder picked in the main checkout opens in the worktree's copy
+            directory = Path.GetFullPath(Path.Combine(worktree.Path, Path.GetRelativePath(dialog.RepoRoot!, directory)));
+        }
+        var node = CreateNode(choice.Profile, choice.ResolvedPath!, directory, at, worktree);
+        AddNode(node);
+        // The terminal just opened is the one the user is about to work with
+        CurrentNode = node;
     }
 
     [RelayCommand]
-    private void CloseNode(TerminalNodeViewModel node)
+    private async Task CloseNode(TerminalNodeViewModel node)
     {
+        var deleteWorktree = false;
+        if (node.Worktree is { } w && Directory.Exists(w.Path))
+        {
+            var state = (await GitWorktrees.StateAsync(w)).Value;
+            var work = state is { HasWork: true }
+                ? $"It has {Plural(state.UncommittedFiles, "uncommitted file")} and {Plural(state.CommitsAhead, "commit")} that would be lost if you delete it."
+                : "It has no changes.";
+            var choice = await _dialogs.AskCloseWorktreeAsync("Close terminal",
+                $"This terminal works in the worktree\n{w.Path}\non branch {w.Branch}.\n\n{work}");
+            if (choice == WorktreeCloseChoice.Cancel) return;
+            deleteWorktree = choice == WorktreeCloseChoice.Delete;
+        }
+
         Nodes.Remove(node);
         _hooks?.Remove(node.Id);
         _usage.Remove(node);
         if (CurrentNode == node) CurrentNode = null;
+
+        // After the node is gone: its shell must not hold the folder any more
+        if (deleteWorktree && node.Worktree is { } worktree && (await GitWorktrees.RemoveAsync(worktree)).Error is { } error)
+            await _dialogs.ShowErrorAsync("Couldn't delete the worktree", $"{error}\n\nFolder: {worktree.Path}");
     }
+
+    private static string Plural(int n, string word) => n == 1 ? $"1 {word}" : $"{n} {word}s";
 
     /// <summary>Goes to the next node waiting for the user, in reading order after the last one visited.</summary>
     [RelayCommand]
@@ -317,7 +354,8 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private TerminalNodeViewModel CreateNode(TerminalProfile profile, string resolvedPath, string directory, Point location)
+    private TerminalNodeViewModel CreateNode(TerminalProfile profile, string resolvedPath, string directory, Point location,
+        WorktreeInfo? worktree = null)
     {
         var id = Guid.NewGuid();
         var sessionId = ClaudeHooks.IsClaude(resolvedPath) ? Guid.NewGuid().ToString() : null;
@@ -329,6 +367,7 @@ public partial class MainViewModel : ObservableObject
             CommandLine = CommandResolver.BuildCommandLine(resolvedPath, profile.Arguments),
             LaunchCommandLine = LaunchCommandLine(id, resolvedPath, profile.Arguments, sessionId),
             SessionId = sessionId,
+            Worktree = worktree,
             Color = profile.Color,
             WorkingDirectory = directory,
             Location = location,
