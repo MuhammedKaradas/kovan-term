@@ -11,6 +11,7 @@ use, most of them use `Ctrl+Shift` (e.g. `Ctrl+T` transposes characters in bash/
 | `Ctrl+Shift+Enter` | Zoom to the current terminal (~90% of the visible area, at most 100% zoom) |
 | `Ctrl+Shift+T` | New terminal |
 | `Ctrl+Shift+A` | Show/hide the Agents panel |
+| `Ctrl+Shift+G` | Show/hide the Changes panel (git changes of the current terminal's folder) |
 
 **Mouse:**
 

@@ -70,6 +70,12 @@
                 </ui:Button.Icon>
             </ui:Button>
 
+            <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Command="{Binding ToggleChangesPanelCommand}" Margin="8,0,0,0"
+                       ToolTip="Show/hide the Changes panel (Ctrl+Shift+G)" AutomationProperties.Name="Toggle Changes panel">
+                <ui:Button.Icon>
+                    <ui:SymbolIcon Symbol="PanelRight24"/>
+                </ui:Button.Icon>
+            </ui:Button>
             <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Command="{Binding CycleThemeCommand}" Margin="8,0,0,0"
                        AutomationProperties.Name="Change theme">
                 <ui:Button.Style>
@@ -136,7 +142,181 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
+
+        <!-- Changes panel: git changes of the current terminal's folder. Same rules as the Agents panel: beside the
+             canvas, square, flush with the window edge. -->
+        <Border Grid.Column="2" Width="460" BorderThickness="1,1,0,0" DataContext="{Binding Changes}"
+                Background="{DynamicResource SolidBackgroundFillColorSecondaryBrush}"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                Visibility="{Binding DataContext.ShowChangesPanel, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Header: which terminal, refresh -->
+                <DockPanel Grid.Row="0" Margin="12,8,8,4">
+                    <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Width="30" Height="30" Padding="0"
+                               Command="{Binding RefreshCommand}" ToolTip="Refresh" AutomationProperties.Name="Refresh changes">
+                        <ui:Button.Icon>
+                            <ui:SymbolIcon Symbol="ArrowClockwise20"/>
+                        </ui:Button.Icon>
+                    </ui:Button>
+                    <StackPanel>
+                        <TextBlock Text="Changes" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                        <TextBlock Text="{Binding Node.WorkingDirectory}" FontSize="11" TextTrimming="CharacterEllipsis"
+                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}" ToolTip="{Binding Node.WorkingDirectory}"/>
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- Changed files -->
+                <ListBox Grid.Row="1" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}" MaxHeight="200"
+                         Background="Transparent" BorderThickness="0" Margin="4,0,4,4" AutomationProperties.Name="Changed files"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="AutomationProperties.Name" Value="{Binding Path}"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="Row" Padding="8,3" CornerRadius="4" Background="Transparent" Cursor="Hand">
+                                            <ContentPresenter/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Row" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="Row" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Left" Text="{Binding Code}" Width="16" FontFamily="Cascadia Mono, Consolas"
+                                           FontWeight="SemiBold" Foreground="{DynamicResource SystemFillColorCautionBrush}"/>
+                                <TextBlock Text="{Binding FileName}" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,0,8,0"/>
+                                <TextBlock Text="{Binding Folder}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                            </DockPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Diff (virtualized: generated files can be long). Click a line to leave a note. -->
+                <Border Grid.Row="2" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
+                    <Grid>
+                        <ItemsControl ItemsSource="{Binding DiffLines}" FontFamily="Cascadia Mono, Consolas" FontSize="12"
+                                      VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                                      ScrollViewer.CanContentScroll="True" AutomationProperties.Name="Diff">
+                            <ItemsControl.Template>
+                                <ControlTemplate TargetType="ItemsControl">
+                                    <ScrollViewer CanContentScroll="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </ControlTemplate>
+                            </ItemsControl.Template>
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border MouseLeftButtonUp="DiffLine_Click">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="Transparent"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Kind}" Value="Added">
+                                                        <Setter Property="Background" Value="#332EA043"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Kind}" Value="Removed">
+                                                        <Setter Property="Background" Value="#33F85149"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Kind}" Value="Hunk">
+                                                        <Setter Property="Background" Value="#1A388BFD"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding OldLine}" Width="38" TextAlignment="Right" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                            <TextBlock Text="{Binding NewLine}" Width="38" TextAlignment="Right" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                            <TextBlock Text="{Binding Marker}" Width="18" TextAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                            <TextBlock Text="{Binding Text}" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Padding="0,0,12,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding Message}" Margin="16" TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Top"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                    </Grid>
+                </Border>
+
+                <!-- Note being written for a line -->
+                <Border Grid.Row="3" Padding="12,8" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                        Visibility="{Binding IsEditingNote, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <TextBlock FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis">
+                            <Run Text="Note on line"/>
+                            <Run Text="{Binding NoteLine.Line, Mode=OneWay}"/><Run Text=":"/>
+                            <Run Text="{Binding NoteLine.Text, Mode=OneWay}" FontFamily="Cascadia Mono, Consolas"/>
+                        </TextBlock>
+                        <ui:TextBox x:Name="NoteBox" Text="{Binding NoteText, UpdateSourceTrigger=PropertyChanged}" Margin="0,6,0,6"
+                                    PlaceholderText="What should the agent change here?" AcceptsReturn="False" KeyDown="NoteBox_KeyDown"
+                                    AutomationProperties.Name="Note"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <ui:Button Content="Cancel" Appearance="Secondary" Command="{Binding CancelNoteCommand}" Margin="0,0,6,0"/>
+                            <ui:Button Content="Add note" Appearance="Primary" Command="{Binding AddNoteCommand}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Notes waiting to be sent -->
+                <Border Grid.Row="4" Padding="12,8" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                        Visibility="{Binding HasNotes, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <ItemsControl ItemsSource="{Binding Notes}" MaxHeight="140">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <DockPanel Margin="0,2">
+                                        <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Width="24" Height="24" Padding="0"
+                                                   ToolTip="Remove note" AutomationProperties.Name="Remove note"
+                                                   Command="{Binding DataContext.RemoveNoteCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                   CommandParameter="{Binding}">
+                                            <ui:Button.Icon>
+                                                <ui:SymbolIcon Symbol="Dismiss16"/>
+                                            </ui:Button.Icon>
+                                        </ui:Button>
+                                        <TextBlock TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip="{Binding Text}">
+                                            <Run Text="{Binding Location, Mode=OneWay}" FontFamily="Cascadia Mono, Consolas" FontSize="11"
+                                                 Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                            <Run Text="{Binding Text, Mode=OneWay}" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                        </TextBlock>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <ui:Button Content="{Binding SendNotesLabel}" Appearance="Primary" HorizontalAlignment="Stretch" Margin="0,6,0,0"
+                                   Command="{Binding SendNotesCommand}"
+                                   ToolTip="Pastes the notes into the terminal's prompt as one message; press Enter there to send"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
 
         <!-- Agents panel: beside the canvas, never over it (terminals are HWNDs; nothing can be drawn on top).
              Square and flush with the window on purpose: a large rounded, bordered panel here dropped canvas

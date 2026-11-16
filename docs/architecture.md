@@ -171,6 +171,17 @@ hooks) and running subagents (`SubagentStart`/`SubagentStop`). It updates only o
 The panel is square and flush with the window edge: a large rounded, bordered panel at this spot dropped canvas
 motion from ~59 to ~34 fps. Keep large static chrome next to the canvas free of `CornerRadius`, and measure.
 
+## Changes panel
+
+Right of the canvas, for the current terminal (last clicked, navigated to, or the one in the middle at startup):
+`git status` and the selected file's diff against `HEAD` (untracked files: against an empty file), through
+`GitChanges`, which runs the `git` command line read-only (`GIT_OPTIONAL_LOCKS=0`, so it doesn't fight the agent's
+own git commands for the index lock; output capped at 2 MB). It refreshes 700 ms after the agent's `PostToolUse` /
+`Stop` hook or a `done`/`idle` status report, and on demand. The diff list is virtualized.
+
+Notes left on diff lines are pasted into the terminal as one bracketed paste (`ESC [200~ … ESC [201~`): the agent's
+prompt takes it as a single block and nothing is sent until the user presses Enter.
+
 ## Planned components
 
 - **Voice** (v0.4): local speech recognition with Whisper.net.

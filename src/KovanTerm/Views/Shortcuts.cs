@@ -10,6 +10,7 @@ public enum ShortcutAction
     ZoomToFocused,
     NewTerminal,
     ToggleAgentsPanel,
+    ToggleChangesPanel,
 }
 
 /// <summary>
@@ -27,6 +28,7 @@ public static class Shortcuts
         (Key.Enter, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.ZoomToFocused, "Zoom to focused terminal"),
         (Key.T, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.NewTerminal, "New terminal"),
         (Key.A, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.ToggleAgentsPanel, "Show/hide the Agents panel"),
+        (Key.G, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.ToggleChangesPanel, "Show/hide the Changes panel"),
     ];
 
     public static ShortcutAction? Match(Key key, ModifierKeys modifiers)
