@@ -18,6 +18,9 @@ public interface IDialogService
     /// <summary>Shows the "New terminal" dialog; <c>true</c> if the user confirms.</summary>
     bool ShowNewTerminal(NewTerminalViewModel viewModel);
 
+    /// <summary>Shows the "Recent conversations" dialog; <c>true</c> if the user picks one to open.</summary>
+    bool ShowRecentConversations(RecentConversationsViewModel viewModel);
+
     /// <summary>Lets the user pick a folder; <c>null</c> on cancel.</summary>
     string? PickFolder(string? initialDirectory);
 

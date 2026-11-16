@@ -231,6 +231,7 @@ public sealed class WorktreeTests : IDisposable
     private sealed class NoDialogs : IDialogService
     {
         public bool ShowNewTerminal(NewTerminalViewModel viewModel) => true;
+        public bool ShowRecentConversations(RecentConversationsViewModel viewModel) => false;
         public string? PickFolder(string? initialDirectory) => null;
         public Task<WorktreeCloseChoice> AskCloseWorktreeAsync(string title, string message) => Task.FromResult(WorktreeCloseChoice.Cancel);
         public Task ShowMessageAsync(string title, string message) => Task.CompletedTask;

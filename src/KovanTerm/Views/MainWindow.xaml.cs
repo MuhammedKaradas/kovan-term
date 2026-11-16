@@ -152,6 +152,8 @@ public partial class MainWindow : FluentWindow
 
     private void NewTerminalHere_Click(object sender, RoutedEventArgs e) => _vm.NewTerminalCommand.Execute(_contextMenuLocation);
 
+    private void RecentConversationHere_Click(object sender, RoutedEventArgs e) => _vm.OpenRecentConversationCommand.Execute(_contextMenuLocation);
+
     // The thumb is inside the node, in the layer Nodify scales, so DragDelta values are in canvas units
     private void ResizeThumb_DragStarted(object sender, DragStartedEventArgs e) => _canvas.BeginInteraction();
 
