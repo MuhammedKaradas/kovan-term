@@ -180,6 +180,37 @@
                         <TextBlock Text="Changes" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         <TextBlock Text="{Binding Node.WorkingDirectory}" FontSize="11" TextTrimming="CharacterEllipsis"
                                    Foreground="{DynamicResource TextFillColorTertiaryBrush}" ToolTip="{Binding Node.WorkingDirectory}"/>
+                        <!-- Worktree actions: get the agent's work back -->
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Node.Worktree}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <ui:Button Appearance="Secondary" Height="26" Padding="10,0" FontSize="12" Margin="0,0,6,0"
+                                       Content="{Binding Node.MergeLabel}"
+                                       ToolTip="Merge this branch into the branch it started from, in the main checkout"
+                                       AutomationProperties.Name="Merge worktree"
+                                       Command="{Binding DataContext.MergeWorktreeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                       CommandParameter="{Binding Node}">
+                                <ui:Button.Icon>
+                                    <ui:SymbolIcon Symbol="BranchFork16"/>
+                                </ui:Button.Icon>
+                            </ui:Button>
+                            <ui:Button Appearance="Secondary" Height="26" Padding="10,0" FontSize="12" Content="Pull request"
+                                       ToolTip="Push this branch and open the page to create a pull request"
+                                       AutomationProperties.Name="Pull request"
+                                       Command="{Binding DataContext.CreatePullRequestCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                       CommandParameter="{Binding Node}">
+                                <ui:Button.Icon>
+                                    <ui:SymbolIcon Symbol="ArrowUpload16"/>
+                                </ui:Button.Icon>
+                            </ui:Button>
+                        </StackPanel>
                         <TextBlock Text="{Binding Node.BranchText, StringFormat=Branch {0} · since it started}" FontSize="11"
                                    Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                                    ToolTip="Committed and uncommitted work on this branch, compared with the commit it started from">

@@ -71,6 +71,18 @@ public partial class NewTerminalViewModel : ObservableObject
     public string? WorktreePathPreview =>
         RepoRoot != null && GitWorktrees.IsValidBranch(BranchName) ? GitWorktrees.PathFor(RepoRoot, BranchName) : null;
 
+    /// <summary>
+    /// Command run in the new worktree before the agent starts (e.g. <c>npm install</c>); remembered per repository.
+    /// </summary>
+    [ObservableProperty]
+    public partial string SetupCommand { get; set; } = "";
+
+    /// <summary>Gives the remembered setup command of a repository; set by whoever creates the dialog.</summary>
+    public Func<string, string?>? SetupCommandFor { get; init; }
+
+    partial void OnRepoRootChanged(string? value) =>
+        SetupCommand = value != null ? SetupCommandFor?.Invoke(value) ?? "" : "";
+
     /// <summary>Is a worktree going to be created? (The option can be on while the folder isn't a repository.)</summary>
     public bool CreatesWorktree => UseWorktree && CanUseWorktree;
 

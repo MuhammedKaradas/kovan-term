@@ -109,7 +109,13 @@ public partial class MainViewModel : ObservableObject
     private async Task NewTerminal(Point? location)
     {
         var options = _profiles.Select(p => new ProfileOptionViewModel(p, _resolver.Resolve(p.Executable))).ToList();
-        var dialog = new NewTerminalViewModel(_dialogs, options, _recentDirectories, _lastProfileId);
+        var setups = _settings.Load().WorktreeSetupCommands;
+        var dialog = new NewTerminalViewModel(_dialogs, options, _recentDirectories, _lastProfileId)
+        {
+            SetupCommandFor = repo => setups.FirstOrDefault(kv => string.Equals(kv.Key, repo, StringComparison.OrdinalIgnoreCase)).Value,
+        };
+        // The initial folder was set before SetupCommandFor; look its setup command up now
+        if (dialog.RepoRoot is { } initialRepo) dialog.SetupCommand = dialog.SetupCommandFor(initialRepo) ?? "";
         if (!_dialogs.ShowNewTerminal(dialog) || dialog.SelectedProfile is not { IsAvailable: true } choice) return;
         var at = location ?? ViewportCenterForNewNode();
 
@@ -123,14 +129,16 @@ public partial class MainViewModel : ObservableObject
             var created = await GitWorktrees.CreateAsync(dialog.RepoRoot!, dialog.BranchName);
             if (created.Value == null)
             {
-                await _dialogs.ShowErrorAsync("Couldn't create the worktree", created.Error ?? "git failed.");
+                await _dialogs.ShowMessageAsync("Couldn't create the worktree", created.Error ?? "git failed.");
                 return;
             }
             worktree = created.Value;
             // Same place inside the repository: a subfolder picked in the main checkout opens in the worktree's copy
             directory = Path.GetFullPath(Path.Combine(worktree.Path, Path.GetRelativePath(dialog.RepoRoot!, directory)));
+            RememberSetupCommand(dialog.RepoRoot!, dialog.SetupCommand.Trim());
         }
-        var node = CreateNode(choice.Profile, choice.ResolvedPath!, directory, at, worktree);
+        var setup = worktree != null ? dialog.SetupCommand.Trim() : "";
+        var node = CreateNode(choice.Profile, choice.ResolvedPath!, directory, at, worktree, setup);
         AddNode(node);
         // The terminal just opened is the one the user is about to work with
         CurrentNode = node;
@@ -159,10 +167,59 @@ public partial class MainViewModel : ObservableObject
 
         // After the node is gone: its shell must not hold the folder any more
         if (deleteWorktree && node.Worktree is { } worktree && (await GitWorktrees.RemoveAsync(worktree)).Error is { } error)
-            await _dialogs.ShowErrorAsync("Couldn't delete the worktree", $"{error}\n\nFolder: {worktree.Path}");
+            await _dialogs.ShowMessageAsync("Couldn't delete the worktree", $"{error}\n\nFolder: {worktree.Path}");
     }
 
     private static string Plural(int n, string word) => n == 1 ? $"1 {word}" : $"{n} {word}s";
+
+    private void RememberSetupCommand(string repoRoot, string command)
+    {
+        var settings = _settings.Load();
+        var commands = new Dictionary<string, string>(settings.WorktreeSetupCommands, StringComparer.OrdinalIgnoreCase);
+        if (command.Length == 0) commands.Remove(repoRoot);
+        else commands[repoRoot] = command;
+        _settings.Save(settings with { WorktreeSetupCommands = commands });
+    }
+
+    // ---- Worktree actions (Changes panel header) ----
+
+    /// <summary>Merges a worktree node's branch into the branch it started from, after asking.</summary>
+    [RelayCommand]
+    private async Task MergeWorktree(TerminalNodeViewModel? node)
+    {
+        if (node?.Worktree is not { } w) return;
+        if (w.BaseBranch == null)
+        {
+            await _dialogs.ShowMessageAsync("Merge", "This worktree doesn't know which branch it started from; merge it by hand.");
+            return;
+        }
+        var state = (await GitWorktrees.StateAsync(w)).Value;
+        var warning = state is { UncommittedFiles: > 0 }
+            ? $"\n\n{Plural(state.UncommittedFiles, "uncommitted file")} in the worktree won't be merged; ask the agent to commit first if they should be."
+            : "";
+        if (!await _dialogs.ConfirmAsync("Merge", $"Merge {w.Branch} into {w.BaseBranch} in\n{w.RepoRoot}?{warning}", "Merge"))
+            return;
+        var result = await GitWorktrees.MergeAsync(w);
+        await _dialogs.ShowMessageAsync(result.Value != null ? "Merged" : "Couldn't merge", result.Value ?? result.Error ?? "git failed.");
+        _ = Changes.RefreshAsync();
+    }
+
+    /// <summary>Pushes a worktree node's branch and opens the new pull request page, after asking.</summary>
+    [RelayCommand]
+    private async Task CreatePullRequest(TerminalNodeViewModel? node)
+    {
+        if (node?.Worktree is not { } w) return;
+        if (!await _dialogs.ConfirmAsync("Pull request",
+                $"Push {w.Branch} to origin and open the page to create a pull request?", "Push and open"))
+            return;
+        var result = await GitWorktrees.PushAsync(w);
+        if (result.Error is { } error)
+            await _dialogs.ShowMessageAsync("Couldn't push", error);
+        else if (result.Value is { } url)
+            _dialogs.OpenInBrowser(url);
+        else
+            await _dialogs.ShowMessageAsync("Pushed", $"{w.Branch} was pushed. Open a pull request for it on your git host.");
+    }
 
     /// <summary>Goes to the next node waiting for the user, in reading order after the last one visited.</summary>
     [RelayCommand]
@@ -355,17 +412,21 @@ public partial class MainViewModel : ObservableObject
     }
 
     private TerminalNodeViewModel CreateNode(TerminalProfile profile, string resolvedPath, string directory, Point location,
-        WorktreeInfo? worktree = null)
+        WorktreeInfo? worktree = null, string setup = "")
     {
         var id = Guid.NewGuid();
         var sessionId = ClaudeHooks.IsClaude(resolvedPath) ? Guid.NewGuid().ToString() : null;
+        var commandLine = CommandResolver.BuildCommandLine(resolvedPath, profile.Arguments);
+        var launch = LaunchCommandLine(id, resolvedPath, profile.Arguments, sessionId);
+        // A new worktree's setup runs once, before the agent's first start; later launches run the agent directly
+        if (worktree != null && setup.Length > 0) launch = GitWorktrees.WithSetup(launch ?? commandLine, setup, worktree.RepoRoot);
         return new()
         {
             Id = id,
             ProfileId = profile.Id,
             Title = profile.Name,
-            CommandLine = CommandResolver.BuildCommandLine(resolvedPath, profile.Arguments),
-            LaunchCommandLine = LaunchCommandLine(id, resolvedPath, profile.Arguments, sessionId),
+            CommandLine = commandLine,
+            LaunchCommandLine = launch,
             SessionId = sessionId,
             Worktree = worktree,
             Color = profile.Color,
@@ -418,6 +479,13 @@ public partial class MainViewModel : ObservableObject
     /// </summary>
     private TerminalNodeViewModel RestoreNode(NodeState s)
     {
+        // A missing folder (e.g. a worktree deleted outside Kovan) would make the terminal start in Kovan's own
+        // folder, and an agent would work in the wrong place; don't start it
+        if (s.WorkingDirectory is { Length: > 0 } dir && !Directory.Exists(dir))
+            return TerminalNodeViewModel.FromState(s, startError: s.Worktree != null
+                ? $"The worktree folder no longer exists:\n{dir}\n\nClose this node; the branch {s.Worktree.Branch} may still exist."
+                : $"The working folder no longer exists:\n{dir}\n\nClose this node and open a new one.");
+
         if (_profiles.FirstOrDefault(p => p.Id == s.ProfileId) is { } profile)
         {
             if (_resolver.Resolve(profile.Executable) is not { } path)

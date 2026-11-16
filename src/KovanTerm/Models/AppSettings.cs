@@ -16,4 +16,6 @@ public sealed record AppSettings
     public bool ShowAgentsPanel { get; init; } = true;
     /// <summary>Is the Changes panel (right of the canvas) open?</summary>
     public bool ShowChangesPanel { get; init; }
+    /// <summary>Command run in a new worktree before the agent starts, per repository root (e.g. <c>npm install</c>).</summary>
+    public Dictionary<string, string> WorktreeSetupCommands { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 }
