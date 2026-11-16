@@ -171,6 +171,18 @@ hooks) and running subagents (`SubagentStart`/`SubagentStop`). It updates only o
 The panel is square and flush with the window edge: a large rounded, bordered panel at this spot dropped canvas
 motion from ~59 to ~34 fps. Keep large static chrome next to the canvas free of `CornerRadius`, and measure.
 
+## Screen rules
+
+For prompts no hook or status report announces (folder trust questions, Codex's hook review) and for agents that
+report nothing (Gemini CLI), the bottom of the terminal screen is matched against data-driven rules
+(`Resources/screen-rules.json`, overridable per id in `<data dir>\screen-rules.json`): highest priority wins, no match
+means no opinion, phrases match across line breaks. The visible text is read through the terminal control's UI
+Automation text pattern (`TerminalScreenReader`, off the UI thread; the control has no other way to read its buffer),
+only for agents with rules and only after output changed: once it settles for 0.4 s (a prompt waits for the user, so
+its output stops), at most every 1.5 s, and every 3 s while output keeps flowing. Sleeping terminals are read too.
+The agent's own reports win; the screen only adds a "waiting" they didn't report, or is the only source for agents
+that report nothing. Captured screens in `tests/KovanTerm.Tests/ScreenFixtures` keep the rules honest.
+
 ## Changes panel
 
 Right of the canvas, for the current terminal (last clicked, navigated to, or the one in the middle at startup):

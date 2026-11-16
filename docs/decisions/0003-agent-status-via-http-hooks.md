@@ -57,6 +57,15 @@ Kovan would mean Kovan driving the conversation. The terminal reports are enough
 
 `KOVAN_STATUS_LOG=<file>` logs every status event and the resulting node status.
 
+## Addendum: screen rules (2026-11-17, #47)
+
+Some prompts send nothing: Claude Code's folder trust question comes before any hook runs, Codex reports no status for
+its folder trust and hook review screens, and Gemini CLI has no status channel at all. These are read from the
+screen: data-driven rules over the bottom of the terminal's visible text, read through the terminal control's UI
+Automation text pattern (cheap after the first read: under 1 ms). Reports still win; the screen only adds a "waiting"
+nobody reported, or is the only source for agents that report nothing. Gemini CLI's rules come from its 0.68 source
+strings; they weren't run against a real Gemini CLI.
+
 ## Consequences
 
 - Status works for Claude Code (hooks) and Codex (OSC 7501). Other agents (Gemini CLI…) need another source,

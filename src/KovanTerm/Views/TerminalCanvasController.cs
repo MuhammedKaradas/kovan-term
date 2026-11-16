@@ -46,6 +46,8 @@ public sealed class TerminalCanvasController
         /// <summary>Output arrived since the screen was last read for screen rules. Written from the reader thread.</summary>
         public volatile bool ScreenChanged = true;
         public bool ScreenReading;
+        /// <summary>When output last arrived / when the screen was last read (<see cref="Environment.TickCount64"/>).</summary>
+        public long LastOutput, LastScreenRead;
     }
 
     private readonly NodifyEditor _editor;
@@ -91,15 +93,25 @@ public sealed class TerminalCanvasController
     public event Action<object, string>? ScreenRead;
 
     private readonly TerminalScreenReader _screenReader = new();
-    // Prompts appear within a second; reading only after output changed keeps idle terminals free
-    private readonly DispatcherTimer _screenTimer = new() { Interval = TimeSpan.FromMilliseconds(800) };
+    private readonly DispatcherTimer _screenTimer = new() { Interval = TimeSpan.FromMilliseconds(300) };
+    /// <summary>A program showing a prompt waits for the user, so its output stops: read once it has settled this long.</summary>
+    private const long ScreenSettleMs = 400;
+    /// <summary>A terminal that keeps printing (a spinner, a build) is read at most this often.</summary>
+    private const long BusyScreenReadMs = 3000;
+    /// <summary>Even after output settles, no terminal is read more often than this: a prompt shows within 1.5 s.</summary>
+    private const long MinScreenReadMs = 1500;
 
     private void ReadChangedScreens()
     {
         if (WatchScreen == null) return;
+        var now = Environment.TickCount64;
         foreach (var (node, entry) in _byNode)
         {
             if (!entry.ScreenChanged || entry.ScreenReading || !WatchScreen(node)) continue;
+            var settled = now - entry.LastOutput >= ScreenSettleMs;
+            var sinceRead = now - entry.LastScreenRead;
+            if (sinceRead < MinScreenReadMs || (!settled && sinceRead < BusyScreenReadMs)) continue;
+            entry.LastScreenRead = now;
             if (entry.Control.Terminal is not { } terminal || TerminalSnapshot.FindHwnd(terminal) is not { } hwnd) continue;
             entry.ScreenChanged = false;
             entry.ScreenReading = true;
@@ -141,6 +153,7 @@ public sealed class TerminalCanvasController
             {
                 entry.Dirty = true;
                 entry.ScreenChanged = true;
+                entry.LastOutput = Environment.TickCount64;
                 // Reader thread: only a vectorized search per chunk unless a status report is in it
                 var reports = status.Feed(e.Data);
                 if (reports.Count > 0)

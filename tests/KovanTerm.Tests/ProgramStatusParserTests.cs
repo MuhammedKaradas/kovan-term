@@ -62,7 +62,8 @@ public sealed class ProgramStatusParserTests
     [Fact]
     public void Reports_DriveTheNode_AndCodexAllowsWithY()
     {
-        var node = new TerminalNodeViewModel { Title = "Codex", CommandLine = "codex" };
+        // Started through a wrapper the command line doesn't reveal: the key is learned from the reports
+        var node = new TerminalNodeViewModel { Title = "Codex", CommandLine = "node run-agent.js" };
         Assert.Equal("1", node.AllowKey);
 
         node.ApplyProgramStatus(new("blocked", "permission", App: "codex"));
