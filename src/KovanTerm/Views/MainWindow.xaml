@@ -18,6 +18,14 @@
     <ui:FluentWindow.Resources>
         <conv:NodeStatusToBrushConverter x:Key="StatusToBrush"/>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <!-- Branch label: only for nodes working in a worktree -->
+        <Style x:Key="BranchVisibility" TargetType="StackPanel">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding BranchText}" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
 
         <!-- Node body: live terminal. During motion its snapshot is shown instead (TerminalCanvasController) -->
         <DataTemplate x:Key="TerminalBody" DataType="{x:Type vm:TerminalNodeViewModel}">
@@ -172,6 +180,19 @@
                         <TextBlock Text="Changes" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                         <TextBlock Text="{Binding Node.WorkingDirectory}" FontSize="11" TextTrimming="CharacterEllipsis"
                                    Foreground="{DynamicResource TextFillColorTertiaryBrush}" ToolTip="{Binding Node.WorkingDirectory}"/>
+                        <TextBlock Text="{Binding Node.BranchText, StringFormat=Branch {0} · since it started}" FontSize="11"
+                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                   ToolTip="Committed and uncommitted work on this branch, compared with the commit it started from">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Node.BranchText}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </StackPanel>
                 </DockPanel>
 
@@ -370,6 +391,11 @@
                                         <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
                                                    Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                     </DockPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="16,1,0,0" Style="{StaticResource BranchVisibility}">
+                                        <ui:SymbolIcon Symbol="Branch16" FontSize="11" Margin="0,0,3,0" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                        <TextBlock Text="{Binding BranchText}" FontSize="11" TextTrimming="CharacterEllipsis"
+                                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                    </StackPanel>
                                     <TextBlock Text="{Binding StatusText}" Margin="16,2,0,0" FontSize="12" TextTrimming="CharacterEllipsis"
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}">
                                         <TextBlock.Style>
@@ -489,6 +515,11 @@
                                              Fill="{Binding Status, Converter={StaticResource StatusToBrush}}"/>
                                     <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                                                FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <StackPanel Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center"
+                                                ToolTip="{Binding Worktree.Path, StringFormat=Worktree: {0}}" Style="{StaticResource BranchVisibility}">
+                                        <ui:SymbolIcon Symbol="Branch16" FontSize="12" Margin="0,0,3,0" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                        <TextBlock Text="{Binding BranchText}" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                    </StackPanel>
                                     <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                                Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                 </DockPanel>

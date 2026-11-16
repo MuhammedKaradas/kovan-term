@@ -27,6 +27,9 @@ public partial class TerminalNodeViewModel : ObservableObject
     public string? LaunchCommandLine { get; init; }
     public string StartupCommandLine => LaunchCommandLine ?? CommandLine;
     public string? WorkingDirectory { get; init; }
+    /// <summary>The git worktree this node's agent works in (created by Kovan); <c>null</c> for a normal folder.</summary>
+    public WorktreeInfo? Worktree { get; init; }
+    public string? BranchText => Worktree?.Branch;
     /// <summary>Header accent color (#RRGGBB); default if empty.</summary>
     public string? Color { get; init; }
     /// <summary>Width of the terminal area (canvas units).</summary>
@@ -135,9 +138,12 @@ public partial class TerminalNodeViewModel : ObservableObject
         return list.Count == 1 ? $"1 subagent: {names}" : $"{list.Count} subagents: {names}";
     }
 
-    /// <summary>Panel grouping: the working folder's name.</summary>
-    public string GroupName => WorkingDirectory is { Length: > 0 } dir
-        ? Path.GetFileName(dir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)) is { Length: > 0 } name ? name : dir
+    /// <summary>
+    /// Panel grouping: the working folder's name; for a worktree, its repository's, so all agents on one repository
+    /// stay together.
+    /// </summary>
+    public string GroupName => (Worktree?.RepoRoot ?? WorkingDirectory) is { Length: > 0 } dir
+        ? Path.GetFileName(Path.TrimEndingDirectorySeparator(Path.GetFullPath(dir))) is { Length: > 0 } name ? name : dir
         : "(no folder)";
 
     /// <summary>Panel order within a group: waiting first, then working, then the rest.</summary>
@@ -176,6 +182,7 @@ public partial class TerminalNodeViewModel : ObservableObject
         Title = Title,
         CommandLine = CommandLine,
         SessionId = SessionId,
+        Worktree = Worktree,
         Color = Color,
         WorkingDirectory = WorkingDirectory,
         X = Location.X,
@@ -192,6 +199,7 @@ public partial class TerminalNodeViewModel : ObservableObject
         CommandLine = commandLine ?? s.CommandLine,
         LaunchCommandLine = launchCommandLine,
         SessionId = s.SessionId,
+        Worktree = s.Worktree,
         Color = s.Color,
         WorkingDirectory = s.WorkingDirectory,
         StartError = startError,

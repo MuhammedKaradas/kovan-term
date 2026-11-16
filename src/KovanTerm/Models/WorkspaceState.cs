@@ -28,6 +28,8 @@ public sealed record NodeState
     public required string CommandLine { get; init; }
     /// <summary>The agent's conversation id (Claude Code), resumed on the next launch.</summary>
     public string? SessionId { get; init; }
+    /// <summary>The git worktree Kovan created for this node, if any.</summary>
+    public WorktreeInfo? Worktree { get; init; }
     public string? Color { get; init; }
     public string? WorkingDirectory { get; init; }
     public double X { get; init; }

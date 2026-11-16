@@ -83,7 +83,7 @@ public partial class ChangesViewModel : ObservableObject
             return;
         }
         IsBusy = true;
-        var status = await _git.StatusAsync(dir);
+        var status = await _git.StatusAsync(dir, Node.Worktree?.BaseCommit);
         if (version != _refreshVersion) return; // a newer refresh started meanwhile
         IsBusy = false;
         if (status.Value == null)
@@ -126,7 +126,7 @@ public partial class ChangesViewModel : ObservableObject
         if (Node?.WorkingDirectory is not { } dir) return;
         var version = _refreshVersion;
         _diffLoadedFor = file;
-        var diff = await _git.DiffAsync(dir, file);
+        var diff = await _git.DiffAsync(dir, file, Node.Worktree?.BaseCommit);
         if (version != _refreshVersion || _diffLoadedFor != file) return;
         DiffLines = diff.Value is { } text
             ? DiffParser.Parse(text).Where(l => l.Kind != DiffLineKind.Header).ToList()

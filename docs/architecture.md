@@ -182,6 +182,15 @@ own git commands for the index lock; output capped at 2 MB). It refreshes 700 ms
 Notes left on diff lines are pasted into the terminal as one bracketed paste (`ESC [200~ … ESC [201~`): the agent's
 prompt takes it as a single block and nothing is sent until the user presses Enter.
 
+## Worktrees
+
+"Start in a new git worktree" in the New terminal dialog (offered when the folder is inside a git repository)
+creates a branch from the current `HEAD` and checks it out in `<repo>.worktrees\<branch>` next to the repository
+(`GitWorktrees`); the node opens there and saves the worktree (`NodeState.Worktree`: repository, path, branch and the
+commit it started from). The Changes panel compares such a node with that commit, so the agent's commits show too.
+Closing the node asks whether to keep the worktree or delete it and its branch, saying how many uncommitted files
+and commits would be lost. Removal retries briefly, since the node's shell may still be releasing the folder.
+
 ## Planned components
 
 - **Voice** (v0.4): local speech recognition with Whisper.net.
