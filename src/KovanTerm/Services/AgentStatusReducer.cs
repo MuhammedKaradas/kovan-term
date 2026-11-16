@@ -16,7 +16,10 @@ public static class AgentStatusReducer
 
     public static AgentStatus Apply(AgentStatus current, AgentEvent e) => e.Name switch
     {
-        "UserPromptSubmit" or "SubagentStart" or "SubagentStop" or "PostToolUse" or "PostToolUseFailure" or "PermissionDenied"
+        // Subagent events don't change the node: background subagents start and stop after the main agent's Stop,
+        // and a subagent the agent waits for is already covered by the agent's own tool call (Working).
+        "SubagentStart" or "SubagentStop" => current,
+        "UserPromptSubmit" or "PostToolUse" or "PostToolUseFailure" or "PermissionDenied"
             => new(NodeStatus.Working, current.Status == NodeStatus.Working ? current.Detail : null),
         "PreToolUse" => new(NodeStatus.Working, e.ToolName),
         "PermissionRequest" => new(NodeStatus.Waiting, e.ToolName, AwaitsPermission: e.ToolName is not { } tool || !NotYesNoTools.Contains(tool)),

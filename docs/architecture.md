@@ -153,6 +153,11 @@ Claude Code nodes are started with `--settings <data dir>\hooks\<node id>.json`,
 `AgentHookServer` (127.0.0.1, random port, per-run token). `AgentStatusReducer` turns the events into the
 node's status; Allow/Deny type into the terminal. Details and alternatives: [0003](decisions/0003-agent-status-via-http-hooks.md).
 
+Each Claude Code node keeps its conversation: a new node is started with `--session-id <uuid>` (saved as
+`SessionId` in the workspace), later launches use `--resume <uuid>` once Claude has saved the transcript
+(`ClaudeSessions`). Hook events carry the current id, so `/clear` moves the node to the new conversation.
+A profile that passes its own `--resume`, `--continue` or `--session-id` is left alone.
+
 ## Planned components
 
 - **Voice** (v0.4): local speech recognition with Whisper.net.
