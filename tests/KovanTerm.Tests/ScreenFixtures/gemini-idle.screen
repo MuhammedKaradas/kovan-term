@@ -1,0 +1,6 @@
+SYNTHETIC: built from strings in @google/gemini-cli 0.68.0 (no Gemini CLI on the test machine)
+✦ All 42 tests pass now.
+╭──────────────────────────────────────────────────────────────╮
+│ >   Type your message or @path/to/file                        │
+╰──────────────────────────────────────────────────────────────╯
+~/shop (main*)        no sandbox         gemini-2.5-pro (97% context left)

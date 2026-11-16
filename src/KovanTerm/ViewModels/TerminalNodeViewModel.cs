@@ -81,22 +81,29 @@ public partial class TerminalNodeViewModel : ObservableObject
 
     private AgentStatus _agent = AgentStatus.Idle;
 
+    /// <summary>Which agent runs in the node (<c>claude</c>, <c>codex</c>, <c>gemini</c>), from its command line; <c>null</c> otherwise.</summary>
+    public string? AgentKind => _agentKind ??= ScreenRules.AgentOf(CommandLine) ?? "";
+    private string? _agentKind;
+
     /// <summary>
-    /// What Allow types into the terminal: the "Yes" row's key. Claude Code: <c>1</c>; Codex: <c>y</c>
-    /// (learned from its status reports). Deny is Escape for both.
+    /// What Allow types into the terminal: the "Yes" row's key. Claude Code: <c>1</c>; Codex: <c>y</c>;
+    /// Gemini CLI: Enter (its first row, "Allow once", is highlighted). Deny is Escape for all.
     /// </summary>
-    public string AllowKey { get; private set; } = "1";
+    public string AllowKey => _allowKey ?? AgentKind switch { "codex" => "y", "gemini" => "\r", _ => "1" };
+    private string? _allowKey;
 
     /// <summary>Updates the status from the program's own OSC 7501 report.</summary>
     public void ApplyProgramStatus(ProgramStatusReport report)
     {
-        if (report.App == "codex") AllowKey = "y";
+        _reports = true;
+        if (report.App == "codex") _allowKey = "y";
         if (AgentStatusReducer.FromReport(report) is { } s) SetAgentStatus(s);
     }
 
     /// <summary>Updates the status from an agent event (see <see cref="AgentStatusReducer"/>).</summary>
     public void ApplyAgentEvent(AgentEvent e)
     {
+        _reports = true;
         if (e.SessionId != null) SessionId = e.SessionId;
         if (e.TranscriptPath != null) TranscriptPath = e.TranscriptPath;
         if (e.AgentId != null)
@@ -164,16 +171,52 @@ public partial class TerminalNodeViewModel : ObservableObject
     /// </summary>
     public void PromptAnswered(bool allowed)
     {
-        if (Status == NodeStatus.Waiting)
-            SetAgentStatus(allowed ? new AgentStatus(NodeStatus.Working) : AgentStatus.Idle);
+        if (Status != NodeStatus.Waiting) return;
+        // The prompt is gone; the next screen read says what's there now
+        if (_screen?.Status == NodeStatus.Waiting) _screen = null;
+        SetAgentStatus(allowed ? new AgentStatus(NodeStatus.Working) : AgentStatus.Idle);
+    }
+
+    // ---- Where the status comes from ----
+
+    /// <summary>Has the agent reported anything itself (hooks, OSC 7501)? Until then the screen decides.</summary>
+    private bool _reports;
+    /// <summary>The latest screen rule result (see <see cref="ScreenRules"/>); <c>null</c> = no opinion.</summary>
+    private AgentStatus? _screen;
+
+    /// <summary>The bottom of the terminal screen was read and matched against the screen rules.</summary>
+    public void ApplyScreen(AgentStatus? screen)
+    {
+        // An agent with no other source going from working to idle has finished: show it as done
+        if (!_reports && screen == AgentStatus.Idle && _screen?.Status == NodeStatus.Working) screen = new AgentStatus(NodeStatus.Done);
+        else if (!_reports && screen == AgentStatus.Idle && _screen?.Status == NodeStatus.Done) screen = _screen;
+        if (screen == _screen) return;
+        _screen = screen;
+        Show();
     }
 
     private void SetAgentStatus(AgentStatus s)
     {
         _agent = s;
+        Show();
+    }
+
+    private void Show()
+    {
+        var s = Combine(_agent, _screen, _reports);
         Status = s.Status;
         StatusText = AgentStatusReducer.Describe(s);
         AwaitsPermission = s.AwaitsPermission;
+    }
+
+    /// <summary>
+    /// What the node shows. The agent's own reports win, except that a prompt seen on screen which they didn't report
+    /// (a folder trust question, say) still shows as waiting; an agent that reports nothing is shown from its screen.
+    /// </summary>
+    public static AgentStatus Combine(AgentStatus reported, AgentStatus? screen, bool agentReports)
+    {
+        if (screen is { Status: NodeStatus.Waiting } && reported.Status != NodeStatus.Waiting) return screen;
+        return agentReports ? reported : screen ?? reported;
     }
 
     public NodeState ToState() => new()

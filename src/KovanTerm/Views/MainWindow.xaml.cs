@@ -34,6 +34,8 @@ public partial class MainWindow : FluentWindow
         _vm.TerminalInputRequested += _canvas.SendInput;
         _canvas.AnswerKeyTyped += node => _vm.OnAnswerKeyTyped((TerminalNodeViewModel)node);
         _canvas.ProgramStatusReported += (node, reports) => _vm.OnProgramStatus((TerminalNodeViewModel)node, reports);
+        _canvas.WatchScreen = node => _vm.WatchesScreen((TerminalNodeViewModel)node);
+        _canvas.ScreenRead += (node, text) => _vm.OnScreenRead((TerminalNodeViewModel)node, text);
         _vm.AttentionNeeded += _ => FlashIfInactive();
 
         // Theme: WPF-UI resources + terminal colors; re-applied when the preference changes

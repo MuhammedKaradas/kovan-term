@@ -1,0 +1,8 @@
+SYNTHETIC: built from strings in @google/gemini-cli 0.68.0 (no Gemini CLI on the test machine)
+╭──────────────────────────────────────────────────────────────╮
+│ Do you trust the files in this folder?                        │
+│                                                               │
+│ ● 1. Trust folder (shop)                                      │
+│   2. Trust parent folder (src)                                │
+│   3. Don't trust                                              │
+╰──────────────────────────────────────────────────────────────╯

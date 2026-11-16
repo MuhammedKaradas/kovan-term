@@ -43,6 +43,9 @@ public sealed class TerminalCanvasController
         public bool Sleeping;
         /// <summary>Window region currently applied to the HWND (<see cref="TerminalClip"/>); <c>null</c> = none.</summary>
         public Native.RECT? Region;
+        /// <summary>Output arrived since the screen was last read for screen rules. Written from the reader thread.</summary>
+        public volatile bool ScreenChanged = true;
+        public bool ScreenReading;
     }
 
     private readonly NodifyEditor _editor;
@@ -79,6 +82,35 @@ public sealed class TerminalCanvasController
     /// <summary>Snapshot mode enter/exit timings (for measurement; see <see cref="PerfSelfTest"/>).</summary>
     public event Action<string, TimeSpan>? Timing;
 
+    // ---- Screen rules ----
+
+    /// <summary>Which nodes' screens to read (those whose agent has screen rules); none if not set.</summary>
+    public Func<object, bool>? WatchScreen { get; set; }
+
+    /// <summary>A watched terminal's visible text, read after its output changed.</summary>
+    public event Action<object, string>? ScreenRead;
+
+    private readonly TerminalScreenReader _screenReader = new();
+    // Prompts appear within a second; reading only after output changed keeps idle terminals free
+    private readonly DispatcherTimer _screenTimer = new() { Interval = TimeSpan.FromMilliseconds(800) };
+
+    private void ReadChangedScreens()
+    {
+        if (WatchScreen == null) return;
+        foreach (var (node, entry) in _byNode)
+        {
+            if (!entry.ScreenChanged || entry.ScreenReading || !WatchScreen(node)) continue;
+            if (entry.Control.Terminal is not { } terminal || TerminalSnapshot.FindHwnd(terminal) is not { } hwnd) continue;
+            entry.ScreenChanged = false;
+            entry.ScreenReading = true;
+            Task.Run(() => _screenReader.Read(hwnd)).ContinueWith(t =>
+            {
+                entry.ScreenReading = false;
+                if (t.Result is { } text && _byNode.ContainsKey(node)) ScreenRead?.Invoke(node, text);
+            }, TaskScheduler.FromCurrentSynchronizationContext());
+        }
+    }
+
     public TerminalCanvasController(NodifyEditor editor)
     {
         _editor = editor;
@@ -90,6 +122,8 @@ public sealed class TerminalCanvasController
         _snapshotCleanupTimer.Tick += (_, _) => RemoveSnapshots();
         _refreshTimer.Tick += (_, _) => RefreshDirtySnapshots();
         _refreshTimer.Start();
+        _screenTimer.Tick += (_, _) => ReadChangedScreens();
+        _screenTimer.Start();
         _editor.ViewportUpdated += (_, _) => OnCanvasMoving();
         _editor.AddHandler(ItemContainer.LocationChangedEvent, new RoutedEventHandler((_, _) => OnCanvasMoving()));
     }
@@ -106,6 +140,7 @@ public sealed class TerminalCanvasController
             term.ConPTYTerm.TerminalOutput += (_, e) =>
             {
                 entry.Dirty = true;
+                entry.ScreenChanged = true;
                 // Reader thread: only a vectorized search per chunk unless a status report is in it
                 var reports = status.Feed(e.Data);
                 if (reports.Count > 0)
@@ -143,6 +178,7 @@ public sealed class TerminalCanvasController
     public void Terminate(object node)
     {
         if (!_byNode.Remove(node, out var entry)) return;
+        if (entry.Control.Terminal is { } terminal && TerminalSnapshot.FindHwnd(terminal) is { } hwnd) _screenReader.Forget(hwnd);
         KillProcessTree(entry.Control);
     }
 
