@@ -188,6 +188,15 @@ its output stops), at most every 1.5 s, and every 3 s while output keeps flowing
 The agent's own reports win; the screen only adds a "waiting" they didn't report, or is the only source for agents
 that report nothing. Captured screens in `tests/KovanTerm.Tests/ScreenFixtures` keep the rules honest.
 
+## Plan usage
+
+The bottom of the Agents panel shows the Claude plan's limits (5-hour session, week, per-model week), as Claude Code's
+`/usage` does (`ClaudeUsage`): Claude Code's own OAuth token from `<claude config dir>\.credentials.json` is sent only to
+`api.anthropic.com/api/oauth/usage`, every 5 minutes and after an agent's turn ends (at most once a minute). The
+endpoint isn't documented: no login, an expired token (it's never refreshed here — that would rewrite Claude Code's
+credentials), an error or an unexpected response hides the section. No limit is ever estimated. Codex's limits are only
+available through its app-server, which Kovan doesn't run.
+
 ## Changes panel
 
 Right of the canvas, for the current terminal (last clicked, navigated to, or the one in the middle at startup):

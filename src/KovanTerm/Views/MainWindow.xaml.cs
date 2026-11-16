@@ -28,7 +28,7 @@ public partial class MainWindow : FluentWindow
         // Before any terminal starts: they inherit this process's environment
         AgentEnvironment.RemoveSessionMarkers();
         _vm = new MainViewModel(new WorkspaceStore(), new ProfileStore(), new CommandResolver(), new DialogService(this), new SettingsStore(),
-            _hookServer);
+            _hookServer, usage: new ClaudeUsage(new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(15) }));
         DataContext = _vm;
         _canvas = new TerminalCanvasController(Editor);
         _vm.TerminalInputRequested += _canvas.SendInput;

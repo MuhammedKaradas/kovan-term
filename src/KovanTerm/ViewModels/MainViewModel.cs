@@ -67,9 +67,17 @@ public partial class MainViewModel : ObservableObject
     public event Action<TerminalNodeViewModel, string>? TerminalInputRequested;
 
     public MainViewModel(WorkspaceStore store, ProfileStore profiles, CommandResolver resolver, IDialogService dialogs, SettingsStore settings,
-        AgentHookServer? hookServer = null, ClaudeSessions? sessions = null)
+        AgentHookServer? hookServer = null, ClaudeSessions? sessions = null, ClaudeUsage? usage = null)
     {
         _sessions = sessions ?? new ClaudeSessions();
+        _usageLimits = usage;
+        if (usage != null)
+        {
+            _usageTimer.Tick += (_, _) => _ = RefreshUsageAsync(force: true);
+            _usageTimer.Start();
+            // Shortly after startup, not during it
+            _dispatcher.BeginInvoke(() => _ = RefreshUsageAsync(force: true), DispatcherPriority.ApplicationIdle);
+        }
         if (hookServer != null)
         {
             _hooks = new ClaudeHooks(hookServer);
@@ -171,6 +179,39 @@ public partial class MainViewModel : ObservableObject
     }
 
     private static string Plural(int n, string word) => n == 1 ? $"1 {word}" : $"{n} {word}s";
+
+    // ---- Plan usage (Agents panel footer) ----
+
+    private readonly ClaudeUsage? _usageLimits;
+    private readonly DispatcherTimer _usageTimer = new() { Interval = TimeSpan.FromMinutes(5) };
+    private DateTime _usageReadAt = DateTime.MinValue;
+    private bool _limitsReading;
+
+    /// <summary>The Claude plan's limits, e.g. "5h 26 %"; empty (and hidden) when unknown.</summary>
+    public ObservableCollection<UsageRow> UsageRows { get; } = new();
+
+    [ObservableProperty]
+    public partial bool HasUsage { get; private set; }
+
+    /// <summary>Reads the limits again, at most once a minute (an agent finishing a turn asks for it).</summary>
+    private async Task RefreshUsageAsync(bool force = false)
+    {
+        if (_usageLimits == null || _limitsReading || (!force && DateTime.UtcNow - _usageReadAt < TimeSpan.FromMinutes(1))) return;
+        _limitsReading = true;
+        _usageReadAt = DateTime.UtcNow;
+        try
+        {
+            var limits = await _usageLimits.ReadAsync();
+            var now = DateTimeOffset.Now;
+            UsageRows.Clear();
+            foreach (var l in limits) UsageRows.Add(new UsageRow(l, now));
+            HasUsage = UsageRows.Count > 0;
+        }
+        finally
+        {
+            _limitsReading = false;
+        }
+    }
 
     // ---- Recent conversations ----
 
@@ -308,6 +349,8 @@ public partial class MainViewModel : ObservableObject
             RefreshContext(node);
         // A tool may have changed files
         if (e.Name is "PostToolUse" or "Stop") ScheduleChangesRefresh(node);
+        // A turn used some of the plan
+        if (e.Name == "Stop") _ = RefreshUsageAsync();
     }
 
     // ---- Changes panel ----

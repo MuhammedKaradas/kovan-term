@@ -18,6 +18,7 @@
     <ui:FluentWindow.Resources>
         <conv:NodeStatusToBrushConverter x:Key="StatusToBrush"/>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <conv:PercentToFractionConverter x:Key="PercentToFraction"/>
         <!-- Branch label: only for nodes working in a worktree -->
         <Style x:Key="BranchVisibility" TargetType="StackPanel">
             <Style.Triggers>
@@ -387,6 +388,52 @@
             <DockPanel>
                 <TextBlock DockPanel.Dock="Top" Text="Agents" FontWeight="SemiBold" Margin="12,10,12,6"
                            Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+
+                <!-- Claude plan limits; hidden when unknown (not logged in, endpoint changed) -->
+                <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                        Padding="12,8,12,10" Visibility="{Binding HasUsage, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <TextBlock Text="Claude plan" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"
+                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                        <ItemsControl ItemsSource="{Binding UsageRows}" AutomationProperties.Name="Claude plan usage" Grid.IsSharedSizeScope="True">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:UsageRow}">
+                                    <Grid Margin="0,3" ToolTip="{Binding ResetsAtText, StringFormat=Resets {0}}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="UsageLabel"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Label}" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                        <StackPanel Grid.Column="1">
+                                            <!-- A plain bar: no animation, nothing redrawn while the canvas moves -->
+                                            <Grid Height="4">
+                                                <Rectangle Fill="{DynamicResource ControlStrokeColorDefaultBrush}" RadiusX="2" RadiusY="2"/>
+                                                <Rectangle RadiusX="2" RadiusY="2" RenderTransformOrigin="0,0.5">
+                                                    <Rectangle.RenderTransform>
+                                                        <ScaleTransform ScaleX="{Binding Percent, Converter={StaticResource PercentToFraction}}"/>
+                                                    </Rectangle.RenderTransform>
+                                                    <Rectangle.Style>
+                                                        <Style TargetType="Rectangle">
+                                                            <Setter Property="Fill" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsHigh}" Value="True">
+                                                                    <Setter Property="Fill" Value="{DynamicResource SystemFillColorCautionBrush}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Rectangle.Style>
+                                                </Rectangle>
+                                            </Grid>
+                                            <TextBlock Text="{Binding Text}" FontSize="11" Margin="0,2,0,0"
+                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
                 <!-- An ItemsControl, not a ListBox: rows aren't "selected", a click goes to the node -->
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="4,0,4,8">
                 <ItemsControl x:Name="AgentsList" AutomationProperties.Name="Agents">
