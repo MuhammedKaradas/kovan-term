@@ -12,7 +12,9 @@ public sealed class NewTerminalViewModelTests
         public bool ShowNewTerminal(NewTerminalViewModel viewModel) => true;
         public string? PickFolder(string? initialDirectory) => folder;
         public Task<WorktreeCloseChoice> AskCloseWorktreeAsync(string title, string message) => Task.FromResult(WorktreeCloseChoice.Keep);
-        public Task ShowErrorAsync(string title, string message) => Task.CompletedTask;
+        public Task ShowMessageAsync(string title, string message) => Task.CompletedTask;
+        public Task<bool> ConfirmAsync(string title, string message, string action) => Task.FromResult(false);
+        public void OpenInBrowser(string url) { }
     }
 
     private static ProfileOptionViewModel Option(string id, bool available) =>

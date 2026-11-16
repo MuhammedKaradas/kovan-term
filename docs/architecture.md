@@ -191,6 +191,13 @@ commit it started from). The Changes panel compares such a node with that commit
 Closing the node asks whether to keep the worktree or delete it and its branch, saying how many uncommitted files
 and commits would be lost. Removal retries briefly, since the node's shell may still be releasing the folder.
 
+The Changes panel header of a worktree node has **Merge into <base>** (in the main checkout; refused when it's on
+another branch or has uncommitted changes, conflicts abort the merge so the base branch is never left half-merged)
+and **Pull request** (push to `origin`, then open the GitHub/GitLab "new pull request" page). A **setup command**
+per repository (stored in `settings.json`) runs in a new worktree before the agent's first start
+(`cmd /s /k "set KOVAN_REPO=… && <setup> && <agent>"`; `%KOVAN_REPO%` is substituted in the command itself, since cmd
+expands variables before `set` runs). A node whose folder is gone isn't started: it would start in Kovan's own folder.
+
 ## Planned components
 
 - **Voice** (v0.4): local speech recognition with Whisper.net.

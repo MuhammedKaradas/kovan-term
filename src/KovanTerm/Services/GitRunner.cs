@@ -17,7 +17,7 @@ public static class GitRunner
 
     public static Task<GitOutput> RunAsync(string directory, params string[] args) => RunAsync(directory, args, [0]);
 
-    public static async Task<GitOutput> RunAsync(string directory, string[] args, int[] okExitCodes)
+    public static async Task<GitOutput> RunAsync(string directory, string[] args, int[] okExitCodes, TimeSpan? timeout = null)
     {
         if (!Directory.Exists(directory)) return new(false, "", "The folder doesn't exist.");
         var psi = new ProcessStartInfo("git")
@@ -47,7 +47,7 @@ public static class GitRunner
         }
         using (process)
         {
-            using var cts = new CancellationTokenSource(Timeout);
+            using var cts = new CancellationTokenSource(timeout ?? Timeout);
             var stdout = ReadCapped(process.StandardOutput);
             var stderr = process.StandardError.ReadToEndAsync(cts.Token);
             try

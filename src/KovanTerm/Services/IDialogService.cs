@@ -24,5 +24,12 @@ public interface IDialogService
     /// <summary>Asks whether to keep or delete a worktree whose node is closing.</summary>
     Task<WorktreeCloseChoice> AskCloseWorktreeAsync(string title, string message);
 
-    Task ShowErrorAsync(string title, string message);
+    /// <summary>Shows a message with an OK button (errors and results).</summary>
+    Task ShowMessageAsync(string title, string message);
+
+    /// <summary>Asks to confirm an action; <c>true</c> if the user presses the action's button.</summary>
+    Task<bool> ConfirmAsync(string title, string message, string action);
+
+    /// <summary>Opens a web page in the default browser.</summary>
+    void OpenInBrowser(string url);
 }

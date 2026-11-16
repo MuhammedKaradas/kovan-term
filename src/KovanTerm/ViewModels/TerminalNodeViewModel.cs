@@ -30,6 +30,7 @@ public partial class TerminalNodeViewModel : ObservableObject
     /// <summary>The git worktree this node's agent works in (created by Kovan); <c>null</c> for a normal folder.</summary>
     public WorktreeInfo? Worktree { get; init; }
     public string? BranchText => Worktree?.Branch;
+    public string MergeLabel => Worktree?.BaseBranch is { } b ? $"Merge into {b}" : "Merge";
     /// <summary>Header accent color (#RRGGBB); default if empty.</summary>
     public string? Color { get; init; }
     /// <summary>Width of the terminal area (canvas units).</summary>

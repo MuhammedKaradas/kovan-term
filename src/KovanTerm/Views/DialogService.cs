@@ -28,9 +28,19 @@ public sealed class DialogService(Window owner) : IDialogService
                 _ => WorktreeCloseChoice.Cancel,
             });
 
-    public Task ShowErrorAsync(string title, string message)
+    public Task ShowMessageAsync(string title, string message)
     {
         ChoiceWindow.Ask(owner, title, message, ("OK", ControlAppearance.Primary));
         return Task.CompletedTask;
+    }
+
+    public Task<bool> ConfirmAsync(string title, string message, string action) =>
+        Task.FromResult(ChoiceWindow.Ask(owner, title, message, (action, ControlAppearance.Primary), ("Cancel", ControlAppearance.Secondary)) == 0);
+
+    public void OpenInBrowser(string url)
+    {
+        // Only web pages: the URL is built from the repository's remote
+        if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps)
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
     }
 }

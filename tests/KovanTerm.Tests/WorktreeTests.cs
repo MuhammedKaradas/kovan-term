@@ -111,6 +111,91 @@ public sealed class WorktreeTests : IDisposable
     }
 
     [Fact]
+    public async Task Merge_BringsTheBranchsCommitsIntoTheBaseBranch()
+    {
+        CreateRepo();
+        var w = (await GitWorktrees.CreateAsync(Repo, "kovan/merge-1")).Value!;
+        Assert.Equal(await GitWorktrees.CurrentBranchAsync(Repo), w.BaseBranch);
+
+        Assert.Contains("no commits", (await GitWorktrees.MergeAsync(w)).Error);
+
+        File.WriteAllText(Path.Combine(w.Path, "src", "app.cs"), "int a = 1;\n");
+        Git(w.Path, "commit", "-q", "-am", "agent change");
+        var merged = await GitWorktrees.MergeAsync(w);
+        Assert.Null(merged.Error);
+        Assert.Equal("int a = 1;\n", File.ReadAllText(Path.Combine(Repo, "src", "app.cs")).Replace("\r\n", "\n"));
+    }
+
+    [Fact]
+    public async Task Merge_RefusesADirtyMainCheckout_AndAbortsConflicts()
+    {
+        CreateRepo();
+        var w = (await GitWorktrees.CreateAsync(Repo, "kovan/merge-2")).Value!;
+        File.WriteAllText(Path.Combine(w.Path, "src", "app.cs"), "int a = 1;\n");
+        Git(w.Path, "commit", "-q", "-am", "agent change");
+
+        // Uncommitted work in the main checkout: nothing is touched
+        File.WriteAllText(Path.Combine(Repo, "src", "app.cs"), "int a = 2;\n");
+        Assert.Contains("uncommitted changes", (await GitWorktrees.MergeAsync(w)).Error);
+        Assert.Equal("int a = 2;\n", File.ReadAllText(Path.Combine(Repo, "src", "app.cs")).Replace("\r\n", "\n"));
+
+        // Committed there instead: the same line changed on both sides → conflict, merge cancelled, main unchanged
+        Git(Repo, "commit", "-q", "-am", "main change");
+        var result = await GitWorktrees.MergeAsync(w);
+        Assert.Contains("conflicts", result.Error);
+        Assert.Contains("src/app.cs", result.Error);
+        Assert.Equal("int a = 2;\n", File.ReadAllText(Path.Combine(Repo, "src", "app.cs")).Replace("\r\n", "\n"));
+        Assert.Equal("", (await GitRunner.RunAsync(Repo, "status", "--porcelain")).Output.Trim());
+    }
+
+    [Fact]
+    public async Task Push_SendsTheBranchToOrigin()
+    {
+        CreateRepo();
+        var remote = Path.Combine(_base, "remote.git");
+        Directory.CreateDirectory(remote);
+        Git(remote, "init", "-q", "--bare");
+        Git(Repo, "remote", "add", "origin", remote);
+        var w = (await GitWorktrees.CreateAsync(Repo, "kovan/push-1")).Value!;
+
+        var pushed = await GitWorktrees.PushAsync(w);
+        Assert.Null(pushed.Error);
+        Assert.Null(pushed.Value); // a local remote has no pull request page
+        Assert.True((await GitRunner.RunAsync(remote, "rev-parse", "--verify", "refs/heads/kovan/push-1")).Ok);
+    }
+
+    [Theory]
+    [InlineData("https://github.com/acme/shop.git", "main", "https://github.com/acme/shop/compare/main...kovan/claude-1?expand=1")]
+    [InlineData("git@github.com:acme/shop.git", "main", "https://github.com/acme/shop/compare/main...kovan/claude-1?expand=1")]
+    [InlineData("https://user@github.com/acme/shop", null, "https://github.com/acme/shop/pull/new/kovan/claude-1")]
+    [InlineData("git@gitlab.com:team/sub/shop.git", "dev",
+        "https://gitlab.com/team/sub/shop/-/merge_requests/new?merge_request%5Bsource_branch%5D=kovan%2Fclaude-1&merge_request%5Btarget_branch%5D=dev")]
+    [InlineData("https://git.example.com/acme/shop.git", "main", null)]
+    [InlineData(@"C:\repos\shop.git", "main", null)]
+    public void PullRequestUrl_ForKnownHosts(string remote, string? baseBranch, string? expected) =>
+        Assert.Equal(expected, GitWorktrees.PullRequestUrl(remote, baseBranch, "kovan/claude-1"));
+
+    [Fact]
+    public void Setup_RunsBeforeTheAgent_WithTheMainCheckoutInKovanRepo() =>
+        Assert.Equal(
+            "cmd.exe /s /k \"set \"KOVAN_REPO=C:\\src\\shop\" && npm install && \"C:\\npm\\claude.cmd\" --model opus\"",
+            GitWorktrees.WithSetup("\"C:\\npm\\claude.cmd\" --model opus", "npm install", @"C:\src\shop"));
+
+    [Fact]
+    public async Task Setup_ActuallyRunsFirst_AndSeesKovanRepo()
+    {
+        Directory.CreateDirectory(_base);
+        // %KOVAN_REPO% in the command itself, and in a script the command runs
+        File.WriteAllText(Path.Combine(_base, "child.cmd"), "@echo child %KOVAN_REPO%>> order.txt\r\n");
+        var line = GitWorktrees.WithSetup("echo agent>> order.txt", "echo setup %KOVAN_REPO%> order.txt && call .\\child.cmd", @"C:\main")
+            .Replace("/k", "/c");
+        var psi = new ProcessStartInfo("cmd.exe", line[("cmd.exe ".Length)..]) { WorkingDirectory = _base, UseShellExecute = false, CreateNoWindow = true };
+        using var p = Process.Start(psi)!;
+        await p.WaitForExitAsync();
+        Assert.Equal([@"setup C:\main", @"child C:\main", "agent"], File.ReadAllLines(Path.Combine(_base, "order.txt")).Select(l => l.Trim()));
+    }
+
+    [Fact]
     public async Task Create_ExplainsFailures()
     {
         CreateRepo();
@@ -148,6 +233,8 @@ public sealed class WorktreeTests : IDisposable
         public bool ShowNewTerminal(NewTerminalViewModel viewModel) => true;
         public string? PickFolder(string? initialDirectory) => null;
         public Task<WorktreeCloseChoice> AskCloseWorktreeAsync(string title, string message) => Task.FromResult(WorktreeCloseChoice.Cancel);
-        public Task ShowErrorAsync(string title, string message) => Task.CompletedTask;
+        public Task ShowMessageAsync(string title, string message) => Task.CompletedTask;
+        public Task<bool> ConfirmAsync(string title, string message, string action) => Task.FromResult(false);
+        public void OpenInBrowser(string url) { }
     }
 }
