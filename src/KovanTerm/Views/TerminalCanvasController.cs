@@ -73,6 +73,9 @@ public sealed class TerminalCanvasController
     /// <summary>The user typed a key that answers a prompt (Enter, Escape, a digit) into a terminal (see <see cref="PromptKeys"/>).</summary>
     public event Action<object>? AnswerKeyTyped;
 
+    /// <summary>The program in a terminal reported its status with OSC 7501 (see <see cref="ProgramStatusParser"/>).</summary>
+    public event Action<object, IReadOnlyList<ProgramStatusReport>>? ProgramStatusReported;
+
     /// <summary>Snapshot mode enter/exit timings (for measurement; see <see cref="PerfSelfTest"/>).</summary>
     public event Action<string, TimeSpan>? Timing;
 
@@ -99,7 +102,15 @@ public sealed class TerminalCanvasController
         // The snapshot goes stale as output arrives; it must also be retaken when the size changes (resize, font size)
         if (term.ConPTYTerm != null)
         {
-            term.ConPTYTerm.TerminalOutput += (_, _) => entry.Dirty = true;
+            var status = new ProgramStatusParser();
+            term.ConPTYTerm.TerminalOutput += (_, e) =>
+            {
+                entry.Dirty = true;
+                // Reader thread: only a vectorized search per chunk unless a status report is in it
+                var reports = status.Feed(e.Data);
+                if (reports.Count > 0)
+                    term.Dispatcher.BeginInvoke(() => ProgramStatusReported?.Invoke(node, reports));
+            };
             term.ConPTYTerm.InterceptInputToTermApp += (ref Span<char> input) =>
             {
                 if (PromptKeys.IsAnswer(input))

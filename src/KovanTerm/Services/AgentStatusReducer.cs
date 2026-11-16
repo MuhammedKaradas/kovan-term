@@ -32,13 +32,30 @@ public static class AgentStatusReducer
         _ => current,
     };
 
+    /// <summary>
+    /// Status from a program's own OSC 7501 report (<see cref="ProgramStatusParser"/>); <c>null</c> for reports
+    /// about sub-records such as subagents, which don't change the node.
+    /// </summary>
+    public static AgentStatus? FromReport(ProgramStatusReport r)
+    {
+        if (r.Id != null) return null;
+        return r.State switch
+        {
+            "working" => new(NodeStatus.Working, r.Message),
+            "blocked" => new(NodeStatus.Waiting, r.Message, AwaitsPermission: r.Kind == "permission"),
+            "done" => new(NodeStatus.Done),
+            "error" => new(NodeStatus.Error, r.Message),
+            _ => AgentStatus.Idle, // idle, clear
+        };
+    }
+
     /// <summary>Text for the node header, e.g. "Needs you · Bash".</summary>
     public static string? Describe(AgentStatus s) => s.Status switch
     {
         NodeStatus.Waiting => s.Detail is { } d ? $"Needs you · {d}" : "Needs you",
         NodeStatus.Working => s.Detail is { } d ? $"Working · {d}" : "Working",
         NodeStatus.Done => "Done",
-        NodeStatus.Error => "Error",
+        NodeStatus.Error => s.Detail is { } d ? $"Error · {d}" : "Error",
         _ => null,
     };
 }

@@ -76,6 +76,19 @@ public partial class TerminalNodeViewModel : ObservableObject
 
     private AgentStatus _agent = AgentStatus.Idle;
 
+    /// <summary>
+    /// What Allow types into the terminal: the "Yes" row's key. Claude Code: <c>1</c>; Codex: <c>y</c>
+    /// (learned from its status reports). Deny is Escape for both.
+    /// </summary>
+    public string AllowKey { get; private set; } = "1";
+
+    /// <summary>Updates the status from the program's own OSC 7501 report.</summary>
+    public void ApplyProgramStatus(ProgramStatusReport report)
+    {
+        if (report.App == "codex") AllowKey = "y";
+        if (AgentStatusReducer.FromReport(report) is { } s) SetAgentStatus(s);
+    }
+
     /// <summary>Updates the status from an agent event (see <see cref="AgentStatusReducer"/>).</summary>
     public void ApplyAgentEvent(AgentEvent e)
     {

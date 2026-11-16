@@ -28,6 +28,7 @@ public partial class MainWindow : FluentWindow
         _canvas = new TerminalCanvasController(Editor);
         _vm.TerminalInputRequested += _canvas.SendInput;
         _canvas.AnswerKeyTyped += node => _vm.OnAnswerKeyTyped((TerminalNodeViewModel)node);
+        _canvas.ProgramStatusReported += (node, reports) => _vm.OnProgramStatus((TerminalNodeViewModel)node, reports);
         _vm.AttentionNeeded += _ => FlashIfInactive();
 
         // Theme: WPF-UI resources + terminal colors; re-applied when the preference changes
