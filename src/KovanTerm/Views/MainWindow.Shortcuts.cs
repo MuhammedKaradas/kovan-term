@@ -17,11 +17,17 @@ public partial class MainWindow
 
     // The "current" terminal for navigation: the last one focused or navigated to via shortcut. Keyboard focus
     // alone isn't reliable; focus can't be set while the window is inactive, so navigation would get stuck.
-    private TerminalNodeViewModel? _currentNode;
+    private TerminalNodeViewModel? _currentNode
+    {
+        get => _vm.CurrentNode;
+        set => _vm.CurrentNode = value;
+    }
 
     private void InitShortcuts()
     {
         SourceInitialized += (_, _) => _hwnd = new WindowInteropHelper(this).Handle;
+        // Until the user picks one, the terminal in the middle of the restored view is the current one
+        ContentRendered += (_, _) => _currentNode ??= NearestToCenter();
         _canvas.NodeFocused += node => _currentNode = node as TerminalNodeViewModel;
         _vm.Nodes.CollectionChanged += (_, _) =>
         {
@@ -67,6 +73,9 @@ public partial class MainWindow
             case ShortcutAction.ToggleAgentsPanel:
                 _vm.ToggleAgentsPanelCommand.Execute(null);
                 break;
+            case ShortcutAction.ToggleChangesPanel:
+                _vm.ToggleChangesPanelCommand.Execute(null);
+                break;
         }
     }
 
@@ -86,10 +95,13 @@ public partial class MainWindow
         GoToNode(node);
     }
 
-    // Double-click on the header: zoom to that terminal
+    // Click on the header: that terminal becomes the current one (Changes panel, navigation).
+    // Double-click: zoom to it.
     private void NodeHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ClickCount != 2 || sender is not FrameworkElement { DataContext: TerminalNodeViewModel node }) return;
+        if (sender is not FrameworkElement { DataContext: TerminalNodeViewModel node }) return;
+        _currentNode = node;
+        if (e.ClickCount != 2) return;
         ZoomToNode(node);
         e.Handled = true;
     }

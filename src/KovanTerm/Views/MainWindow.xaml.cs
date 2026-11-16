@@ -90,6 +90,22 @@ public partial class MainWindow : FluentWindow
         if (sender is FrameworkElement { DataContext: TerminalNodeViewModel node }) GoToNode(node);
     }
 
+    // Changes panel: click a diff line to write a note for it
+    private void DiffLine_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: DiffLine line } || !line.CanAnnotate) return;
+        _vm.Changes.StartNoteCommand.Execute(line);
+        Dispatcher.BeginInvoke(() => NoteBox.Focus(), System.Windows.Threading.DispatcherPriority.Input);
+    }
+
+    private void NoteBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter) _vm.Changes.AddNoteCommand.Execute(null);
+        else if (e.Key == Key.Escape) _vm.Changes.CancelNoteCommand.Execute(null);
+        else return;
+        e.Handled = true;
+    }
+
     private static T? FindAncestor<T>(DependencyObject? d) where T : DependencyObject
     {
         for (; d != null; d = d is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d))

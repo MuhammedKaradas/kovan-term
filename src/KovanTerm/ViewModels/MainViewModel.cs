@@ -78,6 +78,13 @@ public partial class MainViewModel : ObservableObject
         _settings = settings;
         Theme = settings.Load().Theme;
         ShowAgentsPanel = settings.Load().ShowAgentsPanel;
+        ShowChangesPanel = settings.Load().ShowChangesPanel;
+        _changesTimer.Tick += (_, _) =>
+        {
+            _changesTimer.Stop();
+            _ = Changes.RefreshAsync();
+        };
+        Changes.SendRequested += (node, message) => TerminalInputRequested?.Invoke(node, ChangesViewModel.BracketedPaste(message));
         _store = store;
         _profiles = profiles.Load();
         _resolver = resolver;
@@ -117,6 +124,7 @@ public partial class MainViewModel : ObservableObject
         Nodes.Remove(node);
         _hooks?.Remove(node.Id);
         _usage.Remove(node);
+        if (CurrentNode == node) CurrentNode = null;
     }
 
     /// <summary>Goes to the next node waiting for the user, in reading order after the last one visited.</summary>
@@ -164,6 +172,43 @@ public partial class MainViewModel : ObservableObject
         // A reply was just written to the transcript
         if (e.Name is "Stop" or "PostToolUse" or "PostToolUseFailure" or "SessionStart" && node.TranscriptPath != null)
             RefreshContext(node);
+        // A tool may have changed files
+        if (e.Name is "PostToolUse" or "Stop") ScheduleChangesRefresh(node);
+    }
+
+    // ---- Changes panel ----
+
+    public ChangesViewModel Changes { get; } = new(new GitChanges());
+
+    [ObservableProperty]
+    public partial bool ShowChangesPanel { get; set; }
+
+    partial void OnShowChangesPanelChanged(bool value)
+    {
+        _settings.Save(_settings.Load() with { ShowChangesPanel = value });
+        if (value) _ = Changes.ShowAsync(CurrentNode);
+    }
+
+    [RelayCommand]
+    private void ToggleChangesPanel() => ShowChangesPanel = !ShowChangesPanel;
+
+    /// <summary>The node the user is working with (last clicked or navigated to); the Changes panel follows it.</summary>
+    [ObservableProperty]
+    public partial TerminalNodeViewModel? CurrentNode { get; set; }
+
+    partial void OnCurrentNodeChanged(TerminalNodeViewModel? value)
+    {
+        if (ShowChangesPanel) _ = Changes.ShowAsync(value);
+    }
+
+    // Agents change files in bursts; refresh once things settle
+    private readonly DispatcherTimer _changesTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
+
+    private void ScheduleChangesRefresh(TerminalNodeViewModel node)
+    {
+        if (!ShowChangesPanel || node != CurrentNode) return;
+        _changesTimer.Stop();
+        _changesTimer.Start();
     }
 
     // ---- Agents panel ----
@@ -207,6 +252,7 @@ public partial class MainViewModel : ObservableObject
         if (!Nodes.Contains(node)) return;
         foreach (var r in reports) StatusLog($"{node.Title} osc {r.State} {r.Kind} {r.Id}");
         UpdateStatus(node, () => { foreach (var r in reports) node.ApplyProgramStatus(r); });
+        if (reports.Any(r => r.State is "done" or "idle")) ScheduleChangesRefresh(node);
     }
 
     // KOVAN_STATUS_LOG=<file>: every status event and the resulting status, for diagnosing agent integrations

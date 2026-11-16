@@ -14,4 +14,6 @@ public sealed record AppSettings
     public ThemePreference Theme { get; init; } = ThemePreference.System;
     /// <summary>Is the Agents panel (left of the canvas) open?</summary>
     public bool ShowAgentsPanel { get; init; } = true;
+    /// <summary>Is the Changes panel (right of the canvas) open?</summary>
+    public bool ShowChangesPanel { get; init; }
 }
