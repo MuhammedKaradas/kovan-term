@@ -57,6 +57,15 @@ public sealed class AgentStatusTests
     }
 
     [Fact]
+    public void BackgroundSubagentAfterStop_StaysDone()
+    {
+        // Seen with a resumed session: a background subagent finishes after the main agent's Stop
+        var s = Run(new("UserPromptSubmit"), new("Stop"), new("SubagentStop"));
+        Assert.Equal(NodeStatus.Done, s.Status);
+        Assert.Equal(NodeStatus.Working, Run(new("UserPromptSubmit"), new("SubagentStart")).Status);
+    }
+
+    [Fact]
     public void IdleNotification_DoesNotChangeStatus()
     {
         var s = Run(new("Stop"), new("Notification", NotificationType: "idle_prompt"));

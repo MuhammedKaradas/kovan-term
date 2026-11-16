@@ -26,6 +26,8 @@ public sealed record NodeState
     public string? ProfileId { get; init; }
     public required string Title { get; init; }
     public required string CommandLine { get; init; }
+    /// <summary>The agent's conversation id (Claude Code), resumed on the next launch.</summary>
+    public string? SessionId { get; init; }
     public string? Color { get; init; }
     public string? WorkingDirectory { get; init; }
     public double X { get; init; }

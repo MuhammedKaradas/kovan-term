@@ -67,8 +67,12 @@ public partial class TerminalNodeViewModel : ObservableObject
     [ObservableProperty]
     public partial bool AwaitsPermission { get; set; }
 
-    /// <summary>The agent's conversation id, from its last event.</summary>
-    public string? SessionId { get; private set; }
+    /// <summary>
+    /// The agent's conversation (Claude Code session id). Chosen when the node is created and resumed on the next
+    /// launch; follows the agent's events, so a <c>/clear</c> moves the node to the new conversation.
+    /// </summary>
+    [ObservableProperty]
+    public partial string? SessionId { get; set; }
 
     private AgentStatus _agent = AgentStatus.Idle;
 
@@ -103,6 +107,7 @@ public partial class TerminalNodeViewModel : ObservableObject
         ProfileId = ProfileId,
         Title = Title,
         CommandLine = CommandLine,
+        SessionId = SessionId,
         Color = Color,
         WorkingDirectory = WorkingDirectory,
         X = Location.X,
@@ -118,6 +123,7 @@ public partial class TerminalNodeViewModel : ObservableObject
         Title = s.Title,
         CommandLine = commandLine ?? s.CommandLine,
         LaunchCommandLine = launchCommandLine,
+        SessionId = s.SessionId,
         Color = s.Color,
         WorkingDirectory = s.WorkingDirectory,
         StartError = startError,

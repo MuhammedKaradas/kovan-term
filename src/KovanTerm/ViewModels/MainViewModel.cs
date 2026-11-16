@@ -47,6 +47,7 @@ public partial class MainViewModel : ObservableObject
     private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
 
     private readonly ClaudeHooks? _hooks;
+    private readonly ClaudeSessions _sessions;
     private readonly Dispatcher _dispatcher = Dispatcher.CurrentDispatcher;
 
     /// <summary>Agents currently working / waiting for the user (toolbar summary).</summary>
@@ -66,8 +67,9 @@ public partial class MainViewModel : ObservableObject
     public event Action<TerminalNodeViewModel, string>? TerminalInputRequested;
 
     public MainViewModel(WorkspaceStore store, ProfileStore profiles, CommandResolver resolver, IDialogService dialogs, SettingsStore settings,
-        AgentHookServer? hookServer = null)
+        AgentHookServer? hookServer = null, ClaudeSessions? sessions = null)
     {
+        _sessions = sessions ?? new ClaudeSessions();
         if (hookServer != null)
         {
             _hooks = new ClaudeHooks(hookServer);
@@ -206,25 +208,33 @@ public partial class MainViewModel : ObservableObject
     private TerminalNodeViewModel CreateNode(TerminalProfile profile, string resolvedPath, string directory, Point location)
     {
         var id = Guid.NewGuid();
+        var sessionId = ClaudeHooks.IsClaude(resolvedPath) ? Guid.NewGuid().ToString() : null;
         return new()
         {
             Id = id,
             ProfileId = profile.Id,
             Title = profile.Name,
             CommandLine = CommandResolver.BuildCommandLine(resolvedPath, profile.Arguments),
-            LaunchCommandLine = LaunchCommandLine(id, resolvedPath, profile.Arguments),
+            LaunchCommandLine = LaunchCommandLine(id, resolvedPath, profile.Arguments, sessionId),
+            SessionId = sessionId,
             Color = profile.Color,
             WorkingDirectory = directory,
             Location = location,
         };
     }
 
-    /// <summary>For Claude Code: the command line with this run's hook settings; otherwise <c>null</c> (run the saved command).</summary>
-    private string? LaunchCommandLine(Guid nodeId, string resolvedPath, string arguments)
+    /// <summary>
+    /// For Claude Code: the command line with the node's conversation (<see cref="ClaudeSessions"/>) and this run's
+    /// hook settings; otherwise <c>null</c> (run the saved command).
+    /// </summary>
+    private string? LaunchCommandLine(Guid nodeId, string resolvedPath, string arguments, string? sessionId)
     {
-        if (_hooks == null || !ClaudeHooks.IsClaude(resolvedPath)) return null;
-        var hookArgs = _hooks.PrepareArguments(nodeId);
-        return hookArgs.Length == 0 ? null : CommandResolver.BuildCommandLine(resolvedPath, $"{arguments} {hookArgs}".Trim());
+        if (!ClaudeHooks.IsClaude(resolvedPath)) return null;
+        var extra = new List<string> { arguments };
+        if (sessionId != null) extra.Add(_sessions.Arguments(sessionId, arguments));
+        if (_hooks != null) extra.Add(_hooks.PrepareArguments(nodeId));
+        var all = string.Join(' ', extra.Where(a => a.Length > 0));
+        return all == arguments ? null : CommandResolver.BuildCommandLine(resolvedPath, all);
     }
 
     private void AddNode(TerminalNodeViewModel node)
@@ -259,10 +269,12 @@ public partial class MainViewModel : ObservableObject
     {
         if (_profiles.FirstOrDefault(p => p.Id == s.ProfileId) is { } profile)
         {
-            return _resolver.Resolve(profile.Executable) is { } path
-                ? TerminalNodeViewModel.FromState(s, CommandResolver.BuildCommandLine(path, profile.Arguments),
-                    launchCommandLine: LaunchCommandLine(s.Id, path, profile.Arguments))
-                : TerminalNodeViewModel.FromState(s, startError: NotFoundMessage(profile.Executable));
+            if (_resolver.Resolve(profile.Executable) is not { } path)
+                return TerminalNodeViewModel.FromState(s, startError: NotFoundMessage(profile.Executable));
+            // Nodes saved before sessions were tracked get a fresh conversation, as they did before
+            var state = ClaudeHooks.IsClaude(path) && s.SessionId == null ? s with { SessionId = Guid.NewGuid().ToString() } : s;
+            return TerminalNodeViewModel.FromState(state, CommandResolver.BuildCommandLine(path, profile.Arguments),
+                launchCommandLine: LaunchCommandLine(s.Id, path, profile.Arguments, state.SessionId));
         }
 
         var exe = CommandResolver.FirstToken(s.CommandLine);
@@ -314,8 +326,9 @@ public partial class MainViewModel : ObservableObject
 
     private void OnNodePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // Status isn't persisted; save only when location or size changes
-        if (e.PropertyName is nameof(TerminalNodeViewModel.Location) or nameof(TerminalNodeViewModel.Width) or nameof(TerminalNodeViewModel.Height))
+        // Status isn't persisted; save when location, size or the conversation (e.g. after /clear) changes
+        if (e.PropertyName is nameof(TerminalNodeViewModel.Location) or nameof(TerminalNodeViewModel.Width) or nameof(TerminalNodeViewModel.Height)
+            or nameof(TerminalNodeViewModel.SessionId))
             ScheduleSave();
     }
 
