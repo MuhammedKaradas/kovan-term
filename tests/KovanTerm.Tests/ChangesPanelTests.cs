@@ -135,17 +135,38 @@ public sealed class ChangesPanelTests : IDisposable
     }
 
     [Fact]
-    public async Task WslNode_WithLinuxFolder_ExplainsInsteadOfRunningGit()
+    public async Task WslNode_InTheDefaultDistro_Explains()
     {
         var vm = new ChangesViewModel(new GitChanges());
         var node = TerminalNodeViewModel.FromState(new KovanTerm.Models.NodeState
         {
-            Id = Guid.NewGuid(), Title = "Debian", CommandLine = "wsl", WorkingDirectory = "/srv/app", Wsl = true,
+            Id = Guid.NewGuid(), Title = "WSL", CommandLine = "wsl", WorkingDirectory = "/srv/app", Wsl = true,
         });
 
         await vm.ShowAsync(node);
 
-        Assert.Equal("Changes of folders inside WSL aren't shown yet.", vm.Message);
+        Assert.Equal("Changes aren't shown for the default WSL distro; use a profile with \"distro\" set.", vm.Message);
         Assert.Empty(vm.Files);
+    }
+
+    [Theory]
+    [InlineData(@"\\wsl.localhost\Debian\srv\app", "Debian", "/srv/app")]
+    [InlineData(@"\\wsl$\Ubuntu-24.04\home\me\", "Ubuntu-24.04", "/home/me")]
+    [InlineData(@"\\wsl.localhost\Debian", "Debian", "/")]
+    public void WslFolders_AreRecognized(string folder, string distro, string linux)
+    {
+        Assert.True(GitRunner.TryParseWslFolder(folder, out var d, out var l));
+        Assert.Equal((distro, linux), (d, l));
+        Assert.Equal("/dev/null", GitRunner.NullDevice(folder));
+        Assert.Equal(@"\\wsl.localhost\" + distro + @"\srv\x", GitRunner.PathLike(folder, "/srv/x"));
+    }
+
+    [Fact]
+    public void WindowsFolders_StayWindows()
+    {
+        Assert.False(GitRunner.TryParseWslFolder(@"C:\code\app", out _, out _));
+        Assert.False(GitRunner.TryParseWslFolder(@"\\server\share\x", out _, out _));
+        Assert.Equal("NUL", GitRunner.NullDevice(@"C:\code"));
+        Assert.Equal("C:/code/app", GitRunner.PathLike(@"C:\code", "C:/code/app"));
     }
 }

@@ -59,6 +59,10 @@ public partial class ChangesViewModel : ObservableObject
 
     public string SendNotesLabel => Notes.Count == 1 ? "Send 1 note to the agent" : $"Send {Notes.Count} notes to the agent";
 
+    /// <summary>A WSL node's Linux folder as <c>\\wsl.localhost\&lt;distro&gt;\…</c>; <c>null</c> for <c>~</c> or the default distro.</summary>
+    private static string? WslFolder(TerminalNodeViewModel node) =>
+        node is { Distro: { } distro, WorkingDirectory: { } dir } && dir.StartsWith('/') ? Services.WslLauncher.ToUncPath(distro, dir) : null;
+
     /// <summary>Shows the given node's changes (or clears the panel).</summary>
     public async Task ShowAsync(TerminalNodeViewModel? node)
     {
@@ -84,11 +88,17 @@ public partial class ChangesViewModel : ObservableObject
         }
         if (Node.IsWsl && Services.WslLauncher.IsLinuxPath(dir))
         {
-            // Windows git can't open a Linux path; running git inside the distro is still to do
-            Files.Clear();
-            DiffLines = [];
-            Message = "Changes of folders inside WSL aren't shown yet.";
-            return;
+            // As \\wsl.localhost\<distro>\…, git runs inside the distro (GitRunner); ~ and the default distro have no such name
+            if (WslFolder(Node) is not { } folder)
+            {
+                Files.Clear();
+                DiffLines = [];
+                Message = Node.Distro == null
+                    ? "Changes aren't shown for the default WSL distro; use a profile with \"distro\" set."
+                    : "Not a git repository.";
+                return;
+            }
+            dir = folder;
         }
         IsBusy = true;
         var status = await _git.StatusAsync(dir, Node.Worktree?.BaseCommit);
@@ -132,6 +142,7 @@ public partial class ChangesViewModel : ObservableObject
     private async Task LoadDiffAsync(ChangedFile file)
     {
         if (Node?.WorkingDirectory is not { } dir) return;
+        if (Node.IsWsl && Services.WslLauncher.IsLinuxPath(dir) && WslFolder(Node) is { } folder) dir = folder;
         var version = _refreshVersion;
         _diffLoadedFor = file;
         var diff = await _git.DiffAsync(dir, file, Node.Worktree?.BaseCommit);
