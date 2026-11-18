@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using EasyWindowsTerminalControl;
+using Microsoft.Web.WebView2.Wpf;
 using KovanTerm.Interop;
 using KovanTerm.Services;
 using Microsoft.Terminal.Wpf;
@@ -30,9 +31,15 @@ public sealed class TerminalCanvasController
     public const double SleepZoomThreshold = 0.4;
 
     /// <summary>A terminal on the canvas and its cached snapshot.</summary>
-    private sealed class Entry(EasyTerminalControl control)
+    private sealed class Entry(FrameworkElement host, EasyTerminalControl? terminal, WebView2? browser)
     {
-        public EasyTerminalControl Control { get; } = control;
+        /// <summary>What's hidden and shown and snapshotted: the terminal control, or the preview's host border.</summary>
+        public FrameworkElement Host { get; } = host;
+        public EasyTerminalControl? Terminal { get; } = terminal;
+        /// <summary>A web preview node's WebView2 (also an HWND, so the same rules apply).</summary>
+        public WebView2? Browser { get; } = browser;
+        /// <summary>When a preview was last captured (<see cref="Environment.TickCount64"/>); pages change without telling.</summary>
+        public long LastCapture;
         /// <summary>Has the terminal output changed since the last snapshot? Written from the reader thread.</summary>
         public volatile bool Dirty = true;
         public BitmapSource? Snapshot;
@@ -78,6 +85,9 @@ public sealed class TerminalCanvasController
     /// <summary>The user typed a key that answers a prompt (Enter, Escape, a digit) into a terminal (see <see cref="PromptKeys"/>).</summary>
     public event Action<object>? AnswerKeyTyped;
 
+    /// <summary>A terminal printed a local web address (see <see cref="LocalUrls"/>).</summary>
+    public event Action<object, string>? LocalUrlPrinted;
+
     /// <summary>The program in a terminal reported its status with OSC 7501 (see <see cref="ProgramStatusParser"/>).</summary>
     public event Action<object, IReadOnlyList<ProgramStatusReport>>? ProgramStatusReported;
 
@@ -112,7 +122,7 @@ public sealed class TerminalCanvasController
             var sinceRead = now - entry.LastScreenRead;
             if (sinceRead < MinScreenReadMs || (!settled && sinceRead < BusyScreenReadMs)) continue;
             entry.LastScreenRead = now;
-            if (entry.Control.Terminal is not { } terminal || TerminalSnapshot.FindHwnd(terminal) is not { } hwnd) continue;
+            if (entry.Terminal?.Terminal is not { } terminal || TerminalSnapshot.FindHwnd(terminal) is not { } hwnd) continue;
             entry.ScreenChanged = false;
             entry.ScreenReading = true;
             Task.Run(() => _screenReader.Read(hwnd)).ContinueWith(t =>
@@ -143,7 +153,7 @@ public sealed class TerminalCanvasController
     public void Register(EasyTerminalControl term)
     {
         if (term.DataContext is not { } node || _byNode.ContainsKey(node)) return;
-        var entry = new Entry(term);
+        var entry = new Entry(term, term, null);
         _byNode[node] = entry;
         // The snapshot goes stale as output arrives; it must also be retaken when the size changes (resize, font size)
         if (term.ConPTYTerm != null)
@@ -154,6 +164,8 @@ public sealed class TerminalCanvasController
                 entry.Dirty = true;
                 entry.ScreenChanged = true;
                 entry.LastOutput = Environment.TickCount64;
+                if (LocalUrls.FindLast(e.Data) is { } url)
+                    term.Dispatcher.BeginInvoke(() => LocalUrlPrinted?.Invoke(node, url));
                 // Reader thread: only a vectorized search per chunk unless a status report is in it
                 var reports = status.Feed(e.Data);
                 if (reports.Count > 0)
@@ -184,22 +196,56 @@ public sealed class TerminalCanvasController
     public void SendInput(object node, string text)
     {
         if (_byNode.TryGetValue(node, out var entry))
-            entry.Control.ConPTYTerm?.WriteToTerm(text);
+            entry.Terminal?.ConPTYTerm?.WriteToTerm(text);
+    }
+
+    private const long PreviewRecaptureMs = 2000;
+
+    /// <summary>
+    /// A web preview node: its WebView2 is an HWND like a terminal, so it's hidden behind a snapshot while the canvas
+    /// moves, sleeps off screen and is clipped to the canvas. <paramref name="host"/> wraps the WebView2 and sits in a
+    /// Grid next to the snapshot Image.
+    /// </summary>
+    public void RegisterPreview(FrameworkElement host, WebView2 browser)
+    {
+        if (host.DataContext is not { } node || _byNode.ContainsKey(node)) return;
+        _byNode[node] = new Entry(host, null, browser);
+        browser.ZoomFactor = _editor.ViewportZoom;
+        host.Dispatcher.BeginInvoke(() =>
+        {
+            UpdateSleepStates();
+            UpdateClipRegions();
+        }, DispatcherPriority.ApplicationIdle);
+    }
+
+    /// <summary>The preview's page changed (navigation): its snapshot must be retaken.</summary>
+    public void PreviewChanged(object node)
+    {
+        if (_byNode.TryGetValue(node, out var entry)) entry.Dirty = true;
+    }
+
+    private void Release(Entry entry)
+    {
+        if (entry.Terminal is { } term)
+        {
+            if (term.Terminal is { } terminal && TerminalSnapshot.FindHwnd(terminal) is { } hwnd) _screenReader.Forget(hwnd);
+            KillProcessTree(term);
+        }
+        entry.Browser?.Dispose();
     }
 
     /// <summary>Kills the node's terminal and every process under it (e.g. cmd → claude → MCP servers).</summary>
     public void Terminate(object node)
     {
         if (!_byNode.Remove(node, out var entry)) return;
-        if (entry.Control.Terminal is { } terminal && TerminalSnapshot.FindHwnd(terminal) is { } hwnd) _screenReader.Forget(hwnd);
-        KillProcessTree(entry.Control);
+        Release(entry);
     }
 
     public void TerminateAll()
     {
         _refreshTimer.Stop();
         foreach (var entry in _byNode.Values)
-            KillProcessTree(entry.Control);
+            Release(entry);
         _byNode.Clear();
     }
 
@@ -241,8 +287,8 @@ public sealed class TerminalCanvasController
         }
         _pendingFocus = null;
         // The terminal control is the TerminalControl containing the HwndHost; focusing it calls SetFocus on the HWND
-        if (entry.Control.Terminal?.Focus() != true)
-            entry.Control.Focus();
+        if (entry.Terminal?.Terminal?.Focus() != true)
+            entry.Host.Focus();
     }
 
     /// <summary>Replaces terminals with snapshots for the duration of an interaction (e.g. resizing).</summary>
@@ -279,7 +325,7 @@ public sealed class TerminalCanvasController
         var clip = CanvasScreenRect();
         var stale = _byNode.Values
             .Where(e => !e.Sleeping && (e.Dirty || e.Snapshot == null))
-            .Select(e => (Entry: e, Target: TerminalSnapshot.GetTarget(e.Control, clip)))
+            .Select(e => (Entry: e, Target: TerminalSnapshot.GetTarget(e.Host, clip)))
             .Where(x => x.Target != null)
             .ToList();
         var shots = TerminalSnapshot.CaptureAll(stale.Select(x => x.Target!).ToList(), TerminalThemes.BackgroundFor(_dark));
@@ -293,10 +339,10 @@ public sealed class TerminalCanvasController
         foreach (var entry in _byNode.Values)
         {
             // A stale snapshot is better than none
-            if (entry.Snapshot is not { } shot || GetSnapshotImage(entry.Control) is not { } image) continue;
+            if (entry.Snapshot is not { } shot || GetSnapshotImage(entry.Host) is not { } image) continue;
             image.Source = shot;
             image.Visibility = Visibility.Visible;
-            entry.Control.Visibility = Visibility.Hidden;
+            entry.Host.Visibility = Visibility.Hidden;
         }
         int captured = stale.Count, fromCache = _byNode.Count - captured;
         Timing?.Invoke($"enter snapshot mode ({_byNode.Count} terminals: {fromCache} from cache, {captured} captured now)", sw.Elapsed);
@@ -334,7 +380,7 @@ public sealed class TerminalCanvasController
         {
             // A sleeping terminal's snapshot (when zoomed far out) stays in place
             if (entry.Sleeping) continue;
-            if (GetSnapshotImage(entry.Control) is { } image) { image.Visibility = Visibility.Collapsed; image.Source = null; }
+            if (GetSnapshotImage(entry.Host) is { } image) { image.Visibility = Visibility.Collapsed; image.Source = null; }
         }
     }
 
@@ -349,7 +395,7 @@ public sealed class TerminalCanvasController
         if (_frozen || CanvasScreenRect() is not { } clip) return;
         foreach (var entry in _byNode.Values)
         {
-            if (entry.Sleeping || TerminalSnapshot.FindHwnd(entry.Control) is not { } hwnd) continue;
+            if (entry.Sleeping || TerminalSnapshot.FindHwnd(entry.Host) is not { } hwnd) continue;
             entry.Region = TerminalClip.Apply(hwnd, clip, entry.Region);
         }
     }
@@ -371,16 +417,16 @@ public sealed class TerminalCanvasController
         var count = 0;
         foreach (var entry in _byNode.Values)
         {
-            if (entry.Control.DataContext is not ViewModels.TerminalNodeViewModel node) continue;
+            if (entry.Host.DataContext is not ViewModels.TerminalNodeViewModel node) continue;
             var offscreen = !viewport.IntersectsWith(node.Bounds);
             // A terminal without a snapshot isn't put to sleep when zoomed out, otherwise a blank would show in its place
             var sleep = offscreen || (lowZoom && entry.Snapshot != null);
-            var image = GetSnapshotImage(entry.Control);
+            var image = GetSnapshotImage(entry.Host);
             if (sleep)
             {
                 count++;
                 entry.Sleeping = true;
-                entry.Control.Visibility = Visibility.Hidden;
+                entry.Host.Visibility = Visibility.Hidden;
                 if (image == null) continue;
                 var showImage = !offscreen && entry.Snapshot != null;
                 image.Source = showImage ? entry.Snapshot : null;
@@ -390,7 +436,7 @@ public sealed class TerminalCanvasController
             {
                 if (entry.Sleeping) entry.Dirty = true; // output may have arrived while sleeping
                 entry.Sleeping = false;
-                entry.Control.Visibility = Visibility.Visible;
+                entry.Host.Visibility = Visibility.Visible;
             }
         }
         return count;
@@ -407,8 +453,11 @@ public sealed class TerminalCanvasController
         var batch = new List<(Entry Entry, TerminalSnapshot.Target Target)>();
         foreach (var entry in _byNode.Values)
         {
-            if (!entry.Dirty || entry.Control.Visibility != Visibility.Visible) continue;
-            if (TerminalSnapshot.GetTarget(entry.Control, clip) is not { } target) continue;
+            // A page changes without telling: previews are recaptured every couple of seconds while shown
+            var due = entry.Dirty || (entry.Browser != null && Environment.TickCount64 - entry.LastCapture > PreviewRecaptureMs);
+            if (!due || entry.Host.Visibility != Visibility.Visible) continue;
+            entry.LastCapture = Environment.TickCount64;
+            if (TerminalSnapshot.GetTarget(entry.Host, clip) is not { } target) continue;
             // Clear the flag first so output arriving during capture marks it dirty again
             entry.Dirty = false;
             batch.Add((entry, target));
@@ -430,16 +479,20 @@ public sealed class TerminalCanvasController
             }, ui);
     }
 
-    private static Image? GetSnapshotImage(EasyTerminalControl term) =>
-        (term.Parent as Grid)?.Children.OfType<Image>().FirstOrDefault();
+    private static Image? GetSnapshotImage(FrameworkElement host) =>
+        (host.Parent as Grid)?.Children.OfType<Image>().FirstOrDefault();
 
     private void ApplyZoomToTerminals()
     {
+        // A preview's page is zoomed like the canvas, so it looks the same live and in snapshots
+        foreach (var entry in _byNode.Values)
+            if (entry.Browser is { } browser && Math.Abs(browser.ZoomFactor - _editor.ViewportZoom) > 0.001)
+                browser.ZoomFactor = _editor.ViewportZoom;
         var size = FontSizeForZoom(_editor.ViewportZoom);
         if (size == _appliedFontSize) return;
         _appliedFontSize = size;
         foreach (var entry in _byNode.Values)
-            SetFont(entry.Control, size);
+            if (entry.Terminal is { } term) SetFont(term, size);
     }
 
     private static int FontSizeForZoom(double zoom) => Math.Max(MinFontSize, (int)Math.Round(BaseFontSize * zoom));
@@ -451,7 +504,7 @@ public sealed class TerminalCanvasController
         _dark = dark;
         foreach (var entry in _byNode.Values)
         {
-            SetFont(entry.Control, _appliedFontSize);
+            if (entry.Terminal is { } term) SetFont(term, _appliedFontSize);
             entry.Dirty = true;
         }
     }

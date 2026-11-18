@@ -176,6 +176,17 @@ hooks) and running subagents (`SubagentStart`/`SubagentStop`). It updates only o
 The panel is square and flush with the window edge: a large rounded, bordered panel at this spot dropped canvas
 motion from ~59 to ~34 fps. Keep large static chrome next to the canvas free of `CornerRadius`, and measure.
 
+## Web preview nodes
+
+A preview node (`TerminalNodeViewModel.IsBrowser`, saved with its `Url`) shows a WebView2 instead of a terminal. A
+WebView2 is an HWND too, so `TerminalCanvasController` treats it like a terminal (one `Entry` with a `Host`): hidden
+behind a snapshot while the canvas moves, put to sleep off screen, clipped to the canvas. Its snapshot comes from the
+same single `PrintWindow(PW_RENDERFULLCONTENT)` capture of the window (it includes WebView2's content), retaken after
+each navigation and every 2 s while shown, since a page changes without telling. The page is zoomed like the canvas
+(`ZoomFactor`). All previews share one WebView2 environment (`<data dir>\WebView2`): one browser process group, about
+25 MB per extra page. A terminal that prints a local address (`LocalUrls`: loopback only) offers **Preview** in its
+header; the canvas menu has "New web preview here".
+
 ## Agent mesh and Board
 
 Agents coordinate through an MCP server inside Kovan (`MeshServer`, JSON-RPC over HTTP on the hook listener:

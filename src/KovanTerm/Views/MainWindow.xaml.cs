@@ -35,6 +35,12 @@ public partial class MainWindow : FluentWindow
         _canvas.AnswerKeyTyped += node => _vm.OnAnswerKeyTyped((TerminalNodeViewModel)node);
         _canvas.ProgramStatusReported += (node, reports) => _vm.OnProgramStatus((TerminalNodeViewModel)node, reports);
         _canvas.WatchScreen = node => _vm.WatchesScreen((TerminalNodeViewModel)node);
+        _canvas.LocalUrlPrinted += (node, url) => _vm.OnLocalUrlPrinted((TerminalNodeViewModel)node, url);
+        _vm.Nodes.CollectionChanged += (_, e) =>
+        {
+            if (e.OldItems == null) return;
+            foreach (TerminalNodeViewModel n in e.OldItems) _previews.Remove(n);
+        };
         _canvas.ScreenRead += (node, text) => _vm.OnScreenRead((TerminalNodeViewModel)node, text);
         _vm.AttentionNeeded += _ => FlashIfInactive();
 
@@ -91,6 +97,65 @@ public partial class MainWindow : FluentWindow
         if (e.OriginalSource is DependencyObject source && FindAncestor<ButtonBase>(source) != null) return;
         if (sender is FrameworkElement { DataContext: TerminalNodeViewModel node }) GoToNode(node);
     }
+
+    // ---- Web preview nodes ----
+
+    private readonly Dictionary<TerminalNodeViewModel, Microsoft.Web.WebView2.Wpf.WebView2> _previews = new();
+
+    private async void Preview_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Border { DataContext: TerminalNodeViewModel node, Child: Microsoft.Web.WebView2.Wpf.WebView2 view } host
+            || _previews.ContainsKey(node)) return;
+        _previews[node] = view;
+        _canvas.RegisterPreview(host, view);
+        try
+        {
+            await view.EnsureCoreWebView2Async(await PreviewEnvironment.GetAsync());
+        }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or InvalidOperationException
+                                       or Microsoft.Web.WebView2.Core.WebView2RuntimeNotFoundException)
+        {
+            node.Url = $"(WebView2 isn't available: {ex.Message})";
+            return;
+        }
+        view.CoreWebView2.NavigationCompleted += (_, _) => _canvas.PreviewChanged(node);
+        // Links that open a new window stay in the preview
+        view.CoreWebView2.NewWindowRequested += (_, args) =>
+        {
+            args.Handled = true;
+            if (LocalUrls.Normalize(args.Uri) is { } uri) view.CoreWebView2.Navigate(uri.AbsoluteUri);
+        };
+        view.SourceChanged += (_, _) =>
+        {
+            if (view.Source is { } source && source.Scheme is "http" or "https") node.Url = source.AbsoluteUri;
+        };
+        if (LocalUrls.Normalize(node.Url) is { } start) view.CoreWebView2.Navigate(start.AbsoluteUri);
+    }
+
+    // Enter in the address bar: go there
+    private void PreviewAddress_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || sender is not FrameworkElement { DataContext: TerminalNodeViewModel node } box) return;
+        e.Handled = true;
+        var text = (box as System.Windows.Controls.TextBox)?.Text;
+        if (LocalUrls.Normalize(text) is not { } uri || !_previews.TryGetValue(node, out var view) || view.CoreWebView2 == null) return;
+        node.Url = uri.AbsoluteUri;
+        view.CoreWebView2.Navigate(uri.AbsoluteUri);
+    }
+
+    private void PreviewReload_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TerminalNodeViewModel node } && _previews.TryGetValue(node, out var view))
+            view.CoreWebView2?.Reload();
+    }
+
+    private void PreviewOpenExternal_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TerminalNodeViewModel node } && LocalUrls.Normalize(node.Url) is { } uri)
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+    }
+
+    private void NewPreviewHere_Click(object sender, RoutedEventArgs e) => _vm.NewPreviewCommand.Execute(_contextMenuLocation);
 
     // Board: Enter in the new task box adds it
     private void NewTask_KeyDown(object sender, KeyEventArgs e)
