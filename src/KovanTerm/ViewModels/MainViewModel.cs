@@ -123,6 +123,7 @@ public partial class MainViewModel : ObservableObject
         Nodes.CollectionChanged += OnNodesChanged;
         foreach (var node in Nodes)
             node.PropertyChanged += OnNodePropertyChanged;
+        UpdateAgentCounts();
 
         _saveTimer.Tick += (_, _) => SaveNow();
         _statsTimer.Tick += (_, _) => UpdateStats();
@@ -175,6 +176,12 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task CloseNode(TerminalNodeViewModel node)
     {
+        if (node.IsGroup)
+        {
+            Nodes.Remove(node);
+            return;
+        }
+
         // A note's text exists nowhere else
         if (node.IsNote && node.NoteText.Trim().Length > 0
             && !await _dialogs.ConfirmAsync("Delete note", "Delete this note? Its text can't be brought back.", "Delete"))
@@ -322,6 +329,48 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void NewPreview(Point? location) =>
         AddPreview(DefaultPreviewUrl, location ?? ViewportCenterForNewNode(), null, TerminalNodeViewModel.DefaultWidth, TerminalNodeViewModel.DefaultHeight);
+
+    // ---- Groups ----
+
+    private const double GroupPadding = 30, GroupHeader = 40;
+
+    /// <summary>
+    /// A group frame around <paramref name="members"/> (with some room), or an empty one at <paramref name="location"/>.
+    /// Dragging its header moves what's inside; it stays behind the other nodes.
+    /// </summary>
+    public void AddGroup(Point location, IReadOnlyCollection<TerminalNodeViewModel> members)
+    {
+        var inside = members.Where(n => !n.IsGroup && Nodes.Contains(n)).ToList();
+        // Drawn behind everything (the ZIndex setter); first in the list as well, for the save
+        Nodes.Insert(0, CreateGroup(location, inside));
+    }
+
+    /// <summary>The frame around <paramref name="members"/>, named after their folder if they share one.</summary>
+    public static TerminalNodeViewModel CreateGroup(Point location, IReadOnlyList<TerminalNodeViewModel> members)
+    {
+        var frame = members.Count == 0
+            ? new Rect(location, new Size(1000, 640))
+            : members.Select(n => n.Bounds).Aggregate(Rect.Union) is var b
+                ? new Rect(b.X - GroupPadding, b.Y - GroupPadding - GroupHeader, b.Width + 2 * GroupPadding, b.Height + 2 * GroupPadding + GroupHeader)
+                : default;
+        var folders = members.Select(n => n.GroupName).Distinct().ToList();
+        var group = new TerminalNodeViewModel
+        {
+            IsGroup = true,
+            Title = folders is [var only] && only != "(no folder)" ? only : "Group",
+            CommandLine = "",
+            Location = frame.Location,
+        };
+        group.GroupSize = frame.Size;
+        return group;
+    }
+
+    /// <summary>Removes a group frame; the nodes inside stay where they are.</summary>
+    [RelayCommand]
+    private void Ungroup(TerminalNodeViewModel group)
+    {
+        if (group.IsGroup) Nodes.Remove(group);
+    }
 
     // ---- Notes ----
 
@@ -841,7 +890,7 @@ public partial class MainViewModel : ObservableObject
     {
         // Overlapping terminals cover each other, so place it in the nearest free spot
         var viewport = ViewportSize.IsEmpty || ViewportSize.Width <= 0 ? (Rect?)null : new Rect(ViewportLocation, ViewportSize);
-        node.Location = NodePlacement.FindFreeSpot(Nodes.Select(n => n.Bounds).ToList(), node.Location, node.Bounds.Size, viewport);
+        node.Location = NodePlacement.FindFreeSpot(Nodes.Where(n => !n.IsGroup).Select(n => n.Bounds).ToList(), node.Location, node.Bounds.Size, viewport);
         Nodes.Add(node);
     }
 
@@ -876,7 +925,7 @@ public partial class MainViewModel : ObservableObject
     private TerminalNodeViewModel RestoreNode(NodeState s)
     {
         // A web preview has no command to resolve
-        if (s.Url != null || s.Note != null) return TerminalNodeViewModel.FromState(s);
+        if (s.Url != null || s.Note != null || s.Group) return TerminalNodeViewModel.FromState(s);
 
         // A missing folder (e.g. a worktree deleted outside Kovan) would make the terminal start in Kovan's own
         // folder, and an agent would work in the wrong place; don't start it
@@ -956,7 +1005,8 @@ public partial class MainViewModel : ObservableObject
     {
         // Status isn't persisted; save when location, size or the conversation (e.g. after /clear) changes
         if (e.PropertyName is nameof(TerminalNodeViewModel.Location) or nameof(TerminalNodeViewModel.Width) or nameof(TerminalNodeViewModel.Height)
-            or nameof(TerminalNodeViewModel.SessionId) or nameof(TerminalNodeViewModel.Url) or nameof(TerminalNodeViewModel.NoteText))
+            or nameof(TerminalNodeViewModel.SessionId) or nameof(TerminalNodeViewModel.Url) or nameof(TerminalNodeViewModel.NoteText)
+            or nameof(TerminalNodeViewModel.Title))
             ScheduleSave();
     }
 

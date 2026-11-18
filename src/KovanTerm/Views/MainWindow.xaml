@@ -268,6 +268,159 @@
                 </StackPanel>
             </Border>
         </DataTemplate>
+
+        <DataTemplate x:Key="NodeView" DataType="{x:Type vm:TerminalNodeViewModel}">
+            <Border Background="{DynamicResource SolidBackgroundFillColorSecondaryBrush}" BorderThickness="1" CornerRadius="8">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=nodify:ItemContainer}}" Value="True">
+                                <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                            </DataTrigger>
+                            <!-- Waiting for the user wins over selection. Only the color changes: a thicker border
+                                 would shrink the terminal and make it reflow. -->
+                            <DataTrigger Binding="{Binding Status}" Value="{x:Static models:NodeStatus.Waiting}">
+                                <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCautionBrush}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <DockPanel>
+                    <!-- Header: drag from here -->
+                    <Border DockPanel.Dock="Top" Background="{DynamicResource SolidBackgroundFillColorTertiaryBrush}"
+                            CornerRadius="8,8,0,0" Padding="10,0,4,0" Height="32"
+                            MouseLeftButtonDown="NodeHeader_MouseLeftButtonDown" ToolTip="Double-click: zoom to this terminal">
+                        <DockPanel>
+                            <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Width="26" Height="26" Padding="0"
+                                       ToolTip="Close terminal" AutomationProperties.Name="Close terminal"
+                                       Command="{Binding DataContext.CloseNodeCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
+                                       CommandParameter="{Binding}">
+                                <ui:Button.Icon>
+                                    <ui:SymbolIcon Symbol="Dismiss16"/>
+                                </ui:Button.Icon>
+                            </ui:Button>
+                            <!-- The terminal printed a local web address (a dev server): preview it next to the terminal -->
+                            <ui:Button DockPanel.Dock="Right" Appearance="Secondary" Height="24" Padding="8,0" FontSize="12" Margin="0,0,6,0"
+                                       Content="Preview" ToolTip="{Binding PreviewUrl}" AutomationProperties.Name="Preview"
+                                       Command="{Binding DataContext.OpenPreviewCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
+                                       CommandParameter="{Binding}">
+                                <ui:Button.Style>
+                                    <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding PreviewUrl}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ui:Button.Style>
+                                <ui:Button.Icon><ui:SymbolIcon Symbol="Globe16"/></ui:Button.Icon>
+                            </ui:Button>
+                            <!-- Answers the agent's permission prompt without clicking into the terminal -->
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="0,0,6,0"
+                                        Visibility="{Binding AwaitsPermission, Converter={StaticResource BoolToVisibility}}">
+                                <ui:Button Content="Allow" Appearance="Success" Height="24" Padding="10,0" FontSize="12" Margin="0,0,4,0"
+                                           ToolTip="Answer the permission prompt with Yes (once)"
+                                           Command="{Binding DataContext.AllowPermissionCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
+                                           CommandParameter="{Binding}"/>
+                                <ui:Button Content="Deny" Appearance="Secondary" Height="24" Padding="10,0" FontSize="12"
+                                           ToolTip="Answer No; then tell the agent what to do instead"
+                                           Command="{Binding DataContext.DenyPermissionCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
+                                           CommandParameter="{Binding}"/>
+                            </StackPanel>
+                            <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"
+                                     Fill="{Binding Status, Converter={StaticResource StatusToBrush}}">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsNote}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
+                            </Ellipse>
+                            <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                       FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <StackPanel Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center"
+                                        ToolTip="{Binding Worktree.Path, StringFormat=Worktree: {0}}" Style="{StaticResource BranchVisibility}">
+                                <ui:SymbolIcon Symbol="Branch16" FontSize="12" Margin="0,0,3,0" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                <TextBlock Text="{Binding BranchText}" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                       Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                        </DockPanel>
+                    </Border>
+                    <!-- Profile color -->
+                    <Border DockPanel.Dock="Top" Height="2" Background="{Binding Color}"/>
+                    <!-- Resize strip: below the terminal, since WPF can't draw on top of it (airspace) -->
+                    <Grid DockPanel.Dock="Bottom" Height="10">
+                        <Thumb HorizontalAlignment="Right" Width="28" Cursor="SizeNWSE" ToolTip="Resize"
+                               DragStarted="ResizeThumb_DragStarted" DragDelta="ResizeThumb_DragDelta" DragCompleted="ResizeThumb_DragCompleted">
+                            <Thumb.Template>
+                                <ControlTemplate TargetType="Thumb">
+                                    <Border Background="Transparent">
+                                        <Path Data="M 4,8 L 12,0 M 12,8 L 20,0 M 20,8 L 26,2" Stroke="{DynamicResource TextFillColorTertiaryBrush}"
+                                              StrokeThickness="1.2" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,2,0"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Thumb.Template>
+                        </Thumb>
+                    </Grid>
+                    <ContentControl Content="{Binding}" Width="{Binding Width}" Height="{Binding Height}" Focusable="False">
+                        <ContentControl.Style>
+                            <Style TargetType="ContentControl">
+                                <Setter Property="ContentTemplate" Value="{StaticResource TerminalBody}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasStartError}" Value="True">
+                                        <Setter Property="ContentTemplate" Value="{StaticResource ErrorBody}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsBrowser}" Value="True">
+                                        <Setter Property="ContentTemplate" Value="{StaticResource PreviewBody}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsNote}" Value="True">
+                                        <Setter Property="ContentTemplate" Value="{StaticResource NoteBody}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsStarting}" Value="True">
+                                        <Setter Property="ContentTemplate" Value="{StaticResource StartingBody}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ContentControl.Style>
+                    </ContentControl>
+                </DockPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- A group frame: dragging its header moves the nodes inside (Nodify's GroupingNode); Shift+drag moves only the frame -->
+        <DataTemplate x:Key="GroupView" DataType="{x:Type vm:TerminalNodeViewModel}">
+            <nodify:GroupingNode ActualSize="{Binding GroupSize, Mode=TwoWay}" MovementMode="Group"
+                                 Background="#14808080" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
+                                 HeaderBrush="{DynamicResource ControlFillColorSecondaryBrush}" Padding="0" AutomationProperties.Name="{Binding Title}">
+                <nodify:GroupingNode.Header>
+                    <DockPanel Height="30" Margin="4,0,0,0" ToolTip="Drag to move the group with its contents · Shift+drag: only the frame">
+                        <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Width="26" Height="26" Padding="0"
+                                   ToolTip="Remove the group (its contents stay)" AutomationProperties.Name="Ungroup"
+                                   Command="{Binding DataContext.UngroupCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
+                                   CommandParameter="{Binding}">
+                            <ui:Button.Icon><ui:SymbolIcon Symbol="Dismiss16"/></ui:Button.Icon>
+                        </ui:Button>
+                        <ui:SymbolIcon Symbol="Group24" FontSize="16" Margin="4,0,6,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <!-- Looks like a label; click to rename -->
+                        <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" Background="Transparent" BorderThickness="0"
+                                 FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" MinWidth="80" HorizontalAlignment="Left"
+                                 Foreground="{DynamicResource TextFillColorPrimaryBrush}" CaretBrush="{DynamicResource TextFillColorPrimaryBrush}"
+                                 AutomationProperties.Name="Group name" KeyDown="GroupName_KeyDown">
+                            <TextBox.Template>
+                                <ControlTemplate TargetType="TextBox">
+                                    <ScrollViewer x:Name="PART_ContentHost" Focusable="False" VerticalAlignment="Center"/>
+                                </ControlTemplate>
+                            </TextBox.Template>
+                        </TextBox>
+                    </DockPanel>
+                </nodify:GroupingNode.Header>
+            </nodify:GroupingNode>
+        </DataTemplate>
     </ui:FluentWindow.Resources>
 
     <Grid>
@@ -788,6 +941,16 @@
                             <ui:SymbolIcon Symbol="History24"/>
                         </MenuItem.Icon>
                     </MenuItem>
+                    <MenuItem x:Name="GroupSelectionItem" Header="Group the selected nodes" Click="GroupSelection_Click">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon Symbol="Group24"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="New group here" Click="NewGroupHere_Click">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon Symbol="RectangleLandscape24"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
                     <MenuItem Header="New note here" Click="NewNoteHere_Click">
                         <MenuItem.Icon>
                             <ui:SymbolIcon Symbol="Note24"/>
@@ -807,131 +970,28 @@
                     <Setter Property="BorderBrush" Value="Transparent"/>
                     <Setter Property="HighlightBrush" Value="Transparent"/>
                     <Setter Property="SelectedBrush" Value="Transparent"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                            <Setter Property="Panel.ZIndex" Value="-1"/>
+                        </DataTrigger>
+                    </Style.Triggers>
                 </Style>
             </nodify:NodifyEditor.ItemContainerStyle>
 
             <nodify:NodifyEditor.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:TerminalNodeViewModel}">
-                    <Border Background="{DynamicResource SolidBackgroundFillColorSecondaryBrush}" BorderThickness="1" CornerRadius="8">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}"/>
+                    <ContentControl Content="{Binding}" Focusable="False">
+                        <ContentControl.Style>
+                            <Style TargetType="ContentControl">
+                                <Setter Property="ContentTemplate" Value="{StaticResource NodeView}"/>
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=nodify:ItemContainer}}" Value="True">
-                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
-                                    </DataTrigger>
-                                    <!-- Waiting for the user wins over selection. Only the color changes: a thicker border
-                                         would shrink the terminal and make it reflow. -->
-                                    <DataTrigger Binding="{Binding Status}" Value="{x:Static models:NodeStatus.Waiting}">
-                                        <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCautionBrush}"/>
+                                    <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                                        <Setter Property="ContentTemplate" Value="{StaticResource GroupView}"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </Border.Style>
-                        <DockPanel>
-                            <!-- Header: drag from here -->
-                            <Border DockPanel.Dock="Top" Background="{DynamicResource SolidBackgroundFillColorTertiaryBrush}"
-                                    CornerRadius="8,8,0,0" Padding="10,0,4,0" Height="32"
-                                    MouseLeftButtonDown="NodeHeader_MouseLeftButtonDown" ToolTip="Double-click: zoom to this terminal">
-                                <DockPanel>
-                                    <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Width="26" Height="26" Padding="0"
-                                               ToolTip="Close terminal" AutomationProperties.Name="Close terminal"
-                                               Command="{Binding DataContext.CloseNodeCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
-                                               CommandParameter="{Binding}">
-                                        <ui:Button.Icon>
-                                            <ui:SymbolIcon Symbol="Dismiss16"/>
-                                        </ui:Button.Icon>
-                                    </ui:Button>
-                                    <!-- The terminal printed a local web address (a dev server): preview it next to the terminal -->
-                                    <ui:Button DockPanel.Dock="Right" Appearance="Secondary" Height="24" Padding="8,0" FontSize="12" Margin="0,0,6,0"
-                                               Content="Preview" ToolTip="{Binding PreviewUrl}" AutomationProperties.Name="Preview"
-                                               Command="{Binding DataContext.OpenPreviewCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
-                                               CommandParameter="{Binding}">
-                                        <ui:Button.Style>
-                                            <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding PreviewUrl}" Value="{x:Null}">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </ui:Button.Style>
-                                        <ui:Button.Icon><ui:SymbolIcon Symbol="Globe16"/></ui:Button.Icon>
-                                    </ui:Button>
-                                    <!-- Answers the agent's permission prompt without clicking into the terminal -->
-                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="0,0,6,0"
-                                                Visibility="{Binding AwaitsPermission, Converter={StaticResource BoolToVisibility}}">
-                                        <ui:Button Content="Allow" Appearance="Success" Height="24" Padding="10,0" FontSize="12" Margin="0,0,4,0"
-                                                   ToolTip="Answer the permission prompt with Yes (once)"
-                                                   Command="{Binding DataContext.AllowPermissionCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
-                                                   CommandParameter="{Binding}"/>
-                                        <ui:Button Content="Deny" Appearance="Secondary" Height="24" Padding="10,0" FontSize="12"
-                                                   ToolTip="Answer No; then tell the agent what to do instead"
-                                                   Command="{Binding DataContext.DenyPermissionCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
-                                                   CommandParameter="{Binding}"/>
-                                    </StackPanel>
-                                    <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"
-                                             Fill="{Binding Status, Converter={StaticResource StatusToBrush}}">
-                                        <Ellipse.Style>
-                                            <Style TargetType="Ellipse">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsNote}" Value="True">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Ellipse.Style>
-                                    </Ellipse>
-                                    <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                                               FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                    <StackPanel Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center"
-                                                ToolTip="{Binding Worktree.Path, StringFormat=Worktree: {0}}" Style="{StaticResource BranchVisibility}">
-                                        <ui:SymbolIcon Symbol="Branch16" FontSize="12" Margin="0,0,3,0" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
-                                        <TextBlock Text="{Binding BranchText}" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
-                                    </StackPanel>
-                                    <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                               Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                </DockPanel>
-                            </Border>
-                            <!-- Profile color -->
-                            <Border DockPanel.Dock="Top" Height="2" Background="{Binding Color}"/>
-                            <!-- Resize strip: below the terminal, since WPF can't draw on top of it (airspace) -->
-                            <Grid DockPanel.Dock="Bottom" Height="10">
-                                <Thumb HorizontalAlignment="Right" Width="28" Cursor="SizeNWSE" ToolTip="Resize"
-                                       DragStarted="ResizeThumb_DragStarted" DragDelta="ResizeThumb_DragDelta" DragCompleted="ResizeThumb_DragCompleted">
-                                    <Thumb.Template>
-                                        <ControlTemplate TargetType="Thumb">
-                                            <Border Background="Transparent">
-                                                <Path Data="M 4,8 L 12,0 M 12,8 L 20,0 M 20,8 L 26,2" Stroke="{DynamicResource TextFillColorTertiaryBrush}"
-                                                      StrokeThickness="1.2" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,2,0"/>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Thumb.Template>
-                                </Thumb>
-                            </Grid>
-                            <ContentControl Content="{Binding}" Width="{Binding Width}" Height="{Binding Height}" Focusable="False">
-                                <ContentControl.Style>
-                                    <Style TargetType="ContentControl">
-                                        <Setter Property="ContentTemplate" Value="{StaticResource TerminalBody}"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding HasStartError}" Value="True">
-                                                <Setter Property="ContentTemplate" Value="{StaticResource ErrorBody}"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding IsBrowser}" Value="True">
-                                                <Setter Property="ContentTemplate" Value="{StaticResource PreviewBody}"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding IsNote}" Value="True">
-                                                <Setter Property="ContentTemplate" Value="{StaticResource NoteBody}"/>
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding IsStarting}" Value="True">
-                                                <Setter Property="ContentTemplate" Value="{StaticResource StartingBody}"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </ContentControl.Style>
-                            </ContentControl>
-                        </DockPanel>
-                    </Border>
+                        </ContentControl.Style>
+                    </ContentControl>
                 </DataTemplate>
             </nodify:NodifyEditor.ItemTemplate>
         </nodify:NodifyEditor>

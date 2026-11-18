@@ -18,7 +18,9 @@ public partial class TerminalNodeViewModel : ObservableObject
 
     public Guid Id { get; init; } = Guid.NewGuid();
     public string? ProfileId { get; init; }
-    public required string Title { get; init; }
+    /// <summary>Header text; a group's name can be edited.</summary>
+    [ObservableProperty]
+    public required partial string Title { get; set; }
     public required string CommandLine { get; init; }
     /// <summary>
     /// What the terminal actually runs: <see cref="CommandLine"/> plus per-run arguments such as the hook settings.
@@ -62,6 +64,25 @@ public partial class TerminalNodeViewModel : ObservableObject
     public string? StartError { get; init; }
     public bool HasStartError => StartError != null;
 
+    // ---- Group ----
+
+    /// <summary>A frame on the canvas: dragging its header moves the nodes inside it. Width/Height are the whole frame.</summary>
+    public bool IsGroup { get; init; }
+
+    /// <summary>The frame's size, for Nodify's <c>GroupingNode.ActualSize</c>.</summary>
+    public Size GroupSize
+    {
+        get => new(Width, Height);
+        set
+        {
+            Width = Math.Clamp(value.Width, MinWidth, MaxGroupSize);
+            Height = Math.Clamp(value.Height, MinHeight, MaxGroupSize);
+            OnPropertyChanged();
+        }
+    }
+
+    public const double MaxGroupSize = 20000;
+
     // ---- Note ----
 
     /// <summary>A Markdown note (plain WPF, no process) instead of a terminal.</summary>
@@ -75,7 +96,7 @@ public partial class TerminalNodeViewModel : ObservableObject
     public partial bool IsEditingNote { get; set; }
 
     /// <summary>A terminal (not a note or a web preview).</summary>
-    public bool IsTerminal => !IsNote && !IsBrowser;
+    public bool IsTerminal => !IsNote && !IsBrowser && !IsGroup;
 
     public void ToggleNoteTask(int line) => NoteText = Services.NoteMarkdown.ToggleTask(NoteText, line);
 
@@ -100,7 +121,7 @@ public partial class TerminalNodeViewModel : ObservableObject
     public partial Point Location { get; set; }
 
     /// <summary>Outer bounds of the node on the canvas (including the header).</summary>
-    public Rect Bounds => new(Location, new Size(Width, Height + ChromeHeight));
+    public Rect Bounds => IsGroup ? new(Location, new Size(Width, Height)) : new(Location, new Size(Width, Height + ChromeHeight));
 
     /// <summary>Changes the size by the given amount; min/max limits apply.</summary>
     public void ResizeBy(double dx, double dy)
@@ -292,6 +313,7 @@ public partial class TerminalNodeViewModel : ObservableObject
         Worktree = Worktree,
         Url = IsBrowser ? Url : null,
         Note = IsNote ? NoteText : null,
+        Group = IsGroup,
         Color = Color,
         WorkingDirectory = WorkingDirectory,
         Wsl = IsWsl,
@@ -316,6 +338,7 @@ public partial class TerminalNodeViewModel : ObservableObject
         Worktree = s.Worktree,
         IsBrowser = s.Url != null,
         IsNote = s.Note != null,
+        IsGroup = s.Group,
         NoteText = s.Note ?? "",
         Url = s.Url,
         Color = s.Color,
@@ -325,7 +348,7 @@ public partial class TerminalNodeViewModel : ObservableObject
         StartError = startError,
         Location = new Point(s.X, s.Y),
         // Size may be 0 in old/incomplete saves
-        Width = s.Width > 0 ? Math.Clamp(s.Width, MinWidth, MaxSize) : DefaultWidth,
-        Height = s.Height > 0 ? Math.Clamp(s.Height, MinHeight, MaxSize) : DefaultHeight,
+        Width = s.Width > 0 ? Math.Clamp(s.Width, MinWidth, s.Group ? MaxGroupSize : MaxSize) : DefaultWidth,
+        Height = s.Height > 0 ? Math.Clamp(s.Height, MinHeight, s.Group ? MaxGroupSize : MaxSize) : DefaultHeight,
     };
 }

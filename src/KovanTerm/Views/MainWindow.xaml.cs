@@ -91,7 +91,7 @@ public partial class MainWindow : FluentWindow
         view.SortDescriptions.Add(new SortDescription(nameof(TerminalNodeViewModel.StatusOrder), ListSortDirection.Ascending));
         view.SortDescriptions.Add(new SortDescription(nameof(TerminalNodeViewModel.Title), ListSortDirection.Ascending));
         // Notes aren't agents
-        view.Filter = n => n is TerminalNodeViewModel { IsNote: false };
+        view.Filter = n => n is TerminalNodeViewModel { IsNote: false, IsGroup: false };
         view.LiveSortingProperties.Add(nameof(TerminalNodeViewModel.StatusOrder));
         view.IsLiveSorting = true;
         return view;
@@ -273,7 +273,27 @@ public partial class MainWindow : FluentWindow
     }
 
     // Mouse position when the menu opened (canvas coordinates); by the time a menu item is clicked the mouse has moved
-    private void Editor_ContextMenuOpening(object sender, ContextMenuEventArgs e) => _contextMenuLocation = Editor.MouseLocation;
+    private void Editor_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        _contextMenuLocation = Editor.MouseLocation;
+        GroupSelectionItem.Visibility = SelectedNodes().Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private List<TerminalNodeViewModel> SelectedNodes() =>
+        Editor.SelectedItems?.OfType<TerminalNodeViewModel>().Where(n => !n.IsGroup).ToList() ?? [];
+
+    private void GroupSelection_Click(object sender, RoutedEventArgs e) => _vm.AddGroup(_contextMenuLocation, SelectedNodes());
+
+    private void NewGroupHere_Click(object sender, RoutedEventArgs e) => _vm.AddGroup(_contextMenuLocation, []);
+
+    // Enter/Esc finish renaming a group
+    private void GroupName_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Enter or Key.Escape)) return;
+        Keyboard.ClearFocus();
+        Editor.Focus();
+        e.Handled = true;
+    }
 
     private void NewTerminalHere_Click(object sender, RoutedEventArgs e) => _vm.NewTerminalCommand.Execute(_contextMenuLocation);
 

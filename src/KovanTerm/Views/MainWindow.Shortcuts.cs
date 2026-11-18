@@ -56,7 +56,7 @@ public partial class MainWindow
         {
             case ShortcutAction.NextTerminal:
             case ShortcutAction.PreviousTerminal:
-                var next = NodeNavigation.Next(_vm.Nodes, n => n.Bounds, _currentNode,
+                var next = NodeNavigation.Next(_vm.Nodes.Where(n => !n.IsGroup).ToList(), n => n.Bounds, _currentNode,
                     forward: action == ShortcutAction.NextTerminal, ViewportCenter());
                 if (next != null) GoToNode(next);
                 break;
@@ -121,7 +121,7 @@ public partial class MainWindow
     private TerminalNodeViewModel? NearestToCenter()
     {
         var c = ViewportCenter();
-        return _vm.Nodes.MinBy(n => (Center(n.Bounds) - c).LengthSquared);
+        return _vm.Nodes.Where(n => !n.IsGroup).MinBy(n => (Center(n.Bounds) - c).LengthSquared);
     }
 
     private static Point Center(Rect r) => new(r.Left + r.Width / 2, r.Top + r.Height / 2);
