@@ -94,6 +94,9 @@ public sealed class TerminalCanvasController
     /// <summary>Snapshot mode enter/exit timings (for measurement; see <see cref="PerfSelfTest"/>).</summary>
     public event Action<string, TimeSpan>? Timing;
 
+    /// <summary>Snapshot mode starts (<c>true</c>) or ends: the canvas is moving, other heavy content can simplify too.</summary>
+    public event Action<bool>? MotionChanged;
+
     // ---- Screen rules ----
 
     /// <summary>Which nodes' screens to read (those whose agent has screen rules); none if not set.</summary>
@@ -319,6 +322,7 @@ public sealed class TerminalCanvasController
         if (_frozen) return;
         _frozen = true;
         _snapshotCleanupTimer.Stop();
+        MotionChanged?.Invoke(true);
         var sw = Stopwatch.StartNew();
         // Use cached snapshots that are up to date; capture the rest now in one go. A sleeping terminal is
         // hidden and can't be captured; its existing snapshot is used.
@@ -352,6 +356,7 @@ public sealed class TerminalCanvasController
     {
         if (!_frozen) return;
         _frozen = false;
+        MotionChanged?.Invoke(false);
         var sw = Stopwatch.StartNew();
         ApplyZoomToTerminals();
         foreach (var entry in _byNode.Values)

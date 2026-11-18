@@ -188,6 +188,17 @@ each navigation and every 2 s while shown, since a page changes without telling.
 25 MB per extra page. A terminal that prints a local address (`LocalUrls`: loopback only) offers **Preview** in its
 header; the canvas menu has "New web preview here".
 
+## Note nodes
+
+A note (`TerminalNodeViewModel.IsNote`, saved with its Markdown as `Note`) is plain WPF, so unlike terminals it
+scales with the canvas and needs no snapshot. `NoteMarkdown` parses the small Markdown subset notes use (headings,
+lists, task lists, quotes, fenced code, rules, bold/italic/code/links) line by line, and `NoteRenderer` turns it into a
+`FlowDocument`; a task's checkbox toggles that line in the text. **Edit** shows the source in a text box. **Send to…**
+pastes the note into a terminal as one bracketed paste, so an agent receives it as a single message to review and
+submit. While the canvas moves, note bodies get a `BitmapCache` (`TerminalCanvasController.MotionChanged`): re-laying
+out their text at every zoom step dropped zooming from ~59 to ~47 fps. Created from the canvas menu or `Ctrl+Shift+N`;
+they aren't listed in the Agents panel and don't count as terminals.
+
 ## Agent mesh and Board
 
 Agents coordinate through an MCP server inside Kovan (`MeshServer`, JSON-RPC over HTTP on the hook listener:

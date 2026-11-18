@@ -34,6 +34,8 @@ public sealed record NodeState
     public WorktreeInfo? Worktree { get; init; }
     /// <summary>A web preview node's address; <c>null</c> for a terminal.</summary>
     public string? Url { get; init; }
+    /// <summary>A note node's Markdown text; <c>null</c> for other nodes.</summary>
+    public string? Note { get; init; }
     public string? Color { get; init; }
     public string? WorkingDirectory { get; init; }
     public bool Wsl { get; init; }

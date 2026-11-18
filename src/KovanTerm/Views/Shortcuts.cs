@@ -13,6 +13,7 @@ public enum ShortcutAction
     ToggleChangesPanel,
     RecentConversations,
     ToggleBoard,
+    NewNote,
 }
 
 /// <summary>
@@ -33,6 +34,7 @@ public static class Shortcuts
         (Key.G, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.ToggleChangesPanel, "Show/hide the Changes panel"),
         (Key.O, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.RecentConversations, "Reopen a recent Claude Code conversation"),
         (Key.B, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.ToggleBoard, "Show/hide the agents' Board"),
+        (Key.N, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.NewNote, "New note"),
     ];
 
     public static ShortcutAction? Match(Key key, ModifierKeys modifiers)

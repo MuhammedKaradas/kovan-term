@@ -82,6 +82,9 @@ public partial class MainWindow
             case ShortcutAction.ToggleBoard:
                 _vm.ToggleBoardCommand.Execute(null);
                 break;
+            case ShortcutAction.NewNote:
+                _vm.NewNoteCommand.Execute(null);
+                break;
         }
     }
 

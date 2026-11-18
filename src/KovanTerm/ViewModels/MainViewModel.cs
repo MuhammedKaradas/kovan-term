@@ -59,6 +59,10 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     public partial int WaitingCount { get; set; }
 
+    /// <summary>Terminal nodes (notes and web previews not counted).</summary>
+    [ObservableProperty]
+    public partial int TerminalCount { get; set; }
+
     /// <summary>The view pans to and focuses this node.</summary>
     public event Action<TerminalNodeViewModel>? GoToNodeRequested;
 
@@ -171,6 +175,11 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task CloseNode(TerminalNodeViewModel node)
     {
+        // A note's text exists nowhere else
+        if (node.IsNote && node.NoteText.Trim().Length > 0
+            && !await _dialogs.ConfirmAsync("Delete note", "Delete this note? Its text can't be brought back.", "Delete"))
+            return;
+
         var stopSession = false;
         if (node.IsPersistent && !node.HasStartError)
         {
@@ -313,6 +322,41 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void NewPreview(Point? location) =>
         AddPreview(DefaultPreviewUrl, location ?? ViewportCenterForNewNode(), null, TerminalNodeViewModel.DefaultWidth, TerminalNodeViewModel.DefaultHeight);
+
+    // ---- Notes ----
+
+    /// <summary>A new, empty note, opened for editing.</summary>
+    [RelayCommand]
+    private void NewNote(Point? location)
+    {
+        var node = new TerminalNodeViewModel
+        {
+            IsNote = true,
+            Title = "Note",
+            CommandLine = "",
+            Color = "#E8B339",
+            IsEditingNote = true,
+            Location = location ?? ViewportCenterForNewNode(),
+            Width = 420,
+            Height = 360,
+        };
+        AddNode(node);
+        CurrentNode = node;
+    }
+
+    /// <summary>Terminals a note can be sent to.</summary>
+    public IEnumerable<TerminalNodeViewModel> NoteTargets => Nodes.Where(n => n.IsTerminal && !n.HasStartError && !n.IsStarting);
+
+    /// <summary>
+    /// Pastes the note into a terminal (as one paste, so an agent doesn't submit it line by line); the user reviews it
+    /// there and presses Enter.
+    /// </summary>
+    public void SendNote(TerminalNodeViewModel note, TerminalNodeViewModel target)
+    {
+        if (!note.IsNote || note.NoteText.Trim().Length == 0 || !Nodes.Contains(target)) return;
+        TerminalInputRequested?.Invoke(target, ChangesViewModel.BracketedPaste(note.NoteText.Trim()));
+        GoToNodeRequested?.Invoke(target);
+    }
 
     private void AddPreview(string url, Point location, string? folder, double width, double height)
     {
@@ -589,6 +633,7 @@ public partial class MainViewModel : ObservableObject
     private void UpdateAgentCounts()
     {
         WorkingCount = Nodes.Count(n => n.Status == NodeStatus.Working);
+        TerminalCount = Nodes.Count(n => n.IsTerminal);
         WaitingCount = Nodes.Count(n => n.Status == NodeStatus.Waiting);
         UpdateMeshAgents();
     }
@@ -811,7 +856,7 @@ public partial class MainViewModel : ObservableObject
     private TerminalNodeViewModel RestoreNode(NodeState s)
     {
         // A web preview has no command to resolve
-        if (s.Url != null) return TerminalNodeViewModel.FromState(s);
+        if (s.Url != null || s.Note != null) return TerminalNodeViewModel.FromState(s);
 
         // A missing folder (e.g. a worktree deleted outside Kovan) would make the terminal start in Kovan's own
         // folder, and an agent would work in the wrong place; don't start it
@@ -888,7 +933,7 @@ public partial class MainViewModel : ObservableObject
     {
         // Status isn't persisted; save when location, size or the conversation (e.g. after /clear) changes
         if (e.PropertyName is nameof(TerminalNodeViewModel.Location) or nameof(TerminalNodeViewModel.Width) or nameof(TerminalNodeViewModel.Height)
-            or nameof(TerminalNodeViewModel.SessionId) or nameof(TerminalNodeViewModel.Url))
+            or nameof(TerminalNodeViewModel.SessionId) or nameof(TerminalNodeViewModel.Url) or nameof(TerminalNodeViewModel.NoteText))
             ScheduleSave();
     }
 
