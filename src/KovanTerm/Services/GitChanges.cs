@@ -48,7 +48,7 @@ public sealed class GitChanges
         if (root.Value == null) return new(null, root.Error);
         // Untracked: diff against an empty file; exit code 1 means "differences found", not an error
         var result = file.IsUntracked
-            ? await GitRunner.RunAsync(root.Value, ["diff", "--no-color", "--no-ext-diff", "--no-index", "--", "NUL", file.Path], [0, 1])
+            ? await GitRunner.RunAsync(root.Value, ["diff", "--no-color", "--no-ext-diff", "--no-index", "--", GitRunner.NullDevice(root.Value), file.Path], [0, 1])
             : await GitRunner.RunAsync(root.Value,
                 ["diff", "--no-color", "--no-ext-diff", "-M", baseCommit ?? (await HasHeadAsync(root.Value) ? "HEAD" : "--cached"), "--",
                     .. file.OldPath is { } old ? new[] { old, file.Path } : [file.Path]], [0]);
@@ -58,7 +58,7 @@ public sealed class GitChanges
     private static async Task<GitResult<string>> RootAsync(string directory)
     {
         var r = await GitRunner.RunAsync(directory, "rev-parse", "--show-toplevel");
-        return r.Ok ? new(r.Output.Trim()) : new(null, r.Error);
+        return r.Ok ? new(GitRunner.PathLike(directory, r.Output.Trim())) : new(null, r.Error);
     }
 
     private static async Task<bool> HasHeadAsync(string root) => (await GitRunner.RunAsync(root, "rev-parse", "--verify", "--quiet", "HEAD")).Ok;

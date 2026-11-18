@@ -259,7 +259,10 @@ Right of the canvas, for the current terminal (last clicked, navigated to, or th
 `git status` and the selected file's diff against `HEAD` (untracked files: against an empty file), through
 `GitChanges`, which runs the `git` command line read-only (`GIT_OPTIONAL_LOCKS=0`, so it doesn't fight the agent's
 own git commands for the index lock; output capped at 2 MB). It refreshes 700 ms after the agent's `PostToolUse` /
-`Stop` hook or a `done`/`idle` status report, and on demand. The diff list is virtualized.
+`Stop` hook or a `done`/`idle` status report, and on demand. The diff list is virtualized. For a WSL node the folder
+is passed as `\\wsl.localhost\<distro>\...`, and `GitRunner` runs git inside the distro (`wsl.exe -d <distro> --cd
+<path> --exec env GIT_OPTIONAL_LOCKS=0 ... git`): Git for Windows over `\\wsl.localhost` is slow and rejects the
+repository as owned by someone else.
 
 Notes left on diff lines are pasted into the terminal as one bracketed paste (`ESC [200~ … ESC [201~`): the agent's
 prompt takes it as a single block and nothing is sent until the user presses Enter.
