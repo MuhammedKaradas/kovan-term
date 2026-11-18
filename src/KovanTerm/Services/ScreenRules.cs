@@ -141,7 +141,13 @@ public sealed partial class ScreenRules
             else if (inner.StartsWith('"')) inner = inner[1..].TrimEnd('"');
             exe = CommandResolver.FirstToken(inner);
         }
-        var name = Path.GetFileNameWithoutExtension(exe).ToLowerInvariant();
+        return AgentOfExecutable(exe);
+    }
+
+    /// <summary>Which agent an executable is, from its file name (a path, possibly with spaces); <c>null</c> otherwise.</summary>
+    public static string? AgentOfExecutable(string path)
+    {
+        var name = Path.GetFileNameWithoutExtension(path).ToLowerInvariant();
         return name is "claude" or "codex" or "gemini" ? name : null;
     }
 }

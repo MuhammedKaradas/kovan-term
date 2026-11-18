@@ -19,6 +19,145 @@
         <conv:NodeStatusToBrushConverter x:Key="StatusToBrush"/>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
         <conv:PercentToFractionConverter x:Key="PercentToFraction"/>
+
+        <!-- A text line that disappears when it has nothing to say -->
+        <Style x:Key="HideWhenNull" TargetType="TextBlock">
+            <Style.Triggers>
+                <Trigger Property="Text" Value="">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="BoardHeader" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,8,0,6"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}"/>
+        </Style>
+
+        <!-- Right panel tabs: flat text buttons with an underline for the selected one -->
+        <Style x:Key="PanelTab" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Tab" Padding="10,6" BorderThickness="0,0,0,2" BorderBrush="Transparent" Background="Transparent">
+                            <ContentPresenter TextElement.FontWeight="SemiBold"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Tab" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- A task card on the Board -->
+        <DataTemplate x:Key="TaskCardTemplate" DataType="{x:Type vm:TaskCard}">
+            <Border Margin="0,0,0,6" Padding="10,8" CornerRadius="4" BorderThickness="1"
+                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" Background="{DynamicResource SubtleFillColorSecondaryBrush}">
+                <StackPanel>
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <ui:Button Appearance="Transparent" Padding="4" Width="26" Height="24" ToolTip="Start (in progress)"
+                                       AutomationProperties.Name="Start task" Visibility="{Binding CanStart, Converter={StaticResource BoolToVisibility}}"
+                                       Command="{Binding DataContext.StartTaskCommand, RelativeSource={RelativeSource AncestorType=ItemsControl, AncestorLevel=1}}"
+                                       CommandParameter="{Binding}">
+                                <ui:Button.Icon><ui:SymbolIcon Symbol="Play16"/></ui:Button.Icon>
+                            </ui:Button>
+                            <ui:Button Appearance="Transparent" Padding="4" Width="26" Height="24" ToolTip="Done"
+                                       AutomationProperties.Name="Finish task" Visibility="{Binding CanFinish, Converter={StaticResource BoolToVisibility}}"
+                                       Command="{Binding DataContext.FinishTaskCommand, RelativeSource={RelativeSource AncestorType=ItemsControl, AncestorLevel=1}}"
+                                       CommandParameter="{Binding}">
+                                <ui:Button.Icon><ui:SymbolIcon Symbol="Checkmark16"/></ui:Button.Icon>
+                            </ui:Button>
+                            <ui:Button Appearance="Transparent" Padding="4" Width="26" Height="24" ToolTip="Back to To do"
+                                       AutomationProperties.Name="Reopen task" Visibility="{Binding CanReopen, Converter={StaticResource BoolToVisibility}}"
+                                       Command="{Binding DataContext.ReopenTaskCommand, RelativeSource={RelativeSource AncestorType=ItemsControl, AncestorLevel=1}}"
+                                       CommandParameter="{Binding}">
+                                <ui:Button.Icon><ui:SymbolIcon Symbol="ArrowUndo16"/></ui:Button.Icon>
+                            </ui:Button>
+                            <ui:Button Appearance="Transparent" Padding="4" Width="26" Height="24" ToolTip="Delete"
+                                       AutomationProperties.Name="Delete task"
+                                       Command="{Binding DataContext.DeleteTaskCommand, RelativeSource={RelativeSource AncestorType=ItemsControl, AncestorLevel=1}}"
+                                       CommandParameter="{Binding}">
+                                <ui:Button.Icon><ui:SymbolIcon Symbol="Dismiss16"/></ui:Button.Icon>
+                            </ui:Button>
+                        </StackPanel>
+                        <TextBlock Text="{Binding Title}" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    </DockPanel>
+                    <TextBlock Text="{Binding Detail}" FontSize="12" TextWrapping="Wrap" Margin="0,2,0,0"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" Style="{StaticResource HideWhenNull}"/>
+                    <TextBlock Text="{Binding Owner}" FontSize="11" Margin="0,4,0,0"
+                               Foreground="{DynamicResource TextFillColorTertiaryBrush}" Style="{StaticResource HideWhenNull}"/>
+                    <TextBlock Text="{Binding Note}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"
+                               Foreground="{DynamicResource TextFillColorTertiaryBrush}" Style="{StaticResource HideWhenNull}"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- Board tab: the agents' task board, their messages and leased files -->
+        <DataTemplate x:Key="BoardView" DataType="{x:Type vm:BoardViewModel}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="12,8,12,12">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,10">
+                        <ui:Button DockPanel.Dock="Right" Content="Add" Margin="6,0,0,0" Command="{Binding AddTaskCommand}"/>
+                        <ui:TextBox Text="{Binding NewTaskTitle, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="New task for the agents"
+                                    AutomationProperties.Name="New task" KeyDown="NewTask_KeyDown"/>
+                    </DockPanel>
+
+                    <TextBlock Text="In progress" Style="{StaticResource BoardHeader}"/>
+                    <ItemsControl ItemsSource="{Binding Doing}" ItemTemplate="{StaticResource TaskCardTemplate}"/>
+                    <TextBlock Text="To do" Style="{StaticResource BoardHeader}"/>
+                    <ItemsControl ItemsSource="{Binding Todo}" ItemTemplate="{StaticResource TaskCardTemplate}"/>
+                    <TextBlock Text="Done" Style="{StaticResource BoardHeader}"/>
+                    <ItemsControl ItemsSource="{Binding Done}" ItemTemplate="{StaticResource TaskCardTemplate}"/>
+
+                    <StackPanel Visibility="{Binding HasLeases, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="Leased files" Style="{StaticResource BoardHeader}"/>
+                        <ItemsControl ItemsSource="{Binding Leases}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontSize="12" TextWrapping="Wrap" Margin="0,1" FontFamily="Cascadia Mono, Consolas"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <TextBlock Text="Messages between agents" Style="{StaticResource BoardHeader}"/>
+                    <TextBlock Text="None yet. Agents send them with the kovan tools; you see every one here." FontSize="12" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextFillColorTertiaryBrush}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasMessages}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <ItemsControl ItemsSource="{Binding Messages}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:MessageLine}">
+                                <StackPanel Margin="0,0,0,8">
+                                    <TextBlock Text="{Binding Header}" FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+        </DataTemplate>
         <!-- Branch label: only for nodes working in a worktree -->
         <Style x:Key="BranchVisibility" TargetType="StackPanel">
             <Style.Triggers>
@@ -79,6 +218,12 @@
                 </ui:Button.Icon>
             </ui:Button>
 
+            <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Command="{Binding ToggleBoardCommand}" Margin="8,0,0,0"
+                       ToolTip="The agents' task board and messages (Ctrl+Shift+B)" AutomationProperties.Name="Toggle Board">
+                <ui:Button.Icon>
+                    <ui:SymbolIcon Symbol="TaskListSquareLtr24"/>
+                </ui:Button.Icon>
+            </ui:Button>
             <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Command="{Binding ToggleChangesPanelCommand}" Margin="8,0,0,0"
                        ToolTip="Show/hide the Changes panel (Ctrl+Shift+G)" AutomationProperties.Name="Toggle Changes panel">
                 <ui:Button.Icon>
@@ -163,11 +308,28 @@
 
         <!-- Changes panel: git changes of the current terminal's folder. Same rules as the Agents panel: beside the
              canvas, square, flush with the window edge. -->
-        <Border Grid.Column="2" Width="460" BorderThickness="1,1,0,0" DataContext="{Binding Changes}"
+        <Border Grid.Column="2" Width="460" BorderThickness="1,1,0,0"
                 Background="{DynamicResource SolidBackgroundFillColorSecondaryBrush}"
                 BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                Visibility="{Binding DataContext.ShowChangesPanel, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}">
-            <Grid>
+                Visibility="{Binding ShowChangesPanel, Converter={StaticResource BoolToVisibility}}">
+            <DockPanel>
+            <!-- Tabs: Changes | Board -->
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="8,6,8,0">
+                <RadioButton Content="Changes" GroupName="RightPanel" Style="{StaticResource PanelTab}" AutomationProperties.Name="Changes tab"
+                             IsChecked="{Binding IsChangesTab, Mode=TwoWay}"/>
+                <RadioButton GroupName="RightPanel" Style="{StaticResource PanelTab}" AutomationProperties.Name="Board tab"
+                             IsChecked="{Binding IsBoardTab, Mode=TwoWay}">
+                    <TextBlock>
+                        <Run Text="Board"/><Run Text="{Binding BoardPanel.Badge, Mode=OneWay}" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                    </TextBlock>
+                </RadioButton>
+            </StackPanel>
+
+            <ContentControl DataContext="{Binding BoardPanel}" Content="{Binding}" ContentTemplate="{StaticResource BoardView}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+                            Visibility="{Binding DataContext.IsBoardTab, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}"/>
+
+            <Grid DataContext="{Binding Changes}"
+                  Visibility="{Binding DataContext.IsChangesTab, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -376,6 +538,7 @@
                     </StackPanel>
                 </Border>
             </Grid>
+            </DockPanel>
         </Border>
 
         <!-- Agents panel: beside the canvas, never over it (terminals are HWNDs; nothing can be drawn on top).

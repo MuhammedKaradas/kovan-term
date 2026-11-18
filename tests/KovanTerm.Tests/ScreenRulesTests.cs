@@ -81,6 +81,13 @@ public sealed class ScreenRulesTests : IDisposable
     public void AgentOf_LooksInsideCmdWrappers(string commandLine, string? agent) =>
         Assert.Equal(agent, ScreenRules.AgentOf(commandLine));
 
+    [Theory]
+    [InlineData(@"C:\Program Files\nodejs\claude.cmd", "claude")] // spaces: a path, not a command line
+    [InlineData(@"C:\Users\me\AppData\Roaming\npm\codex.CMD", "codex")]
+    [InlineData(@"C:\Windows\System32\cmd.exe", null)]
+    public void AgentOfExecutable_UsesTheFileName(string path, string? agent) =>
+        Assert.Equal(agent, ScreenRules.AgentOfExecutable(path));
+
     [Fact]
     public void Screen_FillsGaps_ButReportsWin()
     {

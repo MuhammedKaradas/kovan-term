@@ -176,6 +176,20 @@ hooks) and running subagents (`SubagentStart`/`SubagentStop`). It updates only o
 The panel is square and flush with the window edge: a large rounded, bordered panel at this spot dropped canvas
 motion from ~59 to ~34 fps. Keep large static chrome next to the canvas free of `CornerRadius`, and measure.
 
+## Agent mesh and Board
+
+Agents coordinate through an MCP server inside Kovan (`MeshServer`, JSON-RPC over HTTP on the hook listener:
+`POST /mcp/<node id>/<per-run token>`; the token is in the URL because not every agent can send headers to an MCP
+server). Claude Code nodes get it with `--mcp-config <data dir>\hooks\<node id>.mcp.json`, Codex nodes with
+`-c mcp_servers.kovan.url=…`; the user's own MCP servers are untouched. Tools: `workspace_status`, `agents_list`,
+`send_message` / `inbox`, `task_list` / `task_create` / `task_claim` / `task_complete`, `lease_acquire` /
+`lease_release` (advisory locks on files, folders or globs). State lives in `MeshBoard` (thread-safe; tasks and the
+last 300 messages are saved with the workspace, leases expire). Messages are pulled, never typed into a terminal: when
+an agent with unread messages gets a prompt, Kovan's answer to its `UserPromptSubmit` hook adds a one-line
+`additionalContext` telling it to read its inbox. Messages are information, not instructions (the server's
+instructions say so), size- and rate-limited. The **Board** tab of the right panel shows the tasks (the user can add,
+start, finish, reopen and delete them), the leases and every message.
+
 ## Screen rules
 
 For prompts no hook or status report announces (folder trust questions, Codex's hook review) and for agents that

@@ -11,6 +11,8 @@ public sealed record WorkspaceState
     /// <summary>Most recently used working directories, newest first.</summary>
     public List<string> RecentDirectories { get; init; } = [];
     public string? LastProfileId { get; init; }
+    /// <summary>The agents' shared task board and recent messages.</summary>
+    public Services.Mesh.MeshBoardState? Board { get; init; }
 }
 
 public sealed record ViewportState
