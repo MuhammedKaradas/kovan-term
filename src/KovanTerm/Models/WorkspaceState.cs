@@ -36,6 +36,7 @@ public sealed record NodeState
     public string? Url { get; init; }
     public string? Color { get; init; }
     public string? WorkingDirectory { get; init; }
+    public bool Wsl { get; init; }
     public double X { get; init; }
     public double Y { get; init; }
     public double Width { get; init; }

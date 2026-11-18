@@ -82,6 +82,14 @@ public partial class ChangesViewModel : ObservableObject
             Message = Node == null ? "Select a terminal to see its changes." : "This terminal has no working folder.";
             return;
         }
+        if (Node.IsWsl && Services.WslLauncher.IsLinuxPath(dir))
+        {
+            // Windows git can't open a Linux path; running git inside the distro is still to do
+            Files.Clear();
+            DiffLines = [];
+            Message = "Changes of folders inside WSL aren't shown yet.";
+            return;
+        }
         IsBusy = true;
         var status = await _git.StatusAsync(dir, Node.Worktree?.BaseCommit);
         if (version != _refreshVersion) return; // a newer refresh started meanwhile

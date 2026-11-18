@@ -23,6 +23,9 @@ public sealed class NewTerminalViewModelTests
 
     private static readonly string ExistingDir = Path.GetTempPath();
 
+    private static ProfileOptionViewModel WslOption(string id, string? distro = null) =>
+        new(new TerminalProfile { Id = id, Name = id, Executable = "", Wsl = true, Distro = distro }, @"C:\Windows\System32\wsl.exe");
+
     [Fact]
     public void Initially_SelectsPreferredProfileAndLastDirectory()
     {
@@ -75,6 +78,61 @@ public sealed class NewTerminalViewModelTests
         var cancelled = new NewTerminalViewModel(new FakeDialogs(folder: null), [Option("cmd", true)], [ExistingDir]);
         cancelled.BrowseCommand.Execute(null);
         Assert.Equal(ExistingDir, cancelled.WorkingDirectory);
+    }
+
+    [Fact]
+    public void SwitchingToWsl_UsesRecentLinuxDirectory_AndBack()
+    {
+        var vm = new NewTerminalViewModel(new FakeDialogs(), [Option("cmd", true), WslOption("wsl")], [ExistingDir, "/srv/app"]);
+        Assert.Equal(ExistingDir, vm.WorkingDirectory);
+
+        vm.SelectedProfile = vm.Profiles[1];
+        Assert.Equal("/srv/app", vm.WorkingDirectory);
+        Assert.Null(vm.ValidationMessage); // default distro: the path can't be checked
+
+        vm.SelectedProfile = vm.Profiles[0];
+        Assert.Equal(ExistingDir, vm.WorkingDirectory);
+    }
+
+    [Fact]
+    public void SwitchingToWsl_WithoutRecentLinuxDirectory_UsesHome()
+    {
+        var vm = new NewTerminalViewModel(new FakeDialogs(), [Option("cmd", true), WslOption("wsl", "Debian")], [ExistingDir]);
+
+        vm.SelectedProfile = vm.Profiles[1];
+
+        Assert.Equal("~", vm.WorkingDirectory);
+        Assert.True(vm.ConfirmCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void LinuxPath_WithWindowsProfile_CannotConfirm()
+    {
+        var vm = new NewTerminalViewModel(new FakeDialogs(), [Option("cmd", true)], [ExistingDir]);
+
+        vm.WorkingDirectory = "/srv/app";
+
+        Assert.Equal("Linux paths only work with WSL profiles.", vm.ValidationMessage);
+    }
+
+    [Fact]
+    public void WslProfile_AcceptsWindowsDirectory()
+    {
+        var vm = new NewTerminalViewModel(new FakeDialogs(), [WslOption("wsl", "Debian")], ["~"]);
+
+        vm.WorkingDirectory = ExistingDir;
+
+        Assert.Null(vm.ValidationMessage);
+    }
+
+    [Fact]
+    public void Browse_InWsl_ConvertsDistroFolderToLinuxPath()
+    {
+        var vm = new NewTerminalViewModel(new FakeDialogs(folder: @"\\wsl.localhost\Debian\srv\app"), [WslOption("wsl", "Debian")], ["~"]);
+
+        vm.BrowseCommand.Execute(null);
+
+        Assert.Equal("/srv/app", vm.WorkingDirectory);
     }
 
     [Fact]

@@ -35,10 +35,18 @@ public sealed class ProfileStore
         FilePath = filePath ?? Path.Combine(AppPaths.DataDirectory, "profiles.json");
     }
 
+    /// <summary>A shell and Claude Code for each installed WSL distro.</summary>
+    public static IEnumerable<TerminalProfile> WslDefaults(IEnumerable<string> distros) =>
+        distros.SelectMany(d => new TerminalProfile[]
+        {
+            new() { Id = $"wsl-{d}", Name = $"{d} (WSL)", Executable = "", Wsl = true, Distro = d, Color = "#E95420" },
+            new() { Id = $"claude-wsl-{d}", Name = $"Claude Code ({d})", Executable = "claude", Wsl = true, Distro = d, Color = "#D97757" },
+        });
+
     /// <summary>Profiles; only the defaults if the user file can't be read (the app still starts).</summary>
-    public IReadOnlyList<TerminalProfile> Load()
+    public IReadOnlyList<TerminalProfile> Load(IEnumerable<string>? wslDistros = null)
     {
-        var result = Defaults.ToList();
+        var result = Defaults.Concat(WslDefaults(wslDistros ?? [])).ToList();
         foreach (var user in LoadUserProfiles())
         {
             var i = result.FindIndex(p => p.Id == user.Id);

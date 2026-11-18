@@ -39,11 +39,15 @@ public partial class NewTerminalViewModel : ObservableObject
             ?? profiles.FirstOrDefault(p => p.IsAvailable);
     }
 
+    private bool IsWsl => SelectedProfile?.Profile.Wsl == true;
+    private string? Distro => SelectedProfile?.Profile.Distro is { Length: > 0 } d ? d : null;
+
     public string? ValidationMessage =>
         SelectedProfile == null ? "Select a profile."
         : !SelectedProfile.IsAvailable ? SelectedProfile.Detail
         : string.IsNullOrWhiteSpace(WorkingDirectory) ? "Select a working directory."
-        : !Directory.Exists(WorkingDirectory) ? "This folder doesn't exist."
+        : !IsWsl && WslLauncher.IsLinuxPath(WorkingDirectory) ? "Linux paths only work with WSL profiles."
+        : !DirectoryExists(WorkingDirectory) ? "This folder doesn't exist."
         : UseWorktree && CanUseWorktree && !GitWorktrees.IsValidBranch(BranchName)
             ? "Branch names can use letters, digits, '.', '_', '-' and '/'."
         : null;
@@ -91,17 +95,42 @@ public partial class NewTerminalViewModel : ObservableObject
     partial void OnWorkingDirectoryChanged(string value) =>
         RepoRoot = Directory.Exists(value) ? GitWorktrees.FindRepoRoot(value) : null;
 
+    partial void OnBranchNameChanged(string value) => _branchEdited = true;
+
+
+    /// <summary>
+    /// For WSL a Linux path is checked through <c>\\wsl.localhost</c>; with the default distro its name is unknown,
+    /// so it isn't checked. Windows paths also work in WSL (as <c>/mnt/c/…</c>).
+    /// </summary>
+    private bool DirectoryExists(string directory)
+    {
+        if (!IsWsl || !WslLauncher.IsLinuxPath(directory)) return Directory.Exists(directory);
+        if (directory == WslLauncher.HomeDirectory || Distro == null) return true;
+        return Directory.Exists(WslLauncher.ToUncPath(Distro, directory));
+    }
+
+    /// <summary>When switching between Windows and WSL profiles, swaps in a directory of the matching kind.</summary>
     partial void OnSelectedProfileChanged(ProfileOptionViewModel? value)
     {
-        // Keep the suggestion in step with the profile until the user types their own name
+        // Keep the branch suggestion in step with the profile until the user types their own name
         if (!_branchEdited && value != null)
         {
             BranchName = GitWorktrees.SuggestBranch(value.Profile.Id);
             _branchEdited = false;
         }
+        if (value == null || string.IsNullOrWhiteSpace(WorkingDirectory)) return;
+        var wantLinux = value.Profile.Wsl;
+        if (WslLauncher.IsLinuxPath(WorkingDirectory) == wantLinux) return;
+        if (!wantLinux)
+        {
+            WorkingDirectory = RecentDirectories.FirstOrDefault(d => !WslLauncher.IsLinuxPath(d))
+                ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        }
+        else
+        {
+            WorkingDirectory = RecentDirectories.FirstOrDefault(WslLauncher.IsLinuxPath) ?? WslLauncher.HomeDirectory;
+        }
     }
-
-    partial void OnBranchNameChanged(string value) => _branchEdited = true;
 
     [RelayCommand(CanExecute = nameof(CanConfirm))]
     private void Confirm() => DialogResult = true;
@@ -114,7 +143,11 @@ public partial class NewTerminalViewModel : ObservableObject
     [RelayCommand]
     private void Browse()
     {
-        if (_dialogs.PickFolder(Directory.Exists(WorkingDirectory) ? WorkingDirectory : null) is { } folder)
-            WorkingDirectory = folder;
+        // In WSL, the distro's files are browsed through \\wsl.localhost and the result turned back into a Linux path
+        var current = IsWsl && Distro != null && WorkingDirectory.StartsWith('/')
+            ? WslLauncher.ToUncPath(Distro, WorkingDirectory)
+            : WorkingDirectory;
+        if (_dialogs.PickFolder(Directory.Exists(current) ? current : null) is not { } folder) return;
+        WorkingDirectory = IsWsl && Distro != null ? WslLauncher.FromUncPath(folder, Distro) ?? folder : folder;
     }
 }

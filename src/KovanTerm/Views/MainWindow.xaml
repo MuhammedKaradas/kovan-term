@@ -173,7 +173,7 @@
             <Grid>
                 <Image Visibility="Collapsed" Stretch="Fill"/>
                 <term:EasyTerminalControl StartupCommandLine="{Binding StartupCommandLine}"
-                                          WorkingDirectory="{Binding WorkingDirectory}"
+                                          WorkingDirectory="{Binding ProcessDirectory}"
                                           FontSizeWhenSettingTheme="13"
                                           Loaded="Terminal_Loaded"/>
             </Grid>
@@ -203,6 +203,16 @@
                     </Border>
                 </Grid>
             </DockPanel>
+        </DataTemplate>
+
+        <!-- Node body: a WSL node waiting for its distro to boot (the terminal starts afterwards) -->
+        <DataTemplate x:Key="StartingBody" DataType="{x:Type vm:TerminalNodeViewModel}">
+            <Border Background="{DynamicResource TerminalBackgroundBrush}">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <ui:ProgressRing IsIndeterminate="True" Width="28" Height="28" Margin="0,0,0,10"/>
+                    <TextBlock Text="{Binding StartingText}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
         </DataTemplate>
 
         <DataTemplate x:Key="ErrorBody" DataType="{x:Type vm:TerminalNodeViewModel}">
@@ -850,6 +860,9 @@
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding IsBrowser}" Value="True">
                                                 <Setter Property="ContentTemplate" Value="{StaticResource PreviewBody}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsStarting}" Value="True">
+                                                <Setter Property="ContentTemplate" Value="{StaticResource StartingBody}"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>

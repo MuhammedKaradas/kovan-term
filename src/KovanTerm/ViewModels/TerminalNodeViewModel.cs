@@ -26,7 +26,20 @@ public partial class TerminalNodeViewModel : ObservableObject
     /// </summary>
     public string? LaunchCommandLine { get; init; }
     public string StartupCommandLine => LaunchCommandLine ?? CommandLine;
+    /// <summary>For WSL nodes a Linux path (or <c>~</c>), passed via <c>wsl.exe --cd</c>.</summary>
     public string? WorkingDirectory { get; init; }
+    public bool IsWsl { get; init; }
+    /// <summary>Directory the process starts in on Windows; WSL nodes start in the user folder and change directory themselves.</summary>
+    public string? ProcessDirectory => IsWsl ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) : WorkingDirectory;
+
+    /// <summary>
+    /// A WSL node waits for its distro to boot before the terminal starts (see <see cref="Services.WslLauncher.StartDistroAsync"/>);
+    /// the node shows <see cref="StartingText"/> meanwhile.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsStarting { get; set; }
+
+    public string? StartingText { get; set; }
     /// <summary>The git worktree this node's agent works in (created by Kovan); <c>null</c> for a normal folder.</summary>
     public WorktreeInfo? Worktree { get; init; }
     public string? BranchText => Worktree?.Branch;
@@ -246,6 +259,7 @@ public partial class TerminalNodeViewModel : ObservableObject
         Url = IsBrowser ? Url : null,
         Color = Color,
         WorkingDirectory = WorkingDirectory,
+        Wsl = IsWsl,
         X = Location.X,
         Y = Location.Y,
         Width = Width,
@@ -265,6 +279,7 @@ public partial class TerminalNodeViewModel : ObservableObject
         Url = s.Url,
         Color = s.Color,
         WorkingDirectory = s.WorkingDirectory,
+        IsWsl = s.Wsl,
         StartError = startError,
         Location = new Point(s.X, s.Y),
         // Size may be 0 in old/incomplete saves
