@@ -16,6 +16,7 @@ public sealed class NewTerminalViewModelTests
         public Task ShowMessageAsync(string title, string message) => Task.CompletedTask;
         public Task<bool> ConfirmAsync(string title, string message, string action) => Task.FromResult(false);
         public void OpenInBrowser(string url) { }
+        public Task<int?> ChooseAsync(string title, string message, params string[] buttons) => Task.FromResult<int?>(null);
     }
 
     private static ProfileOptionViewModel Option(string id, bool available) =>
@@ -144,5 +145,22 @@ public sealed class NewTerminalViewModelTests
 
         vm.CancelCommand.Execute(null);
         Assert.False(vm.DialogResult);
+    }
+
+    [Fact]
+    public void KeepRunning_FollowsTheProfile_AndOnlyShowsForWsl()
+    {
+        var persistent = new ProfileOptionViewModel(
+            new TerminalProfile { Id = "p", Name = "p", Executable = "", Wsl = true, Persistent = true }, @"C:\Windows\System32\wsl.exe");
+        var vm = new NewTerminalViewModel(new FakeDialogs(), [Option("cmd", true), WslOption("wsl"), persistent], [ExistingDir]);
+        Assert.False(vm.IsWsl);
+        Assert.False(vm.KeepRunning);
+
+        vm.SelectedProfile = vm.Profiles[1];
+        Assert.True(vm.IsWsl);
+        Assert.False(vm.KeepRunning);
+
+        vm.SelectedProfile = vm.Profiles[2];
+        Assert.True(vm.KeepRunning);
     }
 }

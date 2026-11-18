@@ -29,6 +29,8 @@ public partial class TerminalNodeViewModel : ObservableObject
     /// <summary>For WSL nodes a Linux path (or <c>~</c>), passed via <c>wsl.exe --cd</c>.</summary>
     public string? WorkingDirectory { get; init; }
     public bool IsWsl { get; init; }
+    /// <summary>A WSL node whose program runs in a tmux session that keeps running after the terminal closes.</summary>
+    public bool IsPersistent { get; init; }
     /// <summary>Directory the process starts in on Windows; WSL nodes start in the user folder and change directory themselves.</summary>
     public string? ProcessDirectory => IsWsl ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) : WorkingDirectory;
 
@@ -260,6 +262,7 @@ public partial class TerminalNodeViewModel : ObservableObject
         Color = Color,
         WorkingDirectory = WorkingDirectory,
         Wsl = IsWsl,
+        Persistent = IsPersistent,
         X = Location.X,
         Y = Location.Y,
         Width = Width,
@@ -280,6 +283,7 @@ public partial class TerminalNodeViewModel : ObservableObject
         Color = s.Color,
         WorkingDirectory = s.WorkingDirectory,
         IsWsl = s.Wsl,
+        IsPersistent = s.Persistent,
         StartError = startError,
         Location = new Point(s.X, s.Y),
         // Size may be 0 in old/incomplete saves

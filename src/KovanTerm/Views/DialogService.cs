@@ -31,6 +31,10 @@ public sealed class DialogService(Window owner) : IDialogService
                 _ => WorktreeCloseChoice.Cancel,
             });
 
+    public Task<int?> ChooseAsync(string title, string message, params string[] buttons) =>
+        Task.FromResult(ChoiceWindow.Ask(owner, title, message, buttons.Select((b, i) => (b,
+            i == 0 ? ControlAppearance.Primary : b == "Cancel" ? ControlAppearance.Secondary : ControlAppearance.Danger)).ToArray()));
+
     public Task ShowMessageAsync(string title, string message)
     {
         ChoiceWindow.Ask(owner, title, message, ("OK", ControlAppearance.Primary));

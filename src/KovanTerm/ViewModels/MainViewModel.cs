@@ -161,7 +161,7 @@ public partial class MainViewModel : ObservableObject
             RememberSetupCommand(dialog.RepoRoot!, dialog.SetupCommand.Trim());
         }
         var setup = worktree != null ? dialog.SetupCommand.Trim() : "";
-        var node = CreateNode(choice.Profile, choice.ResolvedPath!, directory, at, worktree, setup);
+        var node = CreateNode(choice.Profile, choice.ResolvedPath!, directory, at, worktree, setup, persistent: dialog.KeepRunning);
         if (choice.Profile.Wsl) StartDistroFirst(node, choice.Profile.Distro);
         AddNode(node);
         // The terminal just opened is the one the user is about to work with
@@ -171,6 +171,17 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task CloseNode(TerminalNodeViewModel node)
     {
+        var stopSession = false;
+        if (node.IsPersistent && !node.HasStartError)
+        {
+            var choice = await _dialogs.ChooseAsync("Close terminal",
+                "This terminal runs in a tmux session inside WSL, which can keep running without it.\n\n"
+                + "Stop it, or leave it running? A running session shows up the next time Kovan starts.",
+                "Stop it", "Leave it running", "Cancel");
+            if (choice is not (0 or 1)) return;
+            stopSession = choice == 0;
+        }
+
         var deleteWorktree = false;
         if (node.Worktree is { } w && Directory.Exists(w.Path))
         {
@@ -185,6 +196,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         Nodes.Remove(node);
+        if (stopSession) _ = _wsl.KillSessionAsync(DistroOf(node), WslLauncher.SessionName(node.Id));
         _hooks?.Remove(node.Id);
         _usage.Remove(node);
         if (CurrentNode == node) CurrentNode = null;
@@ -192,6 +204,51 @@ public partial class MainViewModel : ObservableObject
         // After the node is gone: its shell must not hold the folder any more
         if (deleteWorktree && node.Worktree is { } worktree && (await GitWorktrees.RemoveAsync(worktree)).Error is { } error)
             await _dialogs.ShowMessageAsync("Couldn't delete the worktree", $"{error}\n\nFolder: {worktree.Path}");
+    }
+
+    private string? DistroOf(TerminalNodeViewModel node) =>
+        _profiles.FirstOrDefault(p => p.Id == node.ProfileId)?.Distro is { Length: > 0 } d ? d : null;
+
+    /// <summary>
+    /// After startup: Kovan tmux sessions running in WSL that no node shows (closed with "Leave it running").
+    /// Offers to open them as nodes again or stop them. Only running distros are asked, so no distro is booted for this.
+    /// </summary>
+    public async Task CheckOrphanSessionsAsync()
+    {
+        if (_wsl.WslPath == null) return;
+        var orphans = new List<(string Distro, Guid Node)>();
+        foreach (var distro in await _wsl.RunningDistrosAsync())
+        {
+            foreach (var name in await _wsl.ListSessionsAsync(distro))
+            {
+                if (WslLauncher.NodeOfSession(name) is { } id && Nodes.All(n => n.Id != id)) orphans.Add((distro, id));
+            }
+        }
+        if (orphans.Count == 0) return;
+
+        var where = string.Join(", ", orphans.GroupBy(o => o.Distro).Select(g => $"{g.Key}: {g.Count()}"));
+        var choice = await _dialogs.ChooseAsync("Terminals still running in WSL",
+            $"{Plural(orphans.Count, "terminal")} closed earlier with \"Leave it running\" {(orphans.Count == 1 ? "is" : "are")} still running ({where}).",
+            "Open them", "Stop them", "Leave them");
+        if (choice == 1)
+        {
+            foreach (var (distro, id) in orphans) await _wsl.KillSessionAsync(distro, WslLauncher.SessionName(id));
+            return;
+        }
+        if (choice != 0) return;
+
+        var at = ViewportCenterForNewNode();
+        foreach (var (distro, id) in orphans)
+        {
+            // The distro's shell profile: the session already exists, so attaching ignores the command
+            if (_profiles.FirstOrDefault(p => p.Wsl && string.IsNullOrEmpty(p.Executable)
+                    && string.Equals(p.Distro, distro, StringComparison.OrdinalIgnoreCase)) is not { } profile
+                || Resolve(profile) is not { } path)
+                continue;
+            var node = CreateNode(profile, path, WslLauncher.HomeDirectory, at, persistent: true, nodeId: id, title: $"{distro} (tmux)");
+            AddNode(node);
+            at += new Vector(40, 40);
+        }
     }
 
     private static string Plural(int n, string word) => n == 1 ? $"1 {word}" : $"{n} {word}s";
@@ -635,12 +692,13 @@ public partial class MainViewModel : ObservableObject
     }
 
     private TerminalNodeViewModel CreateNode(TerminalProfile profile, string resolvedPath, string directory, Point location,
-        WorktreeInfo? worktree = null, string setup = "", string? existingSessionId = null)
+        WorktreeInfo? worktree = null, string setup = "", string? existingSessionId = null, bool persistent = false, Guid? nodeId = null, string? title = null)
     {
-        var id = Guid.NewGuid();
+        var id = nodeId ?? Guid.NewGuid();
+        persistent &= profile.Wsl;
         // A saved conversation is resumed (ClaudeSessions finds its transcript); otherwise a new one gets an id now
         var sessionId = ClaudeHooks.IsClaude(resolvedPath) ? existingSessionId ?? Guid.NewGuid().ToString() : null;
-        var commandLine = BuildCommandLine(profile, resolvedPath, directory);
+        var commandLine = BuildCommandLine(profile, resolvedPath, directory, persistent ? id : null);
         var launch = LaunchCommandLine(id, resolvedPath, profile.Arguments, sessionId);
         // A new worktree's setup runs once, before the agent's first start; later launches run the agent directly
         if (worktree != null && setup.Length > 0) launch = GitWorktrees.WithSetup(launch ?? commandLine, setup, worktree.RepoRoot);
@@ -648,12 +706,13 @@ public partial class MainViewModel : ObservableObject
         {
             Id = id,
             ProfileId = profile.Id,
-            Title = profile.Name,
+            Title = title ?? profile.Name,
             CommandLine = commandLine,
             LaunchCommandLine = launch,
             SessionId = sessionId,
             Worktree = worktree,
             IsWsl = profile.Wsl,
+            IsPersistent = persistent,
             Color = profile.Color,
             WorkingDirectory = directory,
             Location = location,
@@ -702,9 +761,11 @@ public partial class MainViewModel : ObservableObject
     private string? Resolve(TerminalProfile profile) =>
         profile.Wsl ? (_wsl.IsInstalled(profile.Distro) ? _wsl.WslPath : null) : _resolver.Resolve(profile.Executable);
 
-    private static string BuildCommandLine(TerminalProfile profile, string resolvedPath, string? directory) =>
+    /// <param name="persistentNode">A persistent WSL node: its program runs in this node's tmux session.</param>
+    private static string BuildCommandLine(TerminalProfile profile, string resolvedPath, string? directory, Guid? persistentNode = null) =>
         profile.Wsl
-            ? WslLauncher.BuildCommandLine(resolvedPath, profile.Distro, directory ?? WslLauncher.HomeDirectory, profile.Executable, profile.Arguments)
+            ? WslLauncher.BuildCommandLine(resolvedPath, profile.Distro, directory ?? WslLauncher.HomeDirectory, profile.Executable, profile.Arguments,
+                persistentNode is { } node ? WslLauncher.SessionName(node) : null)
             : CommandResolver.BuildCommandLine(resolvedPath, profile.Arguments);
 
     private static string NormalizeDirectory(string directory) =>
@@ -761,12 +822,12 @@ public partial class MainViewModel : ObservableObject
 
         if (_profiles.FirstOrDefault(p => p.Id == s.ProfileId) is { } profile)
         {
-            var state = s with { Wsl = profile.Wsl };
+            var state = s with { Wsl = profile.Wsl, Persistent = s.Persistent && profile.Wsl };
             if (Resolve(profile) is not { } path)
                 return TerminalNodeViewModel.FromState(state, startError: profile.Wsl ? WslNotFoundMessage(profile.Distro) : NotFoundMessage(profile.Executable));
             // Nodes saved before sessions were tracked get a fresh conversation, as they did before
             if (ClaudeHooks.IsClaude(path) && state.SessionId == null) state = state with { SessionId = Guid.NewGuid().ToString() };
-            return TerminalNodeViewModel.FromState(state, BuildCommandLine(profile, path, s.WorkingDirectory),
+            return TerminalNodeViewModel.FromState(state, BuildCommandLine(profile, path, s.WorkingDirectory, state.Persistent ? s.Id : null),
                 launchCommandLine: LaunchCommandLine(s.Id, path, profile.Arguments, state.SessionId));
         }
 

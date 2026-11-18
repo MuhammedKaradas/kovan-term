@@ -45,6 +45,19 @@ has finished starting (at most 4 minutes); the node shows "Starting <distro>…"
 login sessions while systemd is still starting, so without this wait the terminal would just stay blank.
 If it takes long, a service is slow to start: `systemctl list-jobs` inside the distro shows which one.
 
+### Keep running when Kovan closes
+
+For WSL profiles the New terminal dialog has **Keep running when Kovan closes**. The program then runs in
+a hidden tmux session (`kovan-<node id>` on Kovan's own tmux server, `tmux -L kovan`, without your
+`~/.tmux.conf`). Closing Kovan leaves it running, and on the next start the node attaches to it again,
+with its output. tmux is set up to stay out of the way: no status bar, no prefix key (Ctrl+B reaches the
+agent), no Esc delay; the mouse wheel scrolls tmux's history (hold Shift to select text). tmux must be
+installed in the distro (`sudo apt install tmux`); without it the terminal says so and runs normally.
+
+Closing such a node asks whether to stop the session or leave it running. Sessions left running show up
+the next time Kovan starts (only running distros are checked), with the choice to open them again as
+nodes or stop them. To see them yourself: `tmux -L kovan ls` inside the distro.
+
 Not yet available for WSL agents: status hooks, the agent mesh, conversation resume and the Changes
 panel.
 
@@ -62,7 +75,9 @@ a new `id` is added to the list. Comments and trailing commas are allowed.
   // A full path works too
   { "id": "git-bash", "name": "Git Bash", "executable": "C:\\Program Files\\Git\\bin\\bash.exe", "arguments": "--login -i" },
   // Codex inside WSL (leave "distro" out for the default distro)
-  { "id": "codex-wsl", "name": "Codex (WSL)", "executable": "codex", "wsl": true, "distro": "Ubuntu", "color": "#10A37F" }
+  { "id": "codex-wsl", "name": "Codex (WSL)", "executable": "codex", "wsl": true, "distro": "Ubuntu", "color": "#10A37F" },
+  // Claude Code inside WSL that keeps running when Kovan closes
+  { "id": "claude-wsl-tmux", "name": "Claude Code (Debian, tmux)", "executable": "claude", "wsl": true, "distro": "Debian", "persistent": true }
 ]
 ```
 
@@ -75,6 +90,7 @@ a new `id` is added to the list. Comments and trailing commas are allowed.
 | `color` | | Accent color under the node header (`#RRGGBB`) |
 | `wsl` | | `true` runs `executable` inside WSL; an empty `executable` opens the login shell |
 | `distro` | | WSL distro; the default distro if left out |
+| `persistent` | | WSL only: `true` ticks "Keep running when Kovan closes" by default (see below) |
 
 If the file can't be read, the app starts with the built-in profiles only. Changes take effect after
 restarting the app.

@@ -237,5 +237,6 @@ public sealed class WorktreeTests : IDisposable
         public Task ShowMessageAsync(string title, string message) => Task.CompletedTask;
         public Task<bool> ConfirmAsync(string title, string message, string action) => Task.FromResult(false);
         public void OpenInBrowser(string url) { }
+        public Task<int?> ChooseAsync(string title, string message, params string[] buttons) => Task.FromResult<int?>(null);
     }
 }

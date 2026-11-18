@@ -27,6 +27,12 @@ public interface IDialogService
     /// <summary>Asks whether to keep or delete a worktree whose node is closing.</summary>
     Task<WorktreeCloseChoice> AskCloseWorktreeAsync(string title, string message);
 
+    /// <summary>
+    /// Asks the user to pick one of <paramref name="buttons"/> (the first is the primary one, a button named "Cancel"
+    /// the secondary one); the index of the picked button, or <c>null</c> if the dialog was closed.
+    /// </summary>
+    Task<int?> ChooseAsync(string title, string message, params string[] buttons);
+
     /// <summary>Shows a message with an OK button (errors and results).</summary>
     Task ShowMessageAsync(string title, string message);
 

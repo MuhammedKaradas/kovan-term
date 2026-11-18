@@ -49,6 +49,8 @@ public partial class MainWindow : FluentWindow
         var theme = new ThemeService(this);
         theme.IsDarkChanged += _canvas.SetDarkTheme;
         Loaded += (_, _) => theme.Apply(_vm.Theme);
+        // Once the window is up (the question is a dialog over it)
+        ContentRendered += async (_, _) => await _vm.CheckOrphanSessionsAsync();
         _vm.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(MainViewModel.Theme)) theme.Apply(_vm.Theme);

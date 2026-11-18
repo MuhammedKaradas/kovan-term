@@ -37,6 +37,8 @@ public sealed record NodeState
     public string? Color { get; init; }
     public string? WorkingDirectory { get; init; }
     public bool Wsl { get; init; }
+    /// <summary>Runs in tmux session <c>kovan-&lt;id&gt;</c> inside WSL, which outlives the terminal.</summary>
+    public bool Persistent { get; init; }
     public double X { get; init; }
     public double Y { get; init; }
     public double Width { get; init; }

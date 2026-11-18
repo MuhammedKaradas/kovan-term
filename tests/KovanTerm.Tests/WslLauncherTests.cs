@@ -96,4 +96,47 @@ public sealed class WslLauncherTests : IDisposable
     [InlineData(@"\\wsl.localhost\Ubuntu\srv", null)]
     [InlineData(@"C:\code", null)]
     public void FromUncPath(string path, string? expected) => Assert.Equal(expected, WslLauncher.FromUncPath(path, "Debian"));
+
+    [Fact]
+    public void BuildCommandLine_WithSession_RunsCommandInTmux()
+    {
+        var id = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000045");
+        var line = WslLauncher.BuildCommandLine(Wsl, "Debian", "~", "claude", "", WslLauncher.SessionName(id));
+
+        Assert.StartsWith($"{Wsl} -d Debian --cd ~ -- exec \"${{SHELL:-/bin/sh}}\" -lic 'if command -v tmux", line);
+        // Kovan's own server and no user config; attach if the session exists
+        Assert.Contains("exec tmux -L kovan -f /dev/null start-server", line);
+        Assert.Contains("new-session -A -s kovan-aaaaaaaa000000000000000000000045 ", line);
+        Assert.Contains(@"set -g prefix None \;", line);
+        // Without tmux the command still runs
+        Assert.EndsWith("; claude; exec \"${SHELL:-/bin/sh}\" -l'", line);
+    }
+
+    [Fact]
+    public void BuildCommandLine_ShellWithSession_StartsLoginShellInTmux()
+    {
+        var line = WslLauncher.BuildCommandLine(Wsl, null, "~", "", "", "kovan-x");
+
+        Assert.Contains("new-session -A -s kovan-x ", line);
+        Assert.EndsWith("; exec \"${SHELL:-/bin/sh}\" -l'", line);
+    }
+
+    [Fact]
+    public void TmuxScript_QuotesTheInnerScriptOnce()
+    {
+        var script = WslLauncher.TmuxScript("kovan-x", "echo 'hi'");
+
+        Assert.Contains(@"new-session -A -s kovan-x 'echo '\''hi'\'''; fi; ", script);
+        Assert.EndsWith("; echo 'hi'", script);
+    }
+
+    [Fact]
+    public void NodeOfSession_ReadsKovanSessionNames()
+    {
+        var id = Guid.NewGuid();
+
+        Assert.Equal(id, WslLauncher.NodeOfSession(WslLauncher.SessionName(id)));
+        Assert.Null(WslLauncher.NodeOfSession("kovan-notaguid"));
+        Assert.Null(WslLauncher.NodeOfSession("work"));
+    }
 }
