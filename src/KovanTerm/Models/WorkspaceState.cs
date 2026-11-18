@@ -32,6 +32,8 @@ public sealed record NodeState
     public string? SessionId { get; init; }
     /// <summary>The git worktree Kovan created for this node, if any.</summary>
     public WorktreeInfo? Worktree { get; init; }
+    /// <summary>A web preview node's address; <c>null</c> for a terminal.</summary>
+    public string? Url { get; init; }
     public string? Color { get; init; }
     public string? WorkingDirectory { get; init; }
     public double X { get; init; }

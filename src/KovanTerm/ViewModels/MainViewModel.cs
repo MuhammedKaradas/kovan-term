@@ -225,6 +225,51 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    // ---- Web preview ----
+
+    public const string DefaultPreviewUrl = "http://localhost:3000";
+
+    /// <summary>A terminal printed a local web address: its header offers to preview it.</summary>
+    public void OnLocalUrlPrinted(TerminalNodeViewModel node, string url)
+    {
+        if (Nodes.Contains(node) && !node.IsBrowser) node.PreviewUrl = url;
+    }
+
+    /// <summary>Opens a web preview of the terminal's local address, next to it (or goes to an open one).</summary>
+    [RelayCommand]
+    private void OpenPreview(TerminalNodeViewModel node)
+    {
+        var url = node.PreviewUrl ?? DefaultPreviewUrl;
+        if (Nodes.FirstOrDefault(n => n.IsBrowser && string.Equals(n.Url, url, StringComparison.OrdinalIgnoreCase)) is { } open)
+        {
+            GoToNodeRequested?.Invoke(open);
+            return;
+        }
+        AddPreview(url, node.Location + new Vector(node.Width + 40, 0), node.WorkingDirectory, node.Width, node.Height);
+    }
+
+    /// <summary>An empty preview (address bar at the default dev server), e.g. from the canvas menu.</summary>
+    [RelayCommand]
+    private void NewPreview(Point? location) =>
+        AddPreview(DefaultPreviewUrl, location ?? ViewportCenterForNewNode(), null, TerminalNodeViewModel.DefaultWidth, TerminalNodeViewModel.DefaultHeight);
+
+    private void AddPreview(string url, Point location, string? folder, double width, double height)
+    {
+        var node = new TerminalNodeViewModel
+        {
+            IsBrowser = true,
+            Title = "Preview",
+            CommandLine = "",
+            Url = url,
+            // Grouped with the project it previews in the Agents panel
+            WorkingDirectory = folder,
+            Location = location,
+            Width = width,
+            Height = height,
+        };
+        AddNode(node);
+    }
+
     // ---- Recent conversations ----
 
     private readonly ClaudeConversations _conversations = new();
@@ -668,6 +713,9 @@ public partial class MainViewModel : ObservableObject
     /// </summary>
     private TerminalNodeViewModel RestoreNode(NodeState s)
     {
+        // A web preview has no command to resolve
+        if (s.Url != null) return TerminalNodeViewModel.FromState(s);
+
         // A missing folder (e.g. a worktree deleted outside Kovan) would make the terminal start in Kovan's own
         // folder, and an agent would work in the wrong place; don't start it
         if (s.WorkingDirectory is { Length: > 0 } dir && !Directory.Exists(dir))
@@ -736,7 +784,7 @@ public partial class MainViewModel : ObservableObject
     {
         // Status isn't persisted; save when location, size or the conversation (e.g. after /clear) changes
         if (e.PropertyName is nameof(TerminalNodeViewModel.Location) or nameof(TerminalNodeViewModel.Width) or nameof(TerminalNodeViewModel.Height)
-            or nameof(TerminalNodeViewModel.SessionId))
+            or nameof(TerminalNodeViewModel.SessionId) or nameof(TerminalNodeViewModel.Url))
             ScheduleSave();
     }
 

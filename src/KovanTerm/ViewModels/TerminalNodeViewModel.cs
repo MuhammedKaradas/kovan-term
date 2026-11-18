@@ -47,6 +47,22 @@ public partial class TerminalNodeViewModel : ObservableObject
     public string? StartError { get; init; }
     public bool HasStartError => StartError != null;
 
+    // ---- Web preview ----
+
+    /// <summary>A web preview node (WebView2) instead of a terminal.</summary>
+    public bool IsBrowser { get; init; }
+
+    /// <summary>The preview's address, edited in its address bar.</summary>
+    [ObservableProperty]
+    public partial string? Url { get; set; }
+
+    /// <summary>
+    /// A terminal: the last local web address it printed (a dev server's <c>http://localhost:3000</c>), offered as
+    /// "Preview" in its header; <c>null</c> until one shows up.
+    /// </summary>
+    [ObservableProperty]
+    public partial string? PreviewUrl { get; set; }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Bounds))]
     public partial Point Location { get; set; }
@@ -227,6 +243,7 @@ public partial class TerminalNodeViewModel : ObservableObject
         CommandLine = CommandLine,
         SessionId = SessionId,
         Worktree = Worktree,
+        Url = IsBrowser ? Url : null,
         Color = Color,
         WorkingDirectory = WorkingDirectory,
         X = Location.X,
@@ -244,6 +261,8 @@ public partial class TerminalNodeViewModel : ObservableObject
         LaunchCommandLine = launchCommandLine,
         SessionId = s.SessionId,
         Worktree = s.Worktree,
+        IsBrowser = s.Url != null,
+        Url = s.Url,
         Color = s.Color,
         WorkingDirectory = s.WorkingDirectory,
         StartError = startError,
