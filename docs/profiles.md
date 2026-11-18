@@ -58,8 +58,11 @@ Closing such a node asks whether to stop the session or leave it running. Sessio
 the next time Kovan starts (only running distros are checked), with the choice to open them again as
 nodes or stop them. To see them yourself: `tmux -L kovan ls` inside the distro.
 
-Not yet available for WSL agents: status hooks, the agent mesh, conversation resume and the Changes
-panel.
+Claude Code inside WSL gets the same as on Windows: its status in the node header and the Agents panel, the
+agent mesh (Board, messages, leases), its context size, and its conversation resumed when the node starts again.
+WSL 2's default network can't reach Kovan's local listener, so the hooks and the mesh go through Windows'
+own `curl.exe`, which WSL can run; nothing has to be installed in the distro and no firewall rule is needed.
+Not yet for WSL: the Changes panel, and Codex/Gemini hooks.
 
 ## Adding your own profiles
 

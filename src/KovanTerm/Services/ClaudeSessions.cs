@@ -51,4 +51,14 @@ public sealed partial class ClaudeSessions
         if (ChoosesConversation(profileArguments)) return "";
         return Exists(sessionId) ? $"--resume {sessionId}" : $"--session-id {sessionId}";
     }
+
+    /// <summary>
+    /// The same inside WSL, where the transcripts are in the distro's <c>~/.claude</c>: the shell running the agent
+    /// picks <c>--resume</c> or <c>--session-id</c> itself. The id is a GUID, so it needs no quoting.
+    /// </summary>
+    public static string WslArguments(string sessionId, string profileArguments)
+    {
+        if (ChoosesConversation(profileArguments) || !Guid.TryParse(sessionId, out _)) return "";
+        return $"$(ls ~/.claude/projects/*/{sessionId}.jsonl >/dev/null 2>&1 && echo --resume || echo --session-id) {sessionId}";
+    }
 }

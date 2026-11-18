@@ -167,6 +167,14 @@ node in its folder with that session id, so it's resumed; one already on the can
 Programs that write OSC 7501 status reports without waiting for the terminal's answer (Codex) are read from
 the terminal output by `ProgramStatusParser`; Allow types the program's own "Yes" key (`y` for Codex).
 
+**Claude Code inside WSL:** a distro can't reach 127.0.0.1 on Windows with WSL 2's default NAT network, and
+listening on the WSL adapter would mean a firewall prompt. So `ClaudeHooks.PrepareWslArguments` writes *command*
+hooks that pipe the event to Windows' `curl.exe` (run through WSL interop, it connects from the Windows side) and an
+MCP stdio server that is a shell loop posting each JSON-RPC line the same way. Both read the URL and token from
+`<node id>.endpoint` at every call: the port changes with every Kovan run, while an agent kept alive in tmux keeps
+the settings it started with. The conversation is resumed by the shell (`$(ls ~/.claude/projects/*/<id>.jsonl …)`
+picks `--resume` or `--session-id`), and the reported Linux transcript path is read through `\\wsl.localhost`.
+
 ## Agents panel
 
 A list of every node beside the canvas (left), grouped by working folder, with the agents waiting for the user first

@@ -507,7 +507,7 @@ public partial class MainViewModel : ObservableObject
         StatusLog($"{node.Title} hook {e.Name} {e.ToolName}");
         UpdateStatus(node, () => node.ApplyAgentEvent(e));
         // A reply was just written to the transcript
-        if (e.Name is "Stop" or "PostToolUse" or "PostToolUseFailure" or "SessionStart" && node.TranscriptPath != null)
+        if (e.Name is "Stop" or "PostToolUse" or "PostToolUseFailure" or "SessionStart" && node.ReadableTranscriptPath != null)
             RefreshContext(node);
         // A tool may have changed files
         if (e.Name is "PostToolUse" or "Stop") ScheduleChangesRefresh(node);
@@ -576,7 +576,7 @@ public partial class MainViewModel : ObservableObject
             return;
         }
         if (!_usage.TryGetValue(node, out var usage)) _usage[node] = usage = new TranscriptUsage();
-        var path = node.TranscriptPath!;
+        var path = node.ReadableTranscriptPath!;
         Task.Run(() => usage.Update(path)).ContinueWith(t =>
         {
             _usageReading.Remove(node);
@@ -742,9 +742,11 @@ public partial class MainViewModel : ObservableObject
         var id = nodeId ?? Guid.NewGuid();
         persistent &= profile.Wsl;
         // A saved conversation is resumed (ClaudeSessions finds its transcript); otherwise a new one gets an id now
-        var sessionId = ClaudeHooks.IsClaude(resolvedPath) ? existingSessionId ?? Guid.NewGuid().ToString() : null;
+        var sessionId = IsClaude(profile, resolvedPath) ? existingSessionId ?? Guid.NewGuid().ToString() : null;
         var commandLine = BuildCommandLine(profile, resolvedPath, directory, persistent ? id : null);
-        var launch = LaunchCommandLine(id, resolvedPath, profile.Arguments, sessionId);
+        var launch = profile.Wsl
+            ? WslLaunchCommandLine(id, profile, resolvedPath, directory, sessionId, persistent)
+            : LaunchCommandLine(id, resolvedPath, profile.Arguments, sessionId);
         // A new worktree's setup runs once, before the agent's first start; later launches run the agent directly
         if (worktree != null && setup.Length > 0) launch = GitWorktrees.WithSetup(launch ?? commandLine, setup, worktree.RepoRoot);
         return new()
@@ -758,6 +760,8 @@ public partial class MainViewModel : ObservableObject
             Worktree = worktree,
             IsWsl = profile.Wsl,
             IsPersistent = persistent,
+            AgentExecutable = profile.Wsl ? profile.Executable : null,
+            Distro = profile is { Wsl: true, Distro.Length: > 0 } ? profile.Distro : null,
             Color = profile.Color,
             WorkingDirectory = directory,
             Location = location,
@@ -770,8 +774,6 @@ public partial class MainViewModel : ObservableObject
     /// </summary>
     private string? LaunchCommandLine(Guid nodeId, string resolvedPath, string arguments, string? sessionId)
     {
-        // WSL agents get none of this yet: they can't read the Windows settings files, and WSL2's default
-        // network can't reach Kovan's 127.0.0.1 listener (resolvedPath is wsl.exe, so nothing matches below)
         var extra = new List<string> { arguments };
         // A resolved path, not a command line: it may contain spaces ("C:\Program Files\nodejs\claude.cmd")
         var agent = ScreenRules.AgentOfExecutable(resolvedPath);
@@ -807,6 +809,24 @@ public partial class MainViewModel : ObservableObject
         profile.Wsl ? (_wsl.IsInstalled(profile.Distro) ? _wsl.WslPath : null) : _resolver.Resolve(profile.Executable);
 
     /// <param name="persistentNode">A persistent WSL node: its program runs in this node's tmux session.</param>
+    private static bool IsClaude(TerminalProfile profile, string resolvedPath) =>
+        profile.Wsl ? ScreenRules.AgentOfExecutable(profile.Executable) == "claude" : ClaudeHooks.IsClaude(resolvedPath);
+
+    /// <summary>
+    /// Claude Code in WSL: its conversation and the hook/MCP settings that reach Kovan from the distro
+    /// (<see cref="ClaudeHooks.PrepareWslArguments"/>); <c>null</c> for anything else (run the saved command).
+    /// </summary>
+    private string? WslLaunchCommandLine(Guid nodeId, TerminalProfile profile, string wslPath, string? directory, string? sessionId, bool persistent)
+    {
+        if (ScreenRules.AgentOfExecutable(profile.Executable) != "claude") return null;
+        var extra = new List<string> { profile.Arguments };
+        if (sessionId != null) extra.Add(ClaudeSessions.WslArguments(sessionId, profile.Arguments));
+        if (_hooks != null) extra.Add(_hooks.PrepareWslArguments(nodeId));
+        var arguments = string.Join(' ', extra.Where(a => a.Length > 0));
+        return arguments == profile.Arguments ? null
+            : BuildCommandLine(profile with { Arguments = arguments }, wslPath, directory, persistent ? nodeId : null);
+    }
+
     private static string BuildCommandLine(TerminalProfile profile, string resolvedPath, string? directory, Guid? persistentNode = null) =>
         profile.Wsl
             ? WslLauncher.BuildCommandLine(resolvedPath, profile.Distro, directory ?? WslLauncher.HomeDirectory, profile.Executable, profile.Arguments,
@@ -871,9 +891,12 @@ public partial class MainViewModel : ObservableObject
             if (Resolve(profile) is not { } path)
                 return TerminalNodeViewModel.FromState(state, startError: profile.Wsl ? WslNotFoundMessage(profile.Distro) : NotFoundMessage(profile.Executable));
             // Nodes saved before sessions were tracked get a fresh conversation, as they did before
-            if (ClaudeHooks.IsClaude(path) && state.SessionId == null) state = state with { SessionId = Guid.NewGuid().ToString() };
+            if (IsClaude(profile, path) && state.SessionId == null) state = state with { SessionId = Guid.NewGuid().ToString() };
             return TerminalNodeViewModel.FromState(state, BuildCommandLine(profile, path, s.WorkingDirectory, state.Persistent ? s.Id : null),
-                launchCommandLine: LaunchCommandLine(s.Id, path, profile.Arguments, state.SessionId));
+                launchCommandLine: profile.Wsl
+                    ? WslLaunchCommandLine(s.Id, profile, path, s.WorkingDirectory, state.SessionId, state.Persistent)
+                    : LaunchCommandLine(s.Id, path, profile.Arguments, state.SessionId),
+                profile: profile);
         }
 
         var exe = CommandResolver.FirstToken(s.CommandLine);

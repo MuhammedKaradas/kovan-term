@@ -217,7 +217,7 @@ public sealed class WslLauncher
 
     private static string Quote(string s) => s.Contains(' ') ? $"\"{s}\"" : s;
 
-    private static string ShellQuote(string s) => "'" + s.Replace("'", @"'\''") + "'";
+    public static string ShellQuote(string s) => "'" + s.Replace("'", @"'\''") + "'";
 
     private static string ReadDistroList()
     {
