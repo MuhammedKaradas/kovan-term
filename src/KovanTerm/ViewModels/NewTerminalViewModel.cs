@@ -39,7 +39,11 @@ public partial class NewTerminalViewModel : ObservableObject
             ?? profiles.FirstOrDefault(p => p.IsAvailable);
     }
 
-    private bool IsWsl => SelectedProfile?.Profile.Wsl == true;
+    public bool IsWsl => SelectedProfile?.Profile.Wsl == true;
+
+    /// <summary>WSL: run in a hidden tmux session that outlives Kovan (see <see cref="TerminalProfile.Persistent"/>).</summary>
+    [ObservableProperty]
+    public partial bool KeepRunning { get; set; }
     private string? Distro => SelectedProfile?.Profile.Distro is { Length: > 0 } d ? d : null;
 
     public string? ValidationMessage =>
@@ -112,6 +116,8 @@ public partial class NewTerminalViewModel : ObservableObject
     /// <summary>When switching between Windows and WSL profiles, swaps in a directory of the matching kind.</summary>
     partial void OnSelectedProfileChanged(ProfileOptionViewModel? value)
     {
+        OnPropertyChanged(nameof(IsWsl));
+        KeepRunning = value?.Profile is { Wsl: true, Persistent: true };
         // Keep the branch suggestion in step with the profile until the user types their own name
         if (!_branchEdited && value != null)
         {

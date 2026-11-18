@@ -57,6 +57,16 @@
                           Text="{Binding WorkingDirectory, UpdateSourceTrigger=PropertyChanged}"/>
             </DockPanel>
 
+            <!-- WSL: keep the program running in tmux after Kovan closes -->
+            <CheckBox Margin="0,14,0,0" IsChecked="{Binding KeepRunning}" AutomationProperties.Name="Keep running when Kovan closes"
+                      Visibility="{Binding IsWsl, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel>
+                    <TextBlock Text="Keep running when Kovan closes" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <TextBlock Text="Runs in a hidden tmux session inside the distro; the node attaches to it again next time."
+                               FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+                </StackPanel>
+            </CheckBox>
+
             <!-- Worktree: only for folders inside a git repository -->
             <StackPanel Margin="0,14,0,0" Visibility="{Binding CanUseWorktree, Converter={StaticResource BoolToVisibility}}">
                 <CheckBox IsChecked="{Binding UseWorktree}" AutomationProperties.Name="Start in a new git worktree">

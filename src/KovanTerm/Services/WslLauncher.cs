@@ -39,20 +39,106 @@ public sealed class WslLauncher
     /// runs in an interactive login shell, so PATH entries from <c>~/.profile</c>/<c>~/.bashrc</c> (<c>~/.local/bin</c>,
     /// nvm…) apply; plain <c>wsl.exe -- claude</c> could pick up the Windows CLI from the appended Windows PATH.
     /// A login shell opens after the command exits, so the terminal stays usable.
+    /// With <paramref name="tmuxSession"/> it all runs in that tmux session instead (see <see cref="TmuxScript"/>),
+    /// so it keeps running when the terminal closes and the next start attaches to it again.
     /// </summary>
-    public static string BuildCommandLine(string wslPath, string? distro, string directory, string executable, string arguments)
+    public static string BuildCommandLine(string wslPath, string? distro, string directory, string executable, string arguments,
+        string? tmuxSession = null)
     {
         var sb = new StringBuilder(Quote(wslPath));
         if (!string.IsNullOrEmpty(distro)) sb.Append(" -d ").Append(Quote(distro));
         sb.Append(" --cd ").Append(Quote(directory));
-        if (string.IsNullOrWhiteSpace(executable)) return sb.ToString();
+        var hasCommand = !string.IsNullOrWhiteSpace(executable);
+        if (!hasCommand && tmuxSession == null) return sb.ToString();
 
-        var command = string.IsNullOrWhiteSpace(arguments) ? executable : $"{executable} {arguments}";
-        var script = $"command -v {ShellQuote(executable)} >/dev/null 2>&1"
-            + $" || echo {ShellQuote($"Kovan: {executable} not found on the login shell PATH of this distro.")}; "
-            + $"{command}; exec \"${{SHELL:-/bin/sh}}\" -l";
+        var script = hasCommand ? CommandScript(executable, arguments) : LoginShell;
+        if (tmuxSession != null) script = TmuxScript(tmuxSession, script);
         // After "--" wsl.exe hands the rest to the user's shell unchanged
         return sb.Append($" -- exec \"${{SHELL:-/bin/sh}}\" -lic {ShellQuote(script)}").ToString();
+    }
+
+    private const string LoginShell = "exec \"${SHELL:-/bin/sh}\" -l";
+
+    private static string CommandScript(string executable, string arguments)
+    {
+        var command = string.IsNullOrWhiteSpace(arguments) ? executable : $"{executable} {arguments}";
+        return $"command -v {ShellQuote(executable)} >/dev/null 2>&1"
+            + $" || echo {ShellQuote($"Kovan: {executable} not found on the login shell PATH of this distro.")}; "
+            + $"{command}; {LoginShell}";
+    }
+
+    /// <summary>tmux server Kovan's sessions run on (<c>tmux -L</c>): kept apart from the user's own tmux and its config.</summary>
+    public const string TmuxSocket = "kovan";
+
+    private const string SessionPrefix = "kovan-";
+
+    /// <summary>The tmux session a persistent node runs in.</summary>
+    public static string SessionName(Guid nodeId) => SessionPrefix + nodeId.ToString("N");
+
+    /// <summary>The node a session belongs to; <c>null</c> for sessions Kovan didn't create.</summary>
+    public static Guid? NodeOfSession(string name) =>
+        name.StartsWith(SessionPrefix, StringComparison.Ordinal) && Guid.TryParseExact(name[SessionPrefix.Length..], "N", out var id) ? id : null;
+
+    /// <summary>
+    /// Attaches to the session, creating it with <paramref name="script"/> if it doesn't exist. The options make tmux
+    /// invisible: no status bar, no prefix key (Ctrl+B reaches the agent), no Esc delay; the mouse wheel scrolls tmux's
+    /// history, since the terminal's own scrollback doesn't see it. They're set before the session is created, so the
+    /// pane's TERM has 256 colors. Without tmux the script runs directly, with a note.
+    /// </summary>
+    public static string TmuxScript(string session, string script) =>
+        $"if command -v tmux >/dev/null 2>&1; then exec tmux -L {TmuxSocket} -f /dev/null start-server"
+        + @" \; set -g status off \; set -g prefix None \; set -g escape-time 0 \; set -g history-limit 50000"
+        + @" \; set -g mouse on \; set -g default-terminal screen-256color \; set -as terminal-features ',*:RGB'"
+        + $@" \; new-session -A -s {session} {ShellQuote(script)}; fi; "
+        + $"echo {ShellQuote("Kovan: tmux isn't installed in this distro, so this terminal stops when it closes.")}; {script}";
+
+    /// <summary>Stops a node's tmux session (and what runs in it).</summary>
+    public Task KillSessionAsync(string? distro, string session) =>
+        RunInDistroAsync(distro, ["tmux", "-L", TmuxSocket, "kill-session", "-t", "=" + session]);
+
+    /// <summary>Names of the sessions on Kovan's tmux server in a distro; empty if there are none (or no tmux).</summary>
+    public async Task<IReadOnlyList<string>> ListSessionsAsync(string? distro)
+    {
+        var output = await RunInDistroAsync(distro, ["tmux", "-L", TmuxSocket, "list-sessions", "-F", "#{session_name}"]);
+        return output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    /// <summary>Distros that are running now (only those can still have sessions).</summary>
+    public async Task<IReadOnlyList<string>> RunningDistrosAsync() =>
+        WslPath == null ? [] : ParseDistroList(await RunAsync(["--list", "--running", "--quiet"]));
+
+    private Task<string> RunInDistroAsync(string? distro, string[] command) =>
+        RunAsync(distro != null ? ["-d", distro, "--exec", .. command] : ["--exec", .. command]);
+
+    /// <summary>Runs wsl.exe hidden and returns its output; empty on failure or after 20 s.</summary>
+    private async Task<string> RunAsync(string[] arguments)
+    {
+        if (WslPath is not { } wsl) return "";
+        var psi = new ProcessStartInfo(wsl)
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+        };
+        psi.Environment["WSL_UTF8"] = "1";
+        foreach (var a in arguments) psi.ArgumentList.Add(a);
+        try
+        {
+            using var p = Process.Start(psi)!;
+            var output = p.StandardOutput.ReadToEndAsync();
+            _ = p.StandardError.ReadToEndAsync();
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            await p.WaitForExitAsync(timeout.Token);
+            return p.ExitCode == 0 ? await output : "";
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or OperationCanceledException or InvalidOperationException)
+        {
+            Debug.WriteLine($"wsl.exe {string.Join(' ', arguments)} failed: {ex.Message}");
+            return "";
+        }
     }
 
     /// <summary>Whether <paramref name="directory"/> is a Linux path (<c>~</c> or absolute) rather than a Windows one.</summary>

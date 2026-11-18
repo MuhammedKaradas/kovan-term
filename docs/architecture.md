@@ -38,7 +38,7 @@ tests/KovanTerm.Tests/   xUnit unit tests
 | `ViewModels/TerminalNodeViewModel.cs` | Node: title, command, size, location, status |
 | `Services/CommandResolver.cs` | Resolves programs via `PATH`/`PATHEXT`, builds the ConPTY command line |
 | `Services/ProfileStore.cs` | Built-in profiles + `profiles.json` ([profiles.md](profiles.md)) |
-| `Services/WslLauncher.cs` | Lists WSL distros, builds the `wsl.exe` command line, converts `\\wsl.localhost` paths, waits for a distro to finish booting before its terminals start |
+| `Services/WslLauncher.cs` | Lists WSL distros, builds the `wsl.exe` command line, converts `\\wsl.localhost` paths, waits for a distro to finish booting before its terminals start, runs persistent nodes in tmux sessions |
 | `Services/AppPaths.cs` | Data folder (`%APPDATA%\KovanTerm`, overridable with `KOVAN_DATA_DIR`) |
 | `Views/MainWindow.xaml(.cs)` | Canvas and node template; code-behind only registers terminals with the controller |
 | `Views/MainWindow.Shortcuts.cs` | Keyboard shortcuts ([shortcuts.md](shortcuts.md)) |
