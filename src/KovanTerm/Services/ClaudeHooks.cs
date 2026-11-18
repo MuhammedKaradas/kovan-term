@@ -59,9 +59,47 @@ public sealed class ClaudeHooks
 
     public void Remove(Guid nodeId)
     {
-        try { File.Delete(SettingsPath(nodeId)); }
+        try
+        {
+            File.Delete(SettingsPath(nodeId));
+            File.Delete(McpConfigPath(nodeId));
+        }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Debug.WriteLine(ex.Message); }
     }
+
+    // ---- Agent mesh (MCP) ----
+
+    public string McpConfigPath(Guid nodeId) => Path.Combine(_directory, $"{nodeId:D}.mcp.json");
+
+    /// <summary>
+    /// Claude Code: an <c>--mcp-config</c> file adding Kovan's MCP server (<see cref="Mesh.MeshServer"/>) next to the
+    /// user's own servers. Empty if the file couldn't be written.
+    /// </summary>
+    public string PrepareMcpArguments(Guid nodeId)
+    {
+        var path = McpConfigPath(nodeId);
+        try
+        {
+            Directory.CreateDirectory(_directory);
+            var config = new JsonObject
+            {
+                ["mcpServers"] = new JsonObject
+                {
+                    ["kovan"] = new JsonObject { ["type"] = "http", ["url"] = _server.McpUrlFor(nodeId) },
+                },
+            };
+            File.WriteAllText(path, config.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            return $"--mcp-config \"{path}\"";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Debug.WriteLine($"Couldn't write MCP config: {ex.Message}");
+            return "";
+        }
+    }
+
+    /// <summary>Codex: the same server through a config override (its value is a TOML string; a URL needs no quoting).</summary>
+    public string CodexMcpArguments(Guid nodeId) => $"-c mcp_servers.kovan.url={_server.McpUrlFor(nodeId)}";
 
     public static string BuildSettings(string url, string token)
     {

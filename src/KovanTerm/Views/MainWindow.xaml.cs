@@ -92,6 +92,14 @@ public partial class MainWindow : FluentWindow
         if (sender is FrameworkElement { DataContext: TerminalNodeViewModel node }) GoToNode(node);
     }
 
+    // Board: Enter in the new task box adds it
+    private void NewTask_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || !_vm.BoardPanel.AddTaskCommand.CanExecute(null)) return;
+        _vm.BoardPanel.AddTaskCommand.Execute(null);
+        e.Handled = true;
+    }
+
     // Changes panel: click a diff line to write a note for it
     private void DiffLine_Click(object sender, MouseButtonEventArgs e)
     {

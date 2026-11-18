@@ -23,6 +23,8 @@ public sealed class AgentHookServer : IDisposable
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(5);
     private static readonly byte[] OkResponse = Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
     private static readonly byte[] ForbiddenResponse = Encoding.ASCII.GetBytes("HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+    private static readonly byte[] AcceptedResponse = Encoding.ASCII.GetBytes("HTTP/1.1 202 Accepted\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+    private static readonly byte[] MethodNotAllowedResponse = Encoding.ASCII.GetBytes("HTTP/1.1 405 Method Not Allowed\r\nAllow: POST\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
     private static readonly byte[] BadRequestResponse = Encoding.ASCII.GetBytes("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
 
     private readonly TcpListener _listener = new(IPAddress.Loopback, 0);
@@ -34,6 +36,15 @@ public sealed class AgentHookServer : IDisposable
 
     /// <summary>Raised on a thread-pool thread for every valid hook request.</summary>
     public event Action<Guid, AgentEvent>? EventReceived;
+
+    /// <summary>
+    /// Optional JSON to answer a hook with (e.g. <c>additionalContext</c> for <c>UserPromptSubmit</c>); called on a
+    /// thread-pool thread, so it must be thread-safe. <c>null</c>: an empty answer, the agent carries on as usual.
+    /// </summary>
+    public Func<Guid, AgentEvent, string?>? HookResponse { get; set; }
+
+    /// <summary>Handles an MCP request body for a node (thread-pool thread); <c>null</c> = no body (a notification).</summary>
+    public Func<Guid, string, string?>? McpHandler { get; set; }
 
     public AgentHookServer()
     {
@@ -67,8 +78,14 @@ public sealed class AgentHookServer : IDisposable
             var response = request switch
             {
                 null => BadRequestResponse,
+                // MCP: the token is in the URL, since not every agent can send custom headers to an MCP server
+                { } r when ParseMcpPath(r.Path) is var (mcpNode, mcpToken) =>
+                    !TokenMatches(mcpToken) ? ForbiddenResponse
+                    : r.Method != "POST" ? MethodNotAllowedResponse
+                    : McpHandler?.Invoke(mcpNode, Encoding.UTF8.GetString(r.Body)) is { } json ? JsonResponse(json)
+                    : AcceptedResponse,
                 { } r when !TokenMatches(r.Token) => ForbiddenResponse,
-                { } r when ParsePath(r.Path) is { } nodeId && ParseEvent(r.Body) is { } e => Raise(nodeId, e),
+                { Method: "POST" } r when ParsePath(r.Path) is { } nodeId && ParseEvent(r.Body) is { } e => Raise(nodeId, e),
                 _ => BadRequestResponse,
             };
             await stream.WriteAsync(response, timeout.Token);
@@ -82,13 +99,30 @@ public sealed class AgentHookServer : IDisposable
     private byte[] Raise(Guid nodeId, AgentEvent e)
     {
         EventReceived?.Invoke(nodeId, e);
-        return OkResponse;
+        return HookResponse?.Invoke(nodeId, e) is { } json ? JsonResponse(json) : OkResponse;
+    }
+
+    private static byte[] JsonResponse(string json)
+    {
+        var body = Encoding.UTF8.GetBytes(json);
+        var head = Encoding.ASCII.GetBytes($"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n");
+        return [.. head, .. body];
+    }
+
+    public string McpUrlFor(Guid nodeId) => $"http://127.0.0.1:{Port}/mcp/{nodeId:D}/{Token}";
+
+    /// <summary>Node and token from <c>/mcp/&lt;guid&gt;/&lt;token&gt;</c>; <c>null</c> for anything else.</summary>
+    public static (Guid Node, string Token)? ParseMcpPath(string path)
+    {
+        if (!path.StartsWith("/mcp/", StringComparison.Ordinal)) return null;
+        var parts = path["/mcp/".Length..].Split('/', 2);
+        return parts.Length == 2 && Guid.TryParse(parts[0], out var id) ? (id, parts[1]) : null;
     }
 
     private bool TokenMatches(string? token) =>
         token != null && CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(token), Encoding.ASCII.GetBytes(Token));
 
-    private sealed record Request(string Path, string? Token, byte[] Body);
+    private sealed record Request(string Method, string Path, string? Token, byte[] Body);
 
     private static async Task<Request?> ReadRequest(Stream stream, CancellationToken ct)
     {
@@ -105,7 +139,7 @@ public sealed class AgentHookServer : IDisposable
 
         var lines = Encoding.ASCII.GetString(buffer, 0, headerEnd).Split("\r\n");
         var requestLine = lines[0].Split(' ');
-        if (requestLine is not ["POST", var path, _]) return null;
+        if (requestLine is not [var method, var path, _]) return null;
 
         string? token = null;
         var contentLength = 0;
@@ -124,7 +158,7 @@ public sealed class AgentHookServer : IDisposable
         var already = Math.Min(length - (headerEnd + 4), contentLength);
         Array.Copy(buffer, headerEnd + 4, body, 0, already);
         await stream.ReadExactlyAsync(body.AsMemory(already), ct);
-        return new Request(path, token, body);
+        return new Request(method, path, token, body);
     }
 
     private static int IndexOfHeaderEnd(byte[] buffer, int length) =>

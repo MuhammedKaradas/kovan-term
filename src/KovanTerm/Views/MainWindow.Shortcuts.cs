@@ -79,6 +79,9 @@ public partial class MainWindow
             case ShortcutAction.RecentConversations:
                 _vm.OpenRecentConversationCommand.Execute(null);
                 break;
+            case ShortcutAction.ToggleBoard:
+                _vm.ToggleBoardCommand.Execute(null);
+                break;
         }
     }
 
