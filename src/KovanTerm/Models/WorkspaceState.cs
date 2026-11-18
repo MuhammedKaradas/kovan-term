@@ -36,6 +36,8 @@ public sealed record NodeState
     public string? Url { get; init; }
     /// <summary>A note node's Markdown text; <c>null</c> for other nodes.</summary>
     public string? Note { get; init; }
+    /// <summary>A group frame (its title is the group's name); dragging it moves the nodes inside.</summary>
+    public bool Group { get; init; }
     public string? Color { get; init; }
     public string? WorkingDirectory { get; init; }
     public bool Wsl { get; init; }

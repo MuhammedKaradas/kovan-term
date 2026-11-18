@@ -188,6 +188,17 @@ each navigation and every 2 s while shown, since a page changes without telling.
 25 MB per extra page. A terminal that prints a local address (`LocalUrls`: loopback only) offers **Preview** in its
 header; the canvas menu has "New web preview here".
 
+## Groups
+
+A group (`TerminalNodeViewModel.IsGroup`, saved with `Group: true`; its `Title` is the name, `Width`/`Height` the whole
+frame) is a Nodify `GroupingNode`: dragging its header moves the nodes inside it (Shift+drag moves only the frame),
+the corner thumb resizes it. Its container gets `Panel.ZIndex = -1`, so it stays behind the nodes; since it's plain WPF
+behind the terminals, airspace isn't an issue. The moved terminals go through snapshot mode like any other drag.
+"Group the selected nodes" (canvas menu, shown when nodes are selected) frames them with room for the header and names
+the group after their folder if they share one; "New group here" adds an empty frame. The header's name is an
+editable text box; its × removes only the frame. Groups aren't terminals: not in the Agents panel, the terminal count,
+keyboard navigation or the free-spot search for new nodes (a new node may be placed inside a group).
+
 ## Note nodes
 
 A note (`TerminalNodeViewModel.IsNote`, saved with its Markdown as `Note`) is plain WPF, so unlike terminals it
