@@ -63,6 +63,9 @@ public sealed class ClaudeHooks
         {
             File.Delete(SettingsPath(nodeId));
             File.Delete(McpConfigPath(nodeId));
+            File.Delete(EndpointPath(nodeId));
+            File.Delete(WslSettingsPath(nodeId));
+            File.Delete(WslMcpConfigPath(nodeId));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Debug.WriteLine(ex.Message); }
     }
@@ -100,6 +103,92 @@ public sealed class ClaudeHooks
 
     /// <summary>Codex: the same server through a config override (its value is a TOML string; a URL needs no quoting).</summary>
     public string CodexMcpArguments(Guid nodeId) => $"-c mcp_servers.kovan.url={_server.McpUrlFor(nodeId)}";
+
+    // ---- Claude Code inside WSL ----
+    //
+    // With WSL 2's default (NAT) network, a distro can't reach Kovan's 127.0.0.1 listener, and listening on the WSL
+    // network adapter would bring up a firewall prompt. But a distro can run Windows programs: the hooks and the MCP
+    // bridge call Windows' own curl.exe, which connects from the Windows side. The address and token are read from
+    // the endpoint file at every call, because the port changes with every Kovan run while an agent in a tmux session
+    // (see WslLauncher.TmuxScript) keeps the settings it started with.
+
+    public string EndpointPath(Guid nodeId) => Path.Combine(_directory, $"{nodeId:D}.endpoint");
+    public string WslSettingsPath(Guid nodeId) => Path.Combine(_directory, $"{nodeId:D}.wsl.json");
+    public string WslMcpConfigPath(Guid nodeId) => Path.Combine(_directory, $"{nodeId:D}.wsl.mcp.json");
+
+    /// <summary>Windows' curl.exe as seen from WSL.</summary>
+    public static string WslCurl => ToWslPath(Path.Combine(Environment.SystemDirectory, "curl.exe"));
+
+    /// <summary><c>C:\Users\me</c> → <c>/mnt/c/Users/me</c> (WSL's default mount point).</summary>
+    public static string ToWslPath(string windowsPath) =>
+        windowsPath.Length >= 2 && windowsPath[1] == ':'
+            ? $"/mnt/{char.ToLowerInvariant(windowsPath[0])}{windowsPath[2..].Replace('\\', '/')}"
+            : windowsPath.Replace('\\', '/');
+
+    /// <summary>
+    /// Claude Code in WSL: writes the endpoint file (hook URL, token, MCP URL), command-hook settings and an MCP
+    /// config with a stdio bridge, and returns the arguments for them (shell-quoted Linux paths); empty on failure.
+    /// </summary>
+    public string PrepareWslArguments(Guid nodeId)
+    {
+        try
+        {
+            Directory.CreateDirectory(_directory);
+            File.WriteAllText(EndpointPath(nodeId), $"{_server.UrlFor(nodeId)}\n{_server.Token}\n{_server.McpUrlFor(nodeId)}\n");
+            var endpoint = ToWslPath(EndpointPath(nodeId));
+            File.WriteAllText(WslSettingsPath(nodeId), BuildWslSettings(endpoint, WslCurl));
+            File.WriteAllText(WslMcpConfigPath(nodeId), BuildWslMcpConfig(endpoint, WslCurl));
+            return $"--settings {WslLauncher.ShellQuote(ToWslPath(WslSettingsPath(nodeId)))}"
+                + $" --mcp-config {WslLauncher.ShellQuote(ToWslPath(WslMcpConfigPath(nodeId)))}";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Debug.WriteLine($"Couldn't write WSL hook settings, status won't be shown: {ex.Message}");
+            return "";
+        }
+    }
+
+    /// <summary>
+    /// Command hooks that post the event (stdin) with Windows' curl and print Kovan's answer (stdout, e.g. the
+    /// agent mesh's inbox reminder). A missing endpoint file or a closed Kovan just does nothing.
+    /// </summary>
+    public static string BuildWslSettings(string endpointFile, string curl)
+    {
+        var f = WslLauncher.ShellQuote(endpointFile);
+        var command = $"[ -r {f} ] && {WslLauncher.ShellQuote(curl)} -s -m {TimeoutSeconds} -H \"{AgentHookServer.TokenHeader}: $(sed -n 2p {f})\""
+            + $" -H 'Content-Type: application/json' --data-binary @- \"$(sed -n 1p {f})\" || true";
+        var hooks = new JsonObject();
+        foreach (var name in Events)
+        {
+            hooks[name] = new JsonArray(new JsonObject
+            {
+                ["hooks"] = new JsonArray(new JsonObject
+                {
+                    ["type"] = "command",
+                    ["command"] = command,
+                    // Starting a Windows program from WSL takes a moment
+                    ["timeout"] = TimeoutSeconds + 5,
+                }),
+            });
+        }
+        return new JsonObject { ["hooks"] = hooks }.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    /// <summary>An MCP stdio server that forwards each JSON-RPC line to Kovan's MCP endpoint and prints the answer.</summary>
+    public static string BuildWslMcpConfig(string endpointFile, string curl)
+    {
+        var f = WslLauncher.ShellQuote(endpointFile);
+        var bridge = "while IFS= read -r line; do"
+            + $" r=$(printf '%s' \"$line\" | {WslLauncher.ShellQuote(curl)} -s -m 60 -H 'Content-Type: application/json' --data-binary @- \"$(sed -n 3p {f})\");"
+            + " [ -n \"$r\" ] && printf '%s\\n' \"$r\"; done";
+        return new JsonObject
+        {
+            ["mcpServers"] = new JsonObject
+            {
+                ["kovan"] = new JsonObject { ["type"] = "stdio", ["command"] = "sh", ["args"] = new JsonArray("-c", bridge) },
+            },
+        }.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+    }
 
     public static string BuildSettings(string url, string token)
     {

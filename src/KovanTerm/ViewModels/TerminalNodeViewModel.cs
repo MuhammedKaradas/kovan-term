@@ -151,7 +151,22 @@ public partial class TerminalNodeViewModel : ObservableObject
     private AgentStatus _agent = AgentStatus.Idle;
 
     /// <summary>Which agent runs in the node (<c>claude</c>, <c>codex</c>, <c>gemini</c>), from its command line; <c>null</c> otherwise.</summary>
-    public string? AgentKind => _agentKind ??= ScreenRules.AgentOf(CommandLine) ?? "";
+    public string? AgentKind => _agentKind ??=
+        (AgentExecutable != null ? ScreenRules.AgentOfExecutable(AgentExecutable) : ScreenRules.AgentOf(CommandLine)) ?? "";
+
+    /// <summary>A WSL node's program (its command line is wsl.exe's): which agent it is, see <see cref="AgentKind"/>.</summary>
+    public string? AgentExecutable { get; init; }
+
+    /// <summary>A WSL node's distro (<c>null</c>: the default one); turns the agent's Linux paths into Windows ones.</summary>
+    public string? Distro { get; init; }
+
+    /// <summary>
+    /// The transcript as Windows can read it: a WSL agent reports a Linux path, read through <c>\\wsl.localhost</c>;
+    /// <c>null</c> if unknown (or in the default distro, whose name isn't known).
+    /// </summary>
+    public string? ReadableTranscriptPath => TranscriptPath is not { } p ? null
+        : !p.StartsWith('/') ? p
+        : Distro is { } d ? WslLauncher.ToUncPath(d, p) : null;
     private string? _agentKind;
 
     /// <summary>
@@ -309,8 +324,11 @@ public partial class TerminalNodeViewModel : ObservableObject
         Height = Height,
     };
 
-    public static TerminalNodeViewModel FromState(NodeState s, string? commandLine = null, string? startError = null, string? launchCommandLine = null) => new()
+    public static TerminalNodeViewModel FromState(NodeState s, string? commandLine = null, string? startError = null, string? launchCommandLine = null,
+        TerminalProfile? profile = null) => new()
     {
+        AgentExecutable = profile is { Wsl: true } ? profile.Executable : null,
+        Distro = profile is { Wsl: true, Distro.Length: > 0 } ? profile.Distro : null,
         Id = s.Id,
         ProfileId = s.ProfileId,
         Title = s.Title,

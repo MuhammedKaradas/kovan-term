@@ -74,3 +74,12 @@ strings; they weren't run against a real Gemini CLI.
 - The hook URL contains the node id; the token keeps other local programs from faking events.
 - If Claude Code ever forwards OSC 7501 through ConPTY (or adds a way to force it), it can become a second
   source without changing the UI.
+
+## Addendum: Claude Code inside WSL
+
+HTTP hooks can't reach the listener from a WSL 2 distro (NAT network). Options considered: listening on the WSL
+adapter too (firewall prompt, and the address changes), asking users to switch WSL to mirrored networking (a global
+setting with side effects), or a helper inside the distro (something to install). Chosen: command hooks that run
+Windows' `curl.exe` through WSL interop, which needs nothing installed and no network change. Each call reads the
+endpoint from a file, so agents kept alive in tmux survive Kovan restarts. Cost: a Windows process per event
+(tens of milliseconds), acceptable for status events.
