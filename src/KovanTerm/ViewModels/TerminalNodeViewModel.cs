@@ -62,6 +62,23 @@ public partial class TerminalNodeViewModel : ObservableObject
     public string? StartError { get; init; }
     public bool HasStartError => StartError != null;
 
+    // ---- Note ----
+
+    /// <summary>A Markdown note (plain WPF, no process) instead of a terminal.</summary>
+    public bool IsNote { get; init; }
+
+    [ObservableProperty]
+    public partial string NoteText { get; set; } = "";
+
+    /// <summary>The note shows its Markdown source in an editor rather than rendered.</summary>
+    [ObservableProperty]
+    public partial bool IsEditingNote { get; set; }
+
+    /// <summary>A terminal (not a note or a web preview).</summary>
+    public bool IsTerminal => !IsNote && !IsBrowser;
+
+    public void ToggleNoteTask(int line) => NoteText = Services.NoteMarkdown.ToggleTask(NoteText, line);
+
     // ---- Web preview ----
 
     /// <summary>A web preview node (WebView2) instead of a terminal.</summary>
@@ -259,6 +276,7 @@ public partial class TerminalNodeViewModel : ObservableObject
         SessionId = SessionId,
         Worktree = Worktree,
         Url = IsBrowser ? Url : null,
+        Note = IsNote ? NoteText : null,
         Color = Color,
         WorkingDirectory = WorkingDirectory,
         Wsl = IsWsl,
@@ -279,6 +297,8 @@ public partial class TerminalNodeViewModel : ObservableObject
         SessionId = s.SessionId,
         Worktree = s.Worktree,
         IsBrowser = s.Url != null,
+        IsNote = s.Note != null,
+        NoteText = s.Note ?? "",
         Url = s.Url,
         Color = s.Color,
         WorkingDirectory = s.WorkingDirectory,

@@ -10,6 +10,7 @@
         xmlns:vm="clr-namespace:KovanTerm.ViewModels"
         xmlns:models="clr-namespace:KovanTerm.Models"
         xmlns:conv="clr-namespace:KovanTerm.Views.Converters"
+        xmlns:local="clr-namespace:KovanTerm.Views"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         Title="Kovan Term" Height="900" Width="1500"
@@ -182,6 +183,49 @@
         <!-- Node body: terminal couldn't start (e.g. command not found); no terminal is created -->
         <!-- Node body: web preview. The WebView2 is an HWND like a terminal: during motion its snapshot is shown
              (TerminalCanvasController), and the page is zoomed like the canvas -->
+        <!-- Node body: a Markdown note, rendered or being edited -->
+        <DataTemplate x:Key="NoteBody" DataType="{x:Type vm:TerminalNodeViewModel}">
+            <DockPanel Background="{DynamicResource SolidBackgroundFillColorSecondaryBrush}" Loaded="NoteBody_Loaded" Unloaded="NoteBody_Unloaded">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,4,6,0">
+                    <ToggleButton IsChecked="{Binding IsEditingNote}" Padding="8,2" FontSize="12" Margin="0,0,6,0"
+                                  AutomationProperties.Name="Edit note" ToolTip="Edit the Markdown source">
+                        <ToggleButton.Style>
+                            <Style TargetType="ToggleButton" BasedOn="{StaticResource {x:Type ToggleButton}}">
+                                <Setter Property="Content" Value="Edit"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter Property="Content" Value="Done"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ToggleButton.Style>
+                    </ToggleButton>
+                    <ui:Button Content="Send to…" Appearance="Secondary" Padding="8,2" FontSize="12" Click="NoteSend_Click"
+                               AutomationProperties.Name="Send note to a terminal" ToolTip="Paste this note into a terminal (e.g. as a task for an agent)">
+                        <ui:Button.Icon><ui:SymbolIcon Symbol="Send16"/></ui:Button.Icon>
+                    </ui:Button>
+                </StackPanel>
+                <Grid>
+                    <FlowDocumentScrollViewer local:NoteRenderer.Markdown="{Binding NoteText}" VerticalScrollBarVisibility="Auto"
+                                              AutomationProperties.Name="Note" Focusable="False">
+                        <FlowDocumentScrollViewer.Style>
+                            <Style TargetType="FlowDocumentScrollViewer">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsEditingNote}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </FlowDocumentScrollViewer.Style>
+                    </FlowDocumentScrollViewer>
+                    <TextBox Text="{Binding NoteText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" AcceptsTab="True"
+                             TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas" FontSize="12"
+                             Margin="6" AutomationProperties.Name="Note text" IsVisibleChanged="NoteEditor_IsVisibleChanged"
+                             Visibility="{Binding IsEditingNote, Converter={StaticResource BoolToVisibility}}"/>
+                </Grid>
+            </DockPanel>
+        </DataTemplate>
+
         <DataTemplate x:Key="PreviewBody" DataType="{x:Type vm:TerminalNodeViewModel}">
             <DockPanel Background="{DynamicResource TerminalBackgroundBrush}">
                 <DockPanel DockPanel.Dock="Top" Margin="4,4,4,4">
@@ -327,7 +371,7 @@
                 <TextBlock.Text>
                     <MultiBinding StringFormat="{}{3} working  ·  {1} terminals  ·  {0} MB  ·  {2:P0}">
                         <Binding Path="MemoryMb"/>
-                        <Binding Path="Nodes.Count"/>
+                        <Binding Path="TerminalCount"/>
                         <Binding Path="ViewportZoom"/>
                         <Binding Path="WorkingCount"/>
                     </MultiBinding>
@@ -744,6 +788,11 @@
                             <ui:SymbolIcon Symbol="History24"/>
                         </MenuItem.Icon>
                     </MenuItem>
+                    <MenuItem Header="New note here" Click="NewNoteHere_Click">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon Symbol="Note24"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
                     <MenuItem Header="New web preview here" Click="NewPreviewHere_Click">
                         <MenuItem.Icon>
                             <ui:SymbolIcon Symbol="Globe24"/>
@@ -822,7 +871,17 @@
                                                    CommandParameter="{Binding}"/>
                                     </StackPanel>
                                     <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"
-                                             Fill="{Binding Status, Converter={StaticResource StatusToBrush}}"/>
+                                             Fill="{Binding Status, Converter={StaticResource StatusToBrush}}">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsNote}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
                                     <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                                                FontWeight="SemiBold" VerticalAlignment="Center"/>
                                     <StackPanel Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center"
@@ -860,6 +919,9 @@
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding IsBrowser}" Value="True">
                                                 <Setter Property="ContentTemplate" Value="{StaticResource PreviewBody}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsNote}" Value="True">
+                                                <Setter Property="ContentTemplate" Value="{StaticResource NoteBody}"/>
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding IsStarting}" Value="True">
                                                 <Setter Property="ContentTemplate" Value="{StaticResource StartingBody}"/>

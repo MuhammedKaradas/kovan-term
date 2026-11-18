@@ -33,6 +33,7 @@ public partial class MainWindow : FluentWindow
         DataContext = _vm;
         _canvas = new TerminalCanvasController(Editor);
         _vm.TerminalInputRequested += _canvas.SendInput;
+        _canvas.MotionChanged += OnCanvasMotion;
         _canvas.AnswerKeyTyped += node => _vm.OnAnswerKeyTyped((TerminalNodeViewModel)node);
         _canvas.ProgramStatusReported += (node, reports) => _vm.OnProgramStatus((TerminalNodeViewModel)node, reports);
         _canvas.WatchScreen = node => _vm.WatchesScreen((TerminalNodeViewModel)node);
@@ -89,6 +90,8 @@ public partial class MainWindow : FluentWindow
         view.SortDescriptions.Add(new SortDescription(nameof(TerminalNodeViewModel.GroupName), ListSortDirection.Ascending));
         view.SortDescriptions.Add(new SortDescription(nameof(TerminalNodeViewModel.StatusOrder), ListSortDirection.Ascending));
         view.SortDescriptions.Add(new SortDescription(nameof(TerminalNodeViewModel.Title), ListSortDirection.Ascending));
+        // Notes aren't agents
+        view.Filter = n => n is TerminalNodeViewModel { IsNote: false };
         view.LiveSortingProperties.Add(nameof(TerminalNodeViewModel.StatusOrder));
         view.IsLiveSorting = true;
         return view;
@@ -159,6 +162,52 @@ public partial class MainWindow : FluentWindow
     }
 
     private void NewPreviewHere_Click(object sender, RoutedEventArgs e) => _vm.NewPreviewCommand.Execute(_contextMenuLocation);
+
+    private void NewNoteHere_Click(object sender, RoutedEventArgs e) => _vm.NewNoteCommand.Execute(_contextMenuLocation);
+
+    /// <summary>"Send to…" on a note: a menu of the terminals to paste it into.</summary>
+    private void NoteSend_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: TerminalNodeViewModel note } button) return;
+        var menu = new ContextMenu { PlacementTarget = button, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        var empty = note.NoteText.Trim().Length == 0;
+        foreach (var target in _vm.NoteTargets)
+        {
+            var item = new System.Windows.Controls.MenuItem { Header = target.Title, IsEnabled = !empty };
+            item.Click += (_, _) => _vm.SendNote(note, target);
+            menu.Items.Add(item);
+        }
+        if (menu.Items.Count == 0) menu.Items.Add(new System.Windows.Controls.MenuItem { Header = "No terminal to send to", IsEnabled = false });
+        menu.IsOpen = true;
+    }
+
+    // While the canvas moves, notes are drawn from a bitmap: re-rendering their text at every zoom step dropped
+    // zooming from ~59 to ~47 fps (KOVAN_PERF_SELFTEST, 8 terminals + 3 notes)
+    private readonly HashSet<FrameworkElement> _noteBodies = [];
+
+    private void NoteBody_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement body) _noteBodies.Add(body);
+    }
+
+    private void NoteBody_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement body) _noteBodies.Remove(body);
+    }
+
+    private void OnCanvasMotion(bool moving)
+    {
+        // Cached at the current zoom (at least 1:1), so it looks the same until the motion ends
+        var cache = moving ? new System.Windows.Media.BitmapCache(Math.Max(1, Editor.ViewportZoom)) : null;
+        foreach (var body in _noteBodies) body.CacheMode = cache;
+    }
+
+    /// <summary>Editing starts with the cursor in the note.</summary>
+    private void NoteEditor_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is true && sender is System.Windows.Controls.TextBox box)
+            Dispatcher.BeginInvoke(() => { box.Focus(); box.CaretIndex = box.Text.Length; }, System.Windows.Threading.DispatcherPriority.Input);
+    }
 
     // Board: Enter in the new task box adds it
     private void NewTask_KeyDown(object sender, KeyEventArgs e)
