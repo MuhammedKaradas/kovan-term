@@ -65,6 +65,30 @@ dotnet run --project src/KovanTerm -c Release
 - [Architecture decision records](docs/decisions/)
 - [Contributing](CONTRIBUTING.md)
 
+## Acknowledgements
+
+Kovan Term began as a lightweight, Windows-native take on canvas-based agent apps. As it grew, it learned a great
+deal from **[omux](https://github.com/onurozcan/omux)** by [onurozcan](https://github.com/onurozcan): a native macOS
+app (SwiftUI) that runs Claude Code and Codex sessions side by side, each on its own branch. If you're on a Mac, use
+omux.
+
+Many of Kovan Term's features follow omux's lead, among them:
+- reading Codex's status from its OSC 7501 reports, and answering permission prompts from outside the terminal;
+- the Changes panel with notes sent to the agent;
+- a worktree's pull request status, and its failed checks sent to the agent;
+- notifications, the status light and keeping the computer awake;
+- naming terminals after their conversation, and dropping files on a terminal;
+- statistics of time and tokens.
+
+The code is Kovan Term's own (C#/WPF), but how several of these work was learned from omux's source (MIT).
+
+Where it goes its own way:
+- an infinite canvas with notes, groups, web previews and workspaces;
+- dictation and voice commands;
+- an agent mesh with messages, a task board and file leases;
+- agents inside WSL;
+- one prompt sent to several agents.
+
 ## License
 
 [MIT](LICENSE)
