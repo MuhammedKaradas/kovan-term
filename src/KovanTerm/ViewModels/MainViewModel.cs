@@ -1123,10 +1123,19 @@ public partial class MainViewModel : ObservableObject
     /// </summary>
     private string? WslLaunchCommandLine(Guid nodeId, TerminalProfile profile, string wslPath, string? directory, string? sessionId, bool persistent)
     {
-        if (ScreenRules.AgentOfExecutable(profile.Executable) != "claude") return null;
+        var agent = ScreenRules.AgentOfExecutable(profile.Executable);
+        if (agent is not ("claude" or "codex")) return null;
         var extra = new List<string> { profile.Arguments };
-        if (sessionId != null) extra.Add(ClaudeSessions.WslArguments(sessionId, profile.Arguments));
-        if (_hooks != null) extra.Add(_hooks.PrepareWslArguments(nodeId));
+        if (agent == "codex")
+        {
+            // Codex reaches the agent mesh through a stdio bridge; its status comes from OSC 7501 like on Windows
+            if (_hooks != null) extra.Add(_hooks.PrepareWslCodexArguments(nodeId));
+        }
+        else
+        {
+            if (sessionId != null) extra.Add(ClaudeSessions.WslArguments(sessionId, profile.Arguments));
+            if (_hooks != null) extra.Add(_hooks.PrepareWslArguments(nodeId));
+        }
         var arguments = string.Join(' ', extra.Where(a => a.Length > 0));
         return arguments == profile.Arguments ? null
             : BuildCommandLine(profile with { Arguments = arguments }, wslPath, directory, persistent ? nodeId : null);

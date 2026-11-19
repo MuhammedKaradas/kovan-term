@@ -46,9 +46,34 @@ public sealed class WslAgentTests
         var args = kovan.GetProperty("args");
         Assert.Equal("-c", args[0].GetString());
         var bridge = args[1].GetString()!;
-        Assert.StartsWith("while IFS= read -r line; do", bridge);
+        Assert.StartsWith("while IFS= read -r line; do [ -z \"$line\" ] && continue;", bridge);
         Assert.Contains($"\"$(sed -n 3p '{Endpoint}')\"", bridge);
         Assert.Contains("printf '%s\\n' \"$r\"", bridge);
+    }
+
+    [Fact]
+    public void WslCodex_ReachesTheMeshThroughTheBridgeScript_WithoutDoubleQuotes()
+    {
+        var args = ClaudeHooks.CodexWslMcpArguments("/mnt/f/data dir/hooks/n.wsl.mcp.sh");
+
+        // Each override is one shell word; inside it, TOML literal strings
+        Assert.Equal(@"-c 'mcp_servers.kovan.command='\''sh'\''' -c 'mcp_servers.kovan.args=['\''/mnt/f/data dir/hooks/n.wsl.mcp.sh'\'']'", args);
+        Assert.DoesNotContain('"', args);
+        // The script is the same bridge Claude Code's MCP config runs
+        using var doc = JsonDocument.Parse(ClaudeHooks.BuildWslMcpConfig(Endpoint, Curl));
+        Assert.Equal(ClaudeHooks.WslMcpBridge(Endpoint, Curl),
+            doc.RootElement.GetProperty("mcpServers").GetProperty("kovan").GetProperty("args")[1].GetString());
+    }
+
+    [Fact]
+    public void WslCodexNode_IsCodex()
+    {
+        var profile = new TerminalProfile { Id = "codex-wsl-Debian", Name = "c", Executable = "codex", Wsl = true, Distro = "Debian" };
+        var node = TerminalNodeViewModel.FromState(new NodeState { Title = "c", CommandLine = @"C:\Windows\System32\wsl.exe -d Debian", Wsl = true },
+            profile: profile);
+
+        Assert.Equal("codex", node.AgentKind);
+        Assert.Equal("y", node.AllowKey);
     }
 
     [Fact]
