@@ -69,7 +69,11 @@ dotnet run --project src/KovanTerm -c Release
 Kovan Term, tuval tabanlı ajan uygulamalarının hafif ve Windows'a özgü bir yorumu olarak başladı. Büyüdükçe
 [onurozcan](https://github.com/onurozcan)'ın **[omux](https://github.com/onurozcan/omux)**'undan çok şey öğrendi:
 Claude Code ve Codex oturumlarını yan yana, her birini kendi dalında çalıştıran yerel bir macOS uygulaması (SwiftUI).
-Mac kullanıyorsan omux'u kullan.
+Açık kaynak olarak geliştirdiği için teşekkürler.
+
+Mac kullanıyorsan omux'u kullan. Linux'ta [radioheavy](https://github.com/radioheavy)'nin
+[omux for Linux](https://github.com/radioheavy/omux-linux)'u aynı uygulamayı oraya taşıyor (GTK 4, Rust). Kovan Term
+bir port değil: Windows için kendi tuvali olan, omux'tan öğrenmiş ayrı bir uygulama.
 
 Kovan Term'in birçok özelliği omux'un izinden gidiyor, bunlardan bazıları:
 - Codex'in durumunu OSC 7501 bildirimlerinden okumak ve izin sorularını terminalin dışından cevaplamak;
