@@ -26,6 +26,7 @@ about 3.5× less than an xterm.js-in-WebView2 equivalent
 - Several workspaces (e.g. one per project) as tabs; agents on hidden ones keep running and show when they wait
 - The workspace is saved automatically and restored on startup
 - Dictation: speak to type into a terminal, transcribed on your computer with Whisper (`Ctrl+Shift+Space`)
+- Voice commands in Turkish and English: "go to the waiting agent", "tell Claude to run the tests" (`Ctrl+Shift+K`)
 - Keyboard shortcuts: switch between terminals, fit all, zoom to a terminal ([docs/shortcuts.md](docs/shortcuts.md))
 - Smooth panning and zooming with "snapshot mode"; off-screen terminals sleep
 - Windows 11 look (Mica, Fluent controls) with light, dark or follow-Windows themes

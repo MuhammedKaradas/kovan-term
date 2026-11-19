@@ -34,6 +34,7 @@ public partial class MainWindow
             if (_currentNode != null && !_vm.Nodes.Contains(_currentNode)) _currentNode = null;
         };
         ComponentDispatcher.ThreadPreprocessMessage += OnThreadPreprocessMessage;
+        InitVoiceCommands();
         Closed += (_, _) => ComponentDispatcher.ThreadPreprocessMessage -= OnThreadPreprocessMessage;
     }
 
@@ -96,6 +97,9 @@ public partial class MainWindow
             case ShortcutAction.Dictate:
                 ToggleDictation();
                 break;
+            case ShortcutAction.VoiceCommand:
+                ToggleVoiceCommand();
+                break;
         }
     }
 
@@ -108,6 +112,37 @@ public partial class MainWindow
     }
 
     private void Dictate_Click(object sender, RoutedEventArgs e) => ToggleDictation();
+
+    /// <summary>Starts listening for a voice command, or stops and carries out what was said.</summary>
+    private async void ToggleVoiceCommand()
+    {
+        if (_vm.Dictation is { } dictation) await dictation.ToggleCommandAsync();
+    }
+
+    private void VoiceCommand_Click(object sender, RoutedEventArgs e) => ToggleVoiceCommand();
+
+    private void InitVoiceCommands()
+    {
+        if (_vm.Dictation is not { } dictation) return;
+        dictation.CommandVocabulary = () => _vm.Nodes.Where(n => !n.IsGroup).Select(n => n.Title)
+            .Concat(_vm.Workspaces.Select(w => w.Name));
+        dictation.CommandHeard += async heard =>
+        {
+            if (await _vm.RunVoiceCommandAsync(heard) is { Length: > 0 } result) dictation.Report(result);
+        };
+        _vm.ViewCommandRequested += (kind, node) =>
+        {
+            switch (kind)
+            {
+                case Services.Voice.VoiceCommandKind.FitAll:
+                    RunShortcut(ShortcutAction.FitAll);
+                    break;
+                case Services.Voice.VoiceCommandKind.Zoom when node != null:
+                    ZoomToNode(node);
+                    break;
+            }
+        };
+    }
 
     /// <summary>Pans the viewport to the node (animated) and focuses its terminal.</summary>
     private void GoToNode(TerminalNodeViewModel node)

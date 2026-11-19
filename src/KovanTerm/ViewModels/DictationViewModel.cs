@@ -30,9 +30,19 @@ public sealed partial class DictationViewModel(
     /// <summary>Shorter than this is a slip of the finger.</summary>
     private const int MinSamples = SpeechModel.SampleRate / 4;
     public const string ShortcutText = "Ctrl+Shift+Space";
+    public const string CommandShortcutText = "Ctrl+Shift+K";
 
     /// <summary>Dictated text to type into a terminal node.</summary>
     public event Action<object, string>? TextReady;
+
+    /// <summary>
+    /// Names a command may contain (terminals, workspaces), given to Whisper so it spells them the same way: with the
+    /// language set to Turkish it would otherwise write "Claude" as it sounds.
+    /// </summary>
+    public Func<IEnumerable<string>>? CommandVocabulary { get; set; }
+
+    /// <summary>A voice command was heard (<see cref="ToggleCommandAsync"/>); the text, for the app to carry out (#21).</summary>
+    public event Action<string>? CommandHeard;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsRecording), nameof(IsBusy))]
@@ -48,6 +58,7 @@ public sealed partial class DictationViewModel(
     public bool HasStatus => Status.Length > 0;
 
     private object? _target;
+    private bool _forCommand;
     private string? _targetName;
     private ISpeechToText? _engine;
     private string? _enginePath;
@@ -63,7 +74,7 @@ public sealed partial class DictationViewModel(
         switch (State)
         {
             case DictationState.Idle:
-                await StartAsync(target, targetName);
+                await StartAsync(target, targetName, forCommand: false);
                 break;
             case DictationState.Recording:
                 await StopAsync();
@@ -71,9 +82,26 @@ public sealed partial class DictationViewModel(
         }
     }
 
-    private async Task StartAsync(object? target, string? targetName)
+    /// <summary>Starts listening for a voice command, or stops and hands what was said to <see cref="CommandHeard"/>.</summary>
+    public async Task ToggleCommandAsync()
     {
-        if (target == null)
+        switch (State)
+        {
+            case DictationState.Idle:
+                await StartAsync(null, null, forCommand: true);
+                break;
+            case DictationState.Recording:
+                await StopAsync();
+                break;
+        }
+    }
+
+    /// <summary>Shows how a voice command went.</summary>
+    public void Report(string text) => ShowBriefly(text, seconds: 6);
+
+    private async Task StartAsync(object? target, string? targetName, bool forCommand)
+    {
+        if (target == null && !forCommand)
         {
             ShowBriefly("Select a terminal to dictate into first.");
             return;
@@ -97,8 +125,11 @@ public sealed partial class DictationViewModel(
         }
         _target = target;
         _targetName = targetName;
+        _forCommand = forCommand;
         State = DictationState.Recording;
-        SetStatus($"Listening for {targetName}… press {ShortcutText} to stop");
+        SetStatus(forCommand
+            ? $"Listening for a command… press {CommandShortcutText} to stop"
+            : $"Listening for {targetName}… press {ShortcutText} to stop");
         _recordingLimit = new CancellationTokenSource();
         _ = StopAfterLimitAsync(_recordingLimit.Token);
     }
@@ -139,7 +170,7 @@ public sealed partial class DictationViewModel(
     {
         _recordingLimit?.Cancel();
         var samples = recorder.Stop();
-        var target = _target!;
+        var target = _target;
         if (samples.Length < MinSamples)
         {
             State = DictationState.Idle;
@@ -161,7 +192,8 @@ public sealed partial class DictationViewModel(
         try
         {
             var engine = _engine;
-            text = DictationText.Clean(await Task.Run(() => engine.TranscribeAsync(samples, current.DictationLanguage)));
+            var prompt = _forCommand && CommandVocabulary?.Invoke() is { } words ? Services.Voice.VoiceCommands.Prompt(words) : null;
+            text = DictationText.Clean(await Task.Run(() => engine.TranscribeAsync(samples, current.DictationLanguage, prompt)));
         }
         catch (Exception ex)
         {
@@ -179,7 +211,13 @@ public sealed partial class DictationViewModel(
             ShowBriefly("Didn't catch anything.");
             return;
         }
-        TextReady?.Invoke(target, text);
+        if (_forCommand)
+        {
+            SetStatus("");
+            CommandHeard?.Invoke(text);
+            return;
+        }
+        TextReady?.Invoke(target!, text);
         ShowBriefly($"Typed into {_targetName}.");
     }
 
@@ -190,11 +228,11 @@ public sealed partial class DictationViewModel(
     }
 
     /// <summary>Shows <paramref name="text"/> for a few seconds, unless something else replaces it.</summary>
-    private async void ShowBriefly(string text)
+    private async void ShowBriefly(string text, int seconds = 4)
     {
         SetStatus(text);
         var version = _statusVersion;
-        await Task.Delay(TimeSpan.FromSeconds(4));
+        await Task.Delay(TimeSpan.FromSeconds(seconds));
         if (version == _statusVersion) Status = "";
     }
 }

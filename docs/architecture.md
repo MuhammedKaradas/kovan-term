@@ -380,6 +380,45 @@ checked before sending (#20).
 - `KOVAN_DICTATION_WAV=<file>` "records" that WAV file instead of the microphone, to test without speaking. The
   status log (`KOVAN_STATUS_LOG`) gets one line per dictation: audio length, time taken, memory, text.
 
-## Planned components
+## Voice commands
 
-- **Voice commands** (#21): telling the canvas what to do ("go to the waiting agent"), on top of dictation.
+`Ctrl+Shift+K` (or the toolbar button next to the microphone) listens like dictation; pressing it again carries out
+what was said instead of typing it (#21). Sentences are matched by fixed Turkish and English patterns on this
+computer, not by a language model: [decision record 0004](decisions/0004-voice-commands-local-patterns.md).
+
+- **Parsing:** `Services/Voice/VoiceCommands` turns the sentence into a `VoiceCommand`: an action, the nodes or
+  workspaces it names (several if the name is ambiguous) and any text.
+  - Text is folded first: lower case, Turkish letters to ASCII, punctuation to spaces, keeping each character's
+    position, so a match also points into the original (the text sent to an agent keeps its letters and case).
+  - Names are matched with Turkish case endings removed, a letter or two off, and by how they sound ("Klod",
+    "Kodeks").
+- **Actions:**
+
+  | | Turkish | English |
+  |---|---|---|
+  | Go to the waiting agent | bekleyen ajana git | go to the waiting agent |
+  | Go to a node | Codex'e git | go to Codex |
+  | Tell an agent (pasted, then Enter) | Claude'a söyle testleri çalıştır / testleri çalıştırmasını Claude'a söyle | tell Claude to run the tests |
+  | Answer a permission prompt | izin ver / reddet | allow / deny |
+  | Close a node | Codex'i kapat | close Codex |
+  | Zoom to the current or a named node | yakınlaş / Claude'a yakınlaş | zoom in / zoom to Claude |
+  | Fit all | hepsini göster | show all |
+  | New terminal (opens the dialog) / new note | yeni terminal aç / not al … | new terminal / take a note … |
+  | Workspaces | sonraki alan / Kovan alanına geç | next workspace / switch to the Kovan workspace |
+  | Panels | panoyu aç, değişiklikleri göster, ajanlar panelini kapat | show the board, show changes, hide the agents panel |
+
+- **Asking first:** telling an agent something, allowing and closing ask first, showing what was heard.
+  - "Allow" without a name answers the current node if it's asking, otherwise the one asking (or asks which).
+  - A name that fits several nodes asks which one.
+- **Carrying out:** `MainViewModel.RunVoiceCommandAsync` carries out the command and returns the status line text.
+  Fit all and zoom need the editor, so they go to the view through `ViewCommandRequested`.
+- **Whisper prompt:** while listening for a command, Whisper gets a prompt of sample commands that use the canvas's
+  node and workspace names (`VoiceCommands.Prompt`), so it spells them as written.
+- **Measured** (Windows' voices, through the real app, `dictationLanguage` `auto`): 8 of 8 commands carried out.
+  - Turkish, with English names said the Turkish way ("Kodeks'e git", "Klod'a söyle testleri çalıştırsın", "Kodeks'i
+    kapat", "hepsini göster", "bekleyen ajana git").
+  - English ("tell Codex to check the build", "go to the waiting agent", "show all").
+  - With `tr`, English commands came out as Turkish sounds ("Tell Codex'e çekti. Build").
+  - Without the prompt, names came out as sounds ("Cılavu deya söyle").
+  - Every command takes 0.8–1.3 s from the second press.
+- The status log (`KOVAN_STATUS_LOG`) gets each command heard and what it was understood as.

@@ -18,7 +18,8 @@ public interface IAudioRecorder
 public interface ISpeechToText
 {
     /// <param name="language">A language code such as <c>tr</c> or <c>en</c>, or <c>auto</c>.</param>
-    Task<string> TranscribeAsync(float[] samples, string language, CancellationToken cancellation = default);
+    /// <param name="prompt">Words likely to be said (e.g. terminal names), so they're written the same way.</param>
+    Task<string> TranscribeAsync(float[] samples, string language, string? prompt = null, CancellationToken cancellation = default);
 }
 
 /// <summary>A Whisper model in whisper.cpp's ggml format.</summary>

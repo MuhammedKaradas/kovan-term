@@ -18,6 +18,7 @@ use, most of them use `Ctrl+Shift` (e.g. `Ctrl+T` transposes characters in bash/
 | `Ctrl+Shift+PgDn` | Show the next workspace |
 | `Ctrl+Shift+PgUp` | Show the previous workspace |
 | `Ctrl+Shift+Space` | Dictate into the current terminal; press again to stop and type what was said |
+| `Ctrl+Shift+K` | Voice command ("go to the waiting agent", "Claude'a söyle testleri çalıştır"); press again to carry it out |
 
 **Mouse:**
 

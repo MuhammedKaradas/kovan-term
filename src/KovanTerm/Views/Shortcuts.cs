@@ -17,6 +17,7 @@ public enum ShortcutAction
     NextWorkspace,
     PreviousWorkspace,
     Dictate,
+    VoiceCommand,
 }
 
 /// <summary>
@@ -42,6 +43,7 @@ public static class Shortcuts
         (Key.PageDown, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.NextWorkspace, "Show the next workspace"),
         (Key.PageUp, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.PreviousWorkspace, "Show the previous workspace"),
         (Key.Space, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.Dictate, "Dictate into the current terminal (press again to stop)"),
+        (Key.K, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.VoiceCommand, "Voice command: say what to do (press again to stop)"),
     ];
 
     public static ShortcutAction? Match(Key key, ModifierKeys modifiers)

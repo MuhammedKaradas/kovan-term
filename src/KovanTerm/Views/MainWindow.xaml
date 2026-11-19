@@ -670,6 +670,26 @@
                     <ui:SymbolIcon Symbol="Mic24"/>
                 </ui:Button.Icon>
             </ui:Button>
+            <ui:Button DockPanel.Dock="Right" Width="30" Height="30" Padding="0" Margin="0,0,2,0" VerticalAlignment="Center"
+                       Click="VoiceCommand_Click" AutomationProperties.Name="Voice command"
+                       ToolTip="Voice command (Ctrl+Shift+K, again to stop): &quot;go to the waiting agent&quot;, &quot;tell Claude to run the tests&quot;, &quot;bekleyen ajana git&quot;…">
+                <ui:Button.Style>
+                    <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                        <Setter Property="Appearance" Value="Transparent"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Dictation.IsBusy}" Value="True">
+                                <Setter Property="IsEnabled" Value="False"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Dictation}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ui:Button.Style>
+                <ui:Button.Icon>
+                    <ui:SymbolIcon Symbol="PersonVoice24"/>
+                </ui:Button.Icon>
+            </ui:Button>
             <TextBlock DockPanel.Dock="Right" Text="{Binding Dictation.Status}" Margin="0,0,8,0" VerticalAlignment="Center"
                        Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                        Visibility="{Binding Dictation.HasStatus, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}"/>
