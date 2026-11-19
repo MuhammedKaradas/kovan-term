@@ -21,6 +21,7 @@ Terminal'in GPU hızlandırmalı terminal bileşeniyle, düşük kaynak tüketim
 - Tuval üzerinde sürüklenip boyutlandırılabilen gerçek terminaller
 - Profiller: PowerShell, cmd, Claude Code, Codex, Gemini CLI + kendi profillerin ([docs/profiles.md](docs/profiles.md))
 - Çalışma dizini seçimi, tuvalde sağ tıkla "Burada yeni terminal"
+- Sekmeler halinde birden çok çalışma alanı (ör. proje başına bir tane); gizli olanlardaki ajanlar çalışmayı sürdürür, seni beklediklerinde sekmede görünür
 - Çalışma alanı otomatik kaydedilir ve açılışta geri gelir
 - Klavye kısayolları: terminaller arası geçiş, tümünü sığdır, yakınlaş ([docs/shortcuts.md](docs/shortcuts.md))
 - "Fotoğraf modu" ile akıcı kaydırma ve zoom; ekran dışındaki terminaller uyur

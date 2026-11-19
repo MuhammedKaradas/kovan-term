@@ -15,6 +15,8 @@ use, most of them use `Ctrl+Shift` (e.g. `Ctrl+T` transposes characters in bash/
 | `Ctrl+Shift+O` | Reopen a recent Claude Code conversation as a new terminal |
 | `Ctrl+Shift+B` | Show/hide the Board: the agents' tasks, messages and leased files |
 | `Ctrl+Shift+N` | New note (Markdown) |
+| `Ctrl+Shift+PgDn` | Show the next workspace |
+| `Ctrl+Shift+PgUp` | Show the previous workspace |
 
 **Mouse:**
 
@@ -23,6 +25,8 @@ use, most of them use `Ctrl+Shift` (e.g. `Ctrl+T` transposes characters in bash/
 | Double-click a header | Zoom to that terminal and focus it |
 | Click a row in the Agents panel | Go to that terminal and focus it |
 | Right-click the canvas | "New terminal here…" |
+| Double-click a workspace tab | Rename it (right-click: close it) |
+| Right-click a node's header | Move it to another workspace |
 | Bottom-right grip | Resize the terminal |
 | Wheel | Zoom in / out |
 | Right-drag | Pan the canvas |

@@ -14,6 +14,8 @@ public enum ShortcutAction
     RecentConversations,
     ToggleBoard,
     NewNote,
+    NextWorkspace,
+    PreviousWorkspace,
 }
 
 /// <summary>
@@ -35,6 +37,9 @@ public static class Shortcuts
         (Key.O, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.RecentConversations, "Reopen a recent Claude Code conversation"),
         (Key.B, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.ToggleBoard, "Show/hide the agents' Board"),
         (Key.N, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.NewNote, "New note"),
+        // Not Ctrl+Alt+digit: that's AltGr on many keyboard layouts, which types characters
+        (Key.PageDown, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.NextWorkspace, "Show the next workspace"),
+        (Key.PageUp, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.PreviousWorkspace, "Show the previous workspace"),
     ];
 
     public static ShortcutAction? Match(Key key, ModifierKeys modifiers)
