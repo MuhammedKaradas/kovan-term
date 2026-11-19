@@ -161,6 +161,44 @@ public sealed class WorkStatsTests : IDisposable
         Assert.Equal(0, days.Single(d => d.Date == DateOnly.FromDateTime(now.AddDays(-1))).Level);
     }
 
+    [Fact]
+    public void Commits_FromGitLog_RebasedCopiesCountOnce()
+    {
+        const char unit = '\u001f';
+        var log = $"aaa{unit}1763625600{unit}feat: cart\nbbb{unit}1763625600{unit}feat: cart\nccc{unit}1763629200{unit}fix: total\r\nnot a commit\n";
+
+        var commits = WorkCommits.Parse(log, @"C:\code\shop").ToList();
+
+        Assert.Equal(["aaa", "ccc"], commits.Select(c => c.Hash));
+        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1763629200).LocalDateTime, commits[1].Date);
+        Assert.Equal("fix: total", commits[1].Subject);
+    }
+
+    [Fact]
+    public async Task Statistics_CountCommitsInThePeriod_OnceGitHasAnswered()
+    {
+        var now = new DateTime(2026, 11, 20, 12, 0, 0, DateTimeKind.Local);
+        var shop = Path.Combine(_dir, "shop");
+        Directory.CreateDirectory(Path.Combine(shop, ".git"));
+        var sessions = new List<WorkSession>
+        {
+            new("s1", "claude", shop, "t", [], [new WorkSpan(now.AddHours(-1), now)], []),
+        };
+        var answered = new TaskCompletionSource<List<WorkCommit>>();
+        var vm = new StatisticsViewModel(_ => sessions, () => now, _ => answered.Task);
+
+        var loading = vm.LoadAsync();
+        Assert.Equal("…", vm.CommitCount);
+        answered.SetResult([new WorkCommit("a", now.AddHours(-2), "feat: cart", shop), new WorkCommit("b", now.AddDays(-20), "old", shop)]);
+        await loading;
+
+        Assert.Equal("1", vm.CommitCount);
+        Assert.Equal(1, vm.Projects.Single(p => p.Name == "shop").Commits);
+        Assert.Equal("feat: cart", vm.Commits.Single().Subject);
+        vm.ShowPeriodCommand.Execute(StatsPeriod.Month);
+        Assert.Equal("2", vm.CommitCount);
+    }
+
     [Theory]
     [InlineData(812_000, "812k")]
     [InlineData(81_200_000, "81.2M")]

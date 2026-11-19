@@ -395,6 +395,12 @@ don't cover it.
     headline numbers, the projects table, tokens by model and the session log (each session expands to its prompts).
   - **Calendar:** shaded by time or tokens in quartiles of the active days.
   - **Hours a day:** the last two weeks.
+  - **Commits** (#99): `WorkCommits` runs `git log --all --no-merges` over the last year in each repository the
+    conversations ran in, by the repository's configured `user.email`, after the sessions are shown (the count reads
+    "…" until git answers). A commit seen twice (rebased, or through a worktree and its main checkout) counts once.
+    They're a headline number, a column of the projects table and a list for the period.
+  - **Copy as image:** the period, its numbers and the calendar, at twice the screen's resolution on the window's
+    background, to the clipboard and `Pictures\Kovan Term`.
   - **Colors:** `ChartPalette` sets them for each theme. A project keeps its color whatever the period (the 7 with
     the most time overall; the rest are gray), and the calendar uses one hue from light to dark.
 
