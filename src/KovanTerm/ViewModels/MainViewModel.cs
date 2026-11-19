@@ -74,8 +74,11 @@ public partial class MainViewModel : ObservableObject
 
     public MainViewModel(WorkspaceStore store, ProfileStore profiles, CommandResolver resolver, WslLauncher wsl,
         IDialogService dialogs, SettingsStore settings,
-        AgentHookServer? hookServer = null, ClaudeSessions? sessions = null, ClaudeUsage? usage = null)
+        AgentHookServer? hookServer = null, ClaudeSessions? sessions = null, ClaudeUsage? usage = null,
+        DictationViewModel? dictation = null)
     {
+        Dictation = dictation;
+        if (dictation != null) dictation.TextReady += (node, text) => TerminalInputRequested?.Invoke((TerminalNodeViewModel)node, text);
         _sessions = sessions ?? new ClaudeSessions();
         _usageLimits = usage;
         if (usage != null)
@@ -852,7 +855,10 @@ public partial class MainViewModel : ObservableObject
     // KOVAN_STATUS_LOG=<file>: every status event and the resulting status, for diagnosing agent integrations
     private static readonly string? StatusLogPath = Environment.GetEnvironmentVariable("KOVAN_STATUS_LOG");
 
-    private static void StatusLog(string line)
+    /// <summary>Dictation into the current terminal; <c>null</c> if the app was started without it (tests).</summary>
+    public DictationViewModel? Dictation { get; }
+
+    internal static void StatusLog(string line)
     {
         if (StatusLogPath == null) return;
         try { File.AppendAllText(StatusLogPath, $"{DateTime.Now:HH:mm:ss.fff} {line}{Environment.NewLine}"); }

@@ -333,6 +333,38 @@ per repository (stored in `settings.json`) runs in a new worktree before the age
 (`cmd /s /k "set KOVAN_REPO=… && <setup> && <agent>"`; `%KOVAN_REPO%` is substituted in the command itself, since cmd
 expands variables before `set` runs). A node whose folder is gone isn't started: it would start in Kovan's own folder.
 
+## Dictation
+
+`Ctrl+Shift+Space` (or the microphone button in the toolbar) starts recording; pressing it again stops, and what was
+said is typed into the terminal that was current when recording started, as one line without Enter, so it can be
+checked before sending (#20).
+
+- **Recording:** `WaveInRecorder` (`Interop/`) uses the waveIn API (winmm) at 16 kHz mono, which is what Whisper takes,
+  so no audio library is needed. Recording stops by itself after 2 minutes; less than 0.25 s is ignored.
+- **Speech to text:** `WhisperSpeechToText` runs whisper.cpp through [Whisper.net](https://github.com/sandrohanea/whisper.net)
+  (MIT) on the CPU. Audio never leaves the computer. The model is loaded on first use and unloaded after 2 minutes
+  without dictation, so it costs nothing while nobody's dictating.
+- **Model:** downloaded once, after asking, from the whisper.cpp repository on Hugging Face into
+  `<data folder>\models` (`SpeechModelStore`). `settings.json` picks it (`dictationModel`: `tiny`, `base` (default),
+  `small`) and the language (`dictationLanguage`: `auto` (default), or a code such as `tr`, `en`).
+- **Text:** non-speech annotations (`[BLANK_AUDIO]`, `(music)`) are dropped and the segments are joined into one line
+  (`DictationText`).
+- `DictationViewModel` holds the steps (download → recording → transcribing) and the toolbar status. It only knows
+  `IAudioRecorder`, `ISpeechToText` and `ISpeechModelStore`, so it's tested with fakes.
+- **Measured** (Release, Ryzen 7 5800X3D, 8 threads, sentences spoken by Windows' Turkish and English voices):
+
+  | Model | Download | 3.4 s of Turkish | Working set while loaded |
+  |---|---|---|---|
+  | tiny | 78 MB | 1.0 s, two words slightly off | ~325 MB |
+  | base | 148 MB | 0.9 s with `tr`, 1.5 s with `auto`; one letter off | ~370 MB |
+  | small | 488 MB | 3.2–5.3 s; no better on these sentences | ~740 MB |
+
+  The app is ~180 MB before the first dictation and back to ~215 MB once the model is unloaded. English ("Run the
+  tests and fix the ones that fail.") came out exact with `base`. English words spoken with Turkish pronunciation
+  ("pull request") weren't recognized by any model.
+- `KOVAN_DICTATION_WAV=<file>` "records" that WAV file instead of the microphone, to test without speaking. The
+  status log (`KOVAN_STATUS_LOG`) gets one line per dictation: audio length, time taken, memory, text.
+
 ## Planned components
 
-- **Voice** (v0.4): local speech recognition with Whisper.net.
+- **Voice commands** (#21): telling the canvas what to do ("go to the waiting agent"), on top of dictation.

@@ -93,8 +93,21 @@ public partial class MainWindow
             case ShortcutAction.PreviousWorkspace:
                 _vm.PreviousWorkspaceCommand.Execute(null);
                 break;
+            case ShortcutAction.Dictate:
+                ToggleDictation();
+                break;
         }
     }
+
+    /// <summary>Starts dictating into the current terminal, or stops and types what was said.</summary>
+    private async void ToggleDictation()
+    {
+        if (_vm.Dictation is not { } dictation) return;
+        var node = _currentNode is { IsTerminal: true } current ? current : null;
+        await dictation.ToggleAsync(node, node?.Title);
+    }
+
+    private void Dictate_Click(object sender, RoutedEventArgs e) => ToggleDictation();
 
     /// <summary>Pans the viewport to the node (animated) and focuses its terminal.</summary>
     private void GoToNode(TerminalNodeViewModel node)

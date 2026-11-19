@@ -18,4 +18,8 @@ public sealed record AppSettings
     public bool ShowChangesPanel { get; init; }
     /// <summary>Command run in a new worktree before the agent starts, per repository root (e.g. <c>npm install</c>).</summary>
     public Dictionary<string, string> WorktreeSetupCommands { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Whisper model for dictation: <c>tiny</c>, <c>base</c> or <c>small</c> (more accurate, slower, bigger download).</summary>
+    public string DictationModel { get; init; } = "base";
+    /// <summary>Language spoken when dictating: a code such as <c>tr</c> or <c>en</c>, or <c>auto</c> to detect it.</summary>
+    public string DictationLanguage { get; init; } = "auto";
 }

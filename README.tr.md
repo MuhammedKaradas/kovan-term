@@ -23,6 +23,7 @@ Terminal'in GPU hızlandırmalı terminal bileşeniyle, düşük kaynak tüketim
 - Çalışma dizini seçimi, tuvalde sağ tıkla "Burada yeni terminal"
 - Sekmeler halinde birden çok çalışma alanı (ör. proje başına bir tane); gizli olanlardaki ajanlar çalışmayı sürdürür, seni beklediklerinde sekmede görünür
 - Çalışma alanı otomatik kaydedilir ve açılışta geri gelir
+- Dikte: konuşarak terminale yaz; ses bilgisayarında Whisper ile yazıya çevrilir (`Ctrl+Shift+Space`)
 - Klavye kısayolları: terminaller arası geçiş, tümünü sığdır, yakınlaş ([docs/shortcuts.md](docs/shortcuts.md))
 - "Fotoğraf modu" ile akıcı kaydırma ve zoom; ekran dışındaki terminaller uyur
 - Windows 11 görünümü (Mica, Fluent kontroller); açık, koyu ya da Windows'a uyan tema

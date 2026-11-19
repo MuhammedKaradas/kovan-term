@@ -17,6 +17,9 @@
   <Target Name="KovanExcludePdbsFromPublish" AfterTargets="ComputeResolvedFilesToPublishList">
     <ItemGroup>
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb'" />
+      <!-- Whisper.net copies its native libraries for every Windows architecture; keep only the one being published -->
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+                             Condition="'$(RuntimeIdentifier)' != '' and $([System.String]::Copy('%(RelativePath)').StartsWith('runtimes')) and !$([System.String]::Copy('%(RelativePath)').Contains('$(RuntimeIdentifier)'))" />
     </ItemGroup>
   </Target>
 
@@ -29,6 +32,8 @@
     <PackageReference Include="EasyWindowsTerminalControl" Version="1.0.38" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
     <PackageReference Include="Nodify" Version="7.3.0" />
+    <PackageReference Include="Whisper.net" Version="1.9.1" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
     <PackageReference Include="WPF-UI" Version="4.3.0" />
   </ItemGroup>
 

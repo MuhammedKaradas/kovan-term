@@ -17,6 +17,7 @@ use, most of them use `Ctrl+Shift` (e.g. `Ctrl+T` transposes characters in bash/
 | `Ctrl+Shift+N` | New note (Markdown) |
 | `Ctrl+Shift+PgDn` | Show the next workspace |
 | `Ctrl+Shift+PgUp` | Show the previous workspace |
+| `Ctrl+Shift+Space` | Dictate into the current terminal; press again to stop and type what was said |
 
 **Mouse:**
 

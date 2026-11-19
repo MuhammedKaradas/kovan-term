@@ -9,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using KovanTerm.Interop;
 using KovanTerm.Services;
+using KovanTerm.Services.Dictation;
 using KovanTerm.Terminals;
 using KovanTerm.ViewModels;
 using Nodify;
@@ -29,7 +30,8 @@ public partial class MainWindow : FluentWindow
         AgentEnvironment.RemoveSessionMarkers();
         var resolver = new CommandResolver();
         _vm = new MainViewModel(new WorkspaceStore(), new ProfileStore(), resolver, new WslLauncher(resolver), new DialogService(this),
-            new SettingsStore(), _hookServer, usage: new ClaudeUsage(new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(15) }));
+            new SettingsStore(), _hookServer, usage: new ClaudeUsage(new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(15) }),
+            dictation: CreateDictation());
         DataContext = _vm;
         _canvas = new TerminalCanvasController(Editor);
         _vm.TerminalInputRequested += _canvas.SendInput;
@@ -377,6 +379,16 @@ public partial class MainWindow : FluentWindow
         if (e.OldItems == null) return;
         foreach (var node in e.OldItems)
             _canvas.Terminate(node);
+    }
+
+    private DictationViewModel CreateDictation()
+    {
+        // KOVAN_DICTATION_WAV=<file>: "records" that file instead of the microphone (testing without speaking)
+        IAudioRecorder recorder = Environment.GetEnvironmentVariable("KOVAN_DICTATION_WAV") is { Length: > 0 } wav
+            ? new WavFileRecorder(wav)
+            : new WaveInRecorder();
+        return new DictationViewModel(recorder, new SpeechModelStore(), path => new WhisperSpeechToText(path),
+            new DialogService(this), new SettingsStore(), MainViewModel.StatusLog);
     }
 
     // Terminal controls are HwndHosts, so they're registered with the canvas controller in the view layer
