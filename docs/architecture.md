@@ -305,6 +305,18 @@ the agent starts working, `doing` → `done` when it goes from working to idle o
 permission isn't the end of a turn. A task an agent claimed itself (`task_claim`) isn't advanced this way; the agent
 completes it. Moving a card back to *To do* makes it nobody's again.
 
+## Send to agents
+
+One prompt to several terminals at once, e.g. the same task to Claude Code, Codex and Gemini CLI to compare them
+(#78). `Ctrl+Shift+S`, the send button in the Agents panel's header, or **Send to agents…** on the canvas's context
+menu open `BroadcastWindow`.
+- **Offered:** every workspace's terminals (not notes, groups or previews; not ones that failed to start or are still
+  starting), this workspace's first, agents before shells.
+- **Checked by default:** the selected nodes, or with none selected this workspace's agents.
+- **Sending:** one bracketed paste per terminal (an agent takes it as one message). With **Press Enter** (the
+  default), Enter goes to all of them 150 ms later, since some agents take an Enter that arrives with a paste as part
+  of it.
+
 ## Screen rules
 
 For prompts no hook or status report announces (folder trust questions, Codex's hook review) and for agents that

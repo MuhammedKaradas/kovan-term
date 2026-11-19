@@ -61,6 +61,7 @@ similar projects.
 
 | # | Item |
 |---|---|
+| #78 | Send one prompt to several agents |
 | #80 | Windows notifications when an agent needs you or finishes |
 
 ## Why this order

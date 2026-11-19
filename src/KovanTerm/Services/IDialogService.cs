@@ -41,4 +41,7 @@ public interface IDialogService
 
     /// <summary>Opens a web page in the default browser.</summary>
     void OpenInBrowser(string url);
+
+    /// <summary>Shows "Send to agents"; <c>true</c> if the user sends.</summary>
+    bool ShowBroadcast(BroadcastViewModel viewModel) => false;
 }

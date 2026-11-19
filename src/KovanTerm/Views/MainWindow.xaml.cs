@@ -422,6 +422,9 @@ public partial class MainWindow : FluentWindow
         e.Handled = true;
     }
 
+    // The selected nodes are checked in the dialog; with none selected, this workspace's agents
+    private void Broadcast_Click(object sender, RoutedEventArgs e) => _ = _vm.BroadcastAsync(SelectedNodes());
+
     private void NewTerminalHere_Click(object sender, RoutedEventArgs e) => _vm.NewTerminalCommand.Execute(_contextMenuLocation);
 
     private void RecentConversationHere_Click(object sender, RoutedEventArgs e) => _vm.OpenRecentConversationCommand.Execute(_contextMenuLocation);

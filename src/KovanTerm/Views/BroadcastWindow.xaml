@@ -1,0 +1,64 @@
+<ui:FluentWindow x:Class="KovanTerm.Views.BroadcastWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:vm="clr-namespace:KovanTerm.ViewModels"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:BroadcastViewModel}"
+        Title="Send to agents" Width="620" Height="560"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        ExtendsContentIntoTitleBar="True" WindowBackdropType="Mica" WindowCornerPreference="Round"
+        FocusManager.FocusedElement="{Binding ElementName=PromptBox}">
+    <ui:FluentWindow.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding CancelCommand}"/>
+        <KeyBinding Key="Enter" Modifiers="Control" Command="{Binding SendCommand}"/>
+    </ui:FluentWindow.InputBindings>
+
+    <DockPanel>
+        <ui:TitleBar DockPanel.Dock="Top" Title="Send to agents" ShowMinimize="False" ShowMaximize="False"/>
+
+        <DockPanel DockPanel.Dock="Bottom" Margin="16,10,16,16">
+            <CheckBox DockPanel.Dock="Left" Content="Press Enter to submit it" IsChecked="{Binding PressEnter}" VerticalAlignment="Center"
+                      AutomationProperties.Name="Press Enter"
+                      ToolTip="Otherwise it's pasted and waits in each terminal for you to review and submit"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <ui:Button Content="Cancel" Command="{Binding CancelCommand}" Margin="0,0,8,0" MinWidth="90"/>
+                <ui:Button Content="{Binding SendText}" Appearance="Primary" Command="{Binding SendCommand}" MinWidth="110"
+                           AutomationProperties.Name="Send" ToolTip="Ctrl+Enter"/>
+            </StackPanel>
+        </DockPanel>
+
+        <ui:TextBox DockPanel.Dock="Top" x:Name="PromptBox" Margin="16,4,16,8" Height="150"
+                    PlaceholderText="What should they do? (Ctrl+Enter sends)" AcceptsReturn="True" TextWrapping="Wrap"
+                    VerticalContentAlignment="Top" VerticalScrollBarVisibility="Auto"
+                    Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Prompt"/>
+
+        <DockPanel DockPanel.Dock="Top" Margin="16,4,16,4">
+            <ui:Button DockPanel.Dock="Right" Content="All / none" Appearance="Transparent" Padding="8,2" FontSize="12"
+                       Command="{Binding CheckAllCommand}" AutomationProperties.Name="Check all"/>
+            <TextBlock Text="To" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+        </DockPanel>
+
+        <ListBox ItemsSource="{Binding Targets}" Margin="12,0,12,0" AutomationProperties.Name="Terminals"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                    <Setter Property="AutomationProperties.Name" Value="{Binding Title}"/>
+                    <Setter Property="Padding" Value="4,2"/>
+                </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:BroadcastTarget}">
+                    <CheckBox IsChecked="{Binding IsChecked}" AutomationProperties.Name="{Binding Title}">
+                        <StackPanel>
+                            <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            <TextBlock Text="{Binding Detail}" FontSize="11" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                        </StackPanel>
+                    </CheckBox>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
+</ui:FluentWindow>
