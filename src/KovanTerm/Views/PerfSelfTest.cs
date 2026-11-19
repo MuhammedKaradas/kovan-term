@@ -54,6 +54,10 @@ internal sealed class PerfSelfTest
         // Two moves back to back: if the second starts before the cache refreshes, snapshots are captured on the spot
         await MeasureAsync("zoom again right after", i => _editor.ViewportZoom = 1.0 - 0.3 * Math.Sin(Math.PI * i / Steps), settleMs: 2000);
 
+        // Ends at a zoom where the font size isn't whole: the canvas eases to the nearest one that is (#34)
+        await MeasureAsync("zoom 1.0 → 0.83, then snap", i => _editor.ViewportZoom = 1.0 - 0.17 * i / Steps, settleMs: 1000);
+        _log.AppendLine($"zoom after settling: {_editor.ViewportZoom:F4}");
+
         _log.Insert(0, $"Kovan Term smoothness self-test {DateTime.Now:yyyy-MM-dd HH:mm:ss}{Environment.NewLine}");
         File.WriteAllText(_logPath, _log.ToString());
         _window.Close();

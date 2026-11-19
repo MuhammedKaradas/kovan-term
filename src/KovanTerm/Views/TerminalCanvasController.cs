@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Microsoft.Web.WebView2.Wpf;
@@ -24,8 +25,7 @@ namespace KovanTerm.Views;
 /// </summary>
 public sealed class TerminalCanvasController
 {
-    private const int BaseFontSize = 13;
-    private const int MinFontSize = 4;
+    private const string FontFamilyName = "Cascadia Code";
     /// <summary>Below this zoom text is unreadable (≤5 pt); the last snapshots are shown instead of the live terminals.</summary>
     public const double SleepZoomThreshold = 0.4;
 
@@ -67,7 +67,7 @@ public sealed class TerminalCanvasController
     // For open-ended interactions such as resizing, stay in snapshot mode until the interaction ends
     private bool _held;
     private readonly DispatcherTimer _snapshotCleanupTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
-    private int _appliedFontSize = BaseFontSize;
+    private int _appliedFontSize = TerminalFontSteps.BaseFontSize;
     private bool _dark = true;
 
     // Cache: snapshots of terminals whose output changed are refreshed in the background.
@@ -141,7 +141,7 @@ public sealed class TerminalCanvasController
         _settleTimer.Tick += (_, _) =>
         {
             _settleTimer.Stop();
-            if (!_held) Unfreeze();
+            if (!_held && !StartZoomSnap()) Unfreeze();
         };
         _snapshotCleanupTimer.Tick += (_, _) => RemoveSnapshots();
         _refreshTimer.Tick += (_, _) => RefreshDirtySnapshots();
@@ -284,6 +284,12 @@ public sealed class TerminalCanvasController
     private void OnCanvasMoving()
     {
         if (!_editor.IsLoaded) return;
+        if (_snapping)
+        {
+            // Our own step of the snap animation; anything else is the user moving the canvas again
+            if (IsSnapStep()) return;
+            StopZoomSnap();
+        }
         Freeze();
         _settleTimer.Stop();
         _settleTimer.Start();
@@ -293,6 +299,7 @@ public sealed class TerminalCanvasController
     {
         if (_frozen) return;
         _frozen = true;
+        _zoomAtFreeze = _editor.ViewportZoom;
         _snapshotCleanupTimer.Stop();
         MotionChanged?.Invoke(true);
         var sw = Stopwatch.StartNew();
@@ -472,7 +479,105 @@ public sealed class TerminalCanvasController
             if (entry.Terminal is { } term) SetFont(term, size);
     }
 
-    private static int FontSizeForZoom(double zoom) => Math.Max(MinFontSize, (int)Math.Round(BaseFontSize * zoom));
+    private int FontSizeForZoom(double zoom) => FontSteps.FontSizeFor(zoom);
+
+    private TerminalFontSteps? _fontSteps;
+    private double _fontStepsDpi;
+
+    /// <summary>The font sizes and matching zooms for the monitor the canvas is on (recomputed when its DPI changes).</summary>
+    private TerminalFontSteps FontSteps
+    {
+        get
+        {
+            var dpi = VisualTreeHelper.GetDpi(_editor).PixelsPerInchY;
+            if (_fontSteps == null || dpi != _fontStepsDpi)
+            {
+                _fontSteps = TerminalFontSteps.For(FontFamilyName, dpi);
+                _fontStepsDpi = dpi;
+            }
+            return _fontSteps;
+        }
+    }
+
+    // ---- Zoom snapping (#34) ----
+    // Live text matches the scaled snapshot only at certain zoom levels (see TerminalFontSteps); elsewhere it comes
+    // back a little wider or narrower when motion ends. After a zoom, the canvas eases to the nearest such level,
+    // still in snapshot mode, so nothing jumps when the live terminals return.
+
+    private const double SnapDurationMs = 110;
+    private double _zoomAtFreeze;
+    private bool _snapping;
+    private double _snapFrom, _snapTo;
+    private Point _snapAnchor; // in the editor's coordinates; the canvas point under it stays put
+    private Point _snapCanvasPoint;
+    private double _setZoom;
+    private Point _setLocation;
+    private readonly Stopwatch _snapClock = new();
+
+    /// <summary>After a zoom, eases to the snapped zoom before the live terminals come back; <c>false</c> if there's nothing to do.</summary>
+    private bool StartZoomSnap()
+    {
+        var zoom = _editor.ViewportZoom;
+        // Only after zooming (a pan or a drag keeps the zoom), and not while terminals sleep at low zoom anyway
+        if (Math.Abs(zoom - _zoomAtFreeze) < 1e-9 || zoom < SleepZoomThreshold) return false;
+        var target = FontSteps.SnappedZoom(zoom, _editor.MinViewportZoom, _editor.MaxViewportZoom);
+        if (Math.Abs(target - zoom) < 1e-4) return false;
+
+        // Around the mouse if it's over the canvas (where the user zoomed), otherwise the middle
+        var mouse = System.Windows.Input.Mouse.GetPosition(_editor);
+        _snapAnchor = mouse.X >= 0 && mouse.Y >= 0 && mouse.X <= _editor.ActualWidth && mouse.Y <= _editor.ActualHeight
+            ? mouse : new Point(_editor.ActualWidth / 2, _editor.ActualHeight / 2);
+        _snapCanvasPoint = _editor.ViewportLocation + (Vector)_snapAnchor / zoom;
+        _snapFrom = zoom;
+        _snapTo = target;
+        _snapping = true;
+        _snapClock.Restart();
+        System.Windows.Media.CompositionTarget.Rendering += OnSnapFrame;
+        return true;
+    }
+
+    private void OnSnapFrame(object? sender, EventArgs e)
+    {
+        var t = Math.Min(1, _snapClock.Elapsed.TotalMilliseconds / SnapDurationMs);
+        var eased = 1 - (1 - t) * (1 - t);
+        SetSnapStep(_snapFrom + (_snapTo - _snapFrom) * eased);
+        if (t < 1) return;
+        StopZoomSnap();
+        if (!_held) Unfreeze();
+    }
+
+    private void SetSnapStep(double zoom)
+    {
+        _setZoom = zoom;
+        _setLocation = _snapCanvasPoint - (Vector)_snapAnchor / zoom;
+        // The editor reports the zoom change before the location is set
+        _inSnapStep = true;
+        try
+        {
+            _editor.ViewportZoom = zoom;
+            _editor.ViewportLocation = _setLocation;
+        }
+        finally
+        {
+            _inSnapStep = false;
+        }
+    }
+
+    private bool _inSnapStep;
+
+    // Reported during the step, or later (after layout) with the values it set
+    private bool IsSnapStep() => _inSnapStep ||
+        Math.Abs(_editor.ViewportZoom - _setZoom) < 1e-9 && (_editor.ViewportLocation - _setLocation).Length < 1e-6;
+
+    private void StopZoomSnap()
+    {
+        if (!_snapping) return;
+        _snapping = false;
+        System.Windows.Media.CompositionTarget.Rendering -= OnSnapFrame;
+        _snapClock.Stop();
+        // The next motion starts from here
+        _zoomAtFreeze = _editor.ViewportZoom;
+    }
 
     /// <summary>Switches every terminal's color scheme; snapshots are retaken with the new colors.</summary>
     public void SetDarkTheme(bool dark)
@@ -487,5 +592,5 @@ public sealed class TerminalCanvasController
     }
 
     private void SetFont(ITerminalSurface term, int size) =>
-        term.SetAppearance(TerminalThemes.For(_dark), "Cascadia Code", size);
+        term.SetAppearance(TerminalThemes.For(_dark), FontFamilyName, size);
 }

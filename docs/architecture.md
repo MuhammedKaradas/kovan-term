@@ -73,8 +73,8 @@ Another implementation (e.g. xterm.js in WebView2, decision record 0002) would o
 and the line in `TerminalHost.CreateSurface`. Consequences of the current one:
 
 1. **No scaling**: an HwndHost ignores WPF's `RenderTransform`; when Nodify zooms, the HWND shrinks but
-   the text doesn't. Fix: when the zoom changes, set the font size to `13 × zoom` via
-   `ITerminalSurface.SetAppearance(..., fontSize)` (`SetTheme` in the control).
+   the text doesn't. Fix: when the zoom changes, set the font size for that zoom via
+   `ITerminalSurface.SetAppearance(..., fontSize)` (`TerminalFontSteps`, see the jump below).
 2. **Airspace**: WPF content can't be drawn on top of a terminal. Overlapping nodes, popups over
    terminals, etc. are limited because of this.
 3. **Cost of movement**: on every pan/zoom frame all HWNDs are repositioned and resized, which stutters.
@@ -100,9 +100,19 @@ and the line in `TerminalHost.CreateSurface`. Consequences of the current one:
      pixel-identical.
    - Benchmark: `KOVAN_PERF_SELFTEST` (see CLAUDE.md). ~58 fps with 10 terminals, worst frame ~35 ms
      (~200 ms before the cache).
-   - Known limitation: the font size is an integer (`SetTheme` takes a `short`), so after a gesture
-     the terminal text can come back at a slightly different size than the scaled snapshot (a small
-     "jump", #34).
+   - **Zoom snapping (#34):** the font size is whole (the control's `SetTheme` takes a `short`) and the renderer rounds
+     the cell width and line height to whole pixels. Measured with Cascadia Code at 96 DPI, they are
+     `round(0.586 × px)` × `round(1.162 × px)`: 13 pt is 10 × 20 px, 11 pt 9 × 17. So at most zoom levels the
+     live text came back wider or narrower, taller or shorter than the scaled snapshot when motion ended: up
+     to 18 % (at 42 %), 4.5 % on average between 40 % and 150 %.
+     - `TerminalFontSteps` computes each font size's cell from the font's metrics and the monitor DPI. It
+       gives each size a zoom halfway between its width and height ratios to 13 pt.
+     - After a zoom (not a pan or drag), the canvas eases to the nearest such zoom in 110 ms, around the
+       mouse, still in snapshot mode. Then the live terminals return.
+     - The difference left is at most 5.3 % (6 pt, at 47.5 %), at most 3.2 % from 60 % up, and none at
+       60, 70, 100 and 110 %.
+     - Measured at a zoom of 0.83: before, the text came back 8.4 % wider (9 px cells against a scaled
+       8.3); it now settles at 87.5 % with +2.9 % / −2.9 % (9 × 17 px against 8.75 × 17.5).
 4. **Sleeping terminals**: terminals outside the visible area have their HWND hidden (on settle,
    `UpdateSleepStates`). The process keeps running and output keeps going into the terminal buffer;
    on wake, the current state is drawn. Below zoom 0.4 (text ≤5 pt, unreadable) every terminal that
