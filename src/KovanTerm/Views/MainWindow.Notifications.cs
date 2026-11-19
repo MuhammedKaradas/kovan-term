@@ -22,6 +22,21 @@ public partial class MainWindow
             _notifier?.Hide();
         };
         Closed += (_, _) => _notifier?.Dispose();
+
+        // Agents working: Windows doesn't sleep on its own (a long task left running isn't cut off halfway)
+        _vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MainViewModel.WorkingCount)) UpdateSleepBlock();
+        };
+        Closed += (_, _) => _sleep.Set(false);
+    }
+
+    private readonly SleepBlocker _sleep = new();
+
+    private void UpdateSleepBlock()
+    {
+        var keepAwake = _vm.WorkingCount > 0 && _vm.Settings.KeepAwakeWhileWorking;
+        if (_sleep.Set(keepAwake)) MainViewModel.StatusLog($"keep awake: {keepAwake}");
     }
 
     /// <summary>Records what happened, if Kovan is in the background, and shows everything still pending.</summary>

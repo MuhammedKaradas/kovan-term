@@ -18,6 +18,8 @@ public sealed record AppSettings
     public bool ShowChangesPanel { get; init; }
     /// <summary>Command run in a new worktree before the agent starts, per repository root (e.g. <c>npm install</c>).</summary>
     public Dictionary<string, string> WorktreeSetupCommands { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Windows doesn't go to sleep on its own while an agent is working.</summary>
+    public bool KeepAwakeWhileWorking { get; init; } = true;
     /// <summary>Windows notification when an agent starts waiting for you while Kovan is in the background.</summary>
     public bool NotifyWhenWaiting { get; init; } = true;
     /// <summary>Windows notification when an agent's turn ends while Kovan is in the background.</summary>

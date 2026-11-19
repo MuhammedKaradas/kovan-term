@@ -218,6 +218,13 @@ workspace if it's another one. Clicking it brings Kovan forward on that agent (s
 - **Settings:** `settings.json` has `notifyWhenWaiting` and `notifyWhenDone` (both `true`). The taskbar button still
   flashes too.
 
+## Keeping the computer awake
+
+While at least one agent is working, Windows doesn't go to sleep on its own (`SleepBlocker`,
+`SetThreadExecutionState` with `ES_SYSTEM_REQUIRED`), so a long task left running isn't cut off halfway. It ends as
+soon as no agent works (waiting for the user counts as not working). The display can still turn off, and closing a
+laptop's lid still does what the power settings say. `keepAwakeWhileWorking` in `settings.json` (`true`) turns it off.
+
 ## Agents panel
 
 A list of every node beside the canvas (left), grouped by working folder, with the agents waiting for the user first
