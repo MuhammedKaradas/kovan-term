@@ -23,6 +23,7 @@ Terminal'in GPU hızlandırmalı terminal bileşeniyle, düşük kaynak tüketim
 - Çalışma dizini seçimi, tuvalde sağ tıkla "Burada yeni terminal"
 - Tek bir istemi birden çok ajana aynı anda gönder; ör. aynı görevde Claude Code, Codex ve Gemini CLI'ı karşılaştır
 - Başka bir uygulamadayken bir ajan seni beklediğinde ya da işini bitirdiğinde Windows bildirimi; tıklayınca ona gider
+- Dosyaları ya da ekran görüntülerini terminale sürükle, yolları ajana yazılsın
 - İstatistikler: Claude Code ve Codex oturumlarından gün, proje ve modele göre süre ve token
 - Sekmeler halinde birden çok çalışma alanı (ör. proje başına bir tane); gizli olanlardaki ajanlar çalışmayı sürdürür, seni beklediklerinde sekmede görünür
 - Çalışma alanı otomatik kaydedilir ve açılışta geri gelir

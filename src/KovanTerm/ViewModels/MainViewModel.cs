@@ -241,6 +241,22 @@ public partial class MainViewModel : ObservableObject
             await _dialogs.ShowMessageAsync("Couldn't delete the worktree", $"{error}\n\nFolder: {worktree.Path}");
     }
 
+    /// <summary>
+    /// Files dropped on a terminal: their paths are pasted into it (quoted for its shell, Linux paths in WSL), so an agent
+    /// can read them or attach an image. Text dropped on it is pasted as it is.
+    /// </summary>
+    public void DropOnNode(TerminalNodeViewModel node, IReadOnlyList<string>? files, string? text)
+    {
+        if (!Nodes.Contains(node) || !node.IsTerminal) return;
+        var paste = files is { Count: > 0 }
+            ? DroppedFiles.Format(files, node.IsWsl, node.Distro ?? DistroOf(node))
+            : text?.Trim() ?? "";
+        if (paste.Length == 0) return;
+        TerminalInputRequested?.Invoke(node, ChangesViewModel.BracketedPaste(paste));
+        CurrentNode = node;
+        StatusLog($"{node.Title} dropped {(files is { Count: > 0 } ? $"{files.Count} file(s)" : "text")}: {paste}");
+    }
+
     private string? DistroOf(TerminalNodeViewModel node) =>
         _profiles.FirstOrDefault(p => p.Id == node.ProfileId)?.Distro is { Length: > 0 } d ? d : null;
 

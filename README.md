@@ -24,6 +24,7 @@ about 3.5× less than an xterm.js-in-WebView2 equivalent
 - Pick a working directory; right-click the canvas for "New terminal here"
 - Send one prompt to several agents at once, e.g. to compare Claude Code, Codex and Gemini CLI on the same task
 - Windows notifications when an agent needs you or finishes while you're in another app; click to go to it
+- Drop files or screenshots on a terminal to give their paths to the agent
 - Statistics: time and tokens by day, project and model, from Claude Code's and Codex's own session files
 - Several workspaces (e.g. one per project) as tabs; agents on hidden ones keep running and show when they wait
 - The workspace is saved automatically and restored on startup

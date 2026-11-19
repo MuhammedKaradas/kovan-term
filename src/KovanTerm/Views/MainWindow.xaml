@@ -186,7 +186,8 @@
 
         <!-- Node body: live terminal. During motion its snapshot is shown instead (TerminalCanvasController) -->
         <DataTemplate x:Key="TerminalBody" DataType="{x:Type vm:TerminalNodeViewModel}">
-            <Grid>
+            <!-- Files dropped here are typed in as paths (the terminal's HWND has no drop target, so the window's gets them) -->
+            <Grid AllowDrop="True" DragOver="Terminal_DragOver" Drop="Terminal_Drop">
                 <Image Visibility="Collapsed" Stretch="Fill"/>
                 <term:TerminalHost CommandLine="{Binding StartupCommandLine}"
                                    WorkingDirectory="{Binding ProcessDirectory}"

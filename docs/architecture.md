@@ -378,6 +378,18 @@ don't cover it.
   - **Colors:** `ChartPalette` sets them for each theme. A project keeps its color whatever the period (the 7 with
     the most time overall; the rest are gray), and the calendar uses one hue from light to dark.
 
+## Dropping files on a terminal
+
+Files dropped on a terminal are pasted into it as their paths, in one bracketed paste ending in a space (#90): an agent
+such as Claude Code attaches an image it's given the path of.
+- **Quoting:** paths are quoted for the shell (double quotes on Windows when they have spaces or `& ( ) ;`…;
+  single quotes in WSL unless they're plain).
+- **WSL:** a WSL terminal gets Linux paths (`/mnt/c/…`, or the distro's own path for a file inside it).
+- **Control characters** are dropped, so a newline in a name can't run anything.
+- **Text** dropped on a terminal is pasted as it is.
+- **How it arrives:** the terminal's HWND has no drop target of its own, so the drop reaches the window's (WPF's), which
+  hands it to the node body under the pointer.
+
 ## Plan usage
 
 The bottom of the Agents panel shows the Claude plan's limits (5-hour session, week, per-model week), as Claude Code's
