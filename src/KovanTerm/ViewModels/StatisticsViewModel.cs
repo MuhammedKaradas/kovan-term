@@ -19,7 +19,8 @@ public sealed record CalendarDay(DateOnly Date, int Level, string Tooltip, bool 
 public sealed record CalendarWeek(IReadOnlyList<CalendarDay> Days, string? Month);
 
 /// <param name="Slot">Its color: 1–7 for the most active projects, 0 for the rest.</param>
-public sealed record ProjectRow(string Name, int Slot, TimeSpan Time, long Tokens, int Sessions, double TimeFraction, double TokensFraction)
+public sealed record ProjectRow(string Name, int Slot, TimeSpan Time, long Tokens, int Sessions, double TimeFraction, double TokensFraction,
+    int Commits = 0)
 {
     public string TimeText => StatisticsViewModel.FormatTime(Time);
     public string TokensText => StatisticsViewModel.FormatTokens(Tokens);
@@ -32,6 +33,8 @@ public sealed record ModelRow(string Model, long Tokens, double Fraction)
     public string TokensText => StatisticsViewModel.FormatTokens(Tokens);
 }
 
+public sealed record CommitRow(string When, string Project, int Slot, string Subject);
+
 public sealed record SessionRow(WorkSession Session, string When, string Project, int Slot, string Agent, string Title, string Duration,
     string Tokens, IReadOnlyList<string> Prompts);
 
@@ -39,11 +42,18 @@ public sealed record SessionRow(WorkSession Session, string When, string Project
 /// Statistics (#88): where the time and tokens went, from Claude Code's and Codex's own session files. A period (a day
 /// picked on the calendar, the last 7 or 30 days, the last year) filters everything but the calendar and the daily bars.
 /// </summary>
-public sealed partial class StatisticsViewModel(Func<IProgress<(int Done, int Total)>, List<WorkSession>> load, Func<DateTime>? now = null)
+/// <param name="loadCommits">The commits in the sessions' repositories, read after the sessions (git is slower); none if <c>null</c>.</param>
+public sealed partial class StatisticsViewModel(Func<IProgress<(int Done, int Total)>, List<WorkSession>> load, Func<DateTime>? now = null,
+    Func<IReadOnlyList<WorkSession>, Task<List<WorkCommit>>>? loadCommits = null)
     : ObservableObject
 {
     private readonly Func<DateTime> _now = now ?? (() => DateTime.Now);
     private List<WorkSession> _sessions = [];
+    private List<WorkCommit> _commits = [];
+    /// <summary>Until git has answered, the commit count is "…", not 0.</summary>
+    private bool _commitsLoaded;
+    /// <summary>A repository's project, as the sessions name it.</summary>
+    private Dictionary<string, string> _projectOfRepo = new(StringComparer.OrdinalIgnoreCase);
     private Dictionary<string, int> _slots = [];
 
     [ObservableProperty]
@@ -79,6 +89,8 @@ public sealed partial class StatisticsViewModel(Func<IProgress<(int Done, int To
     [ObservableProperty] public partial string ProjectCount { get; set; } = "";
     [ObservableProperty] public partial string SessionCount { get; set; } = "";
     [ObservableProperty] public partial string TokenCount { get; set; } = "";
+    [ObservableProperty] public partial string CommitCount { get; set; } = "…";
+    public ObservableCollection<CommitRow> Commits { get; } = [];
     [ObservableProperty] public partial string TokenDetail { get; set; } = "";
     [ObservableProperty] public partial string CalendarSummary { get; set; } = "";
 
@@ -102,7 +114,20 @@ public sealed partial class StatisticsViewModel(Func<IProgress<(int Done, int To
         SelectedDay = DateOnly.FromDateTime(_now());
         IsLoading = false;
         Update();
+        if (loadCommits == null)
+        {
+            CommitCount = "";
+            return;
+        }
+        _commits = await loadCommits(_sessions);
+        _commitsLoaded = true;
+        _projectOfRepo = new(StringComparer.OrdinalIgnoreCase);
+        foreach (var s in _sessions)
+            if (Services.GitWorktrees.FindRepoRoot(s.Cwd) is { } repo) _projectOfRepo.TryAdd(repo, s.Project);
+        Update();
     }
+
+    private string ProjectOf(WorkCommit c) => _projectOfRepo.GetValueOrDefault(c.Repository) ?? System.IO.Path.GetFileName(c.Repository);
 
     [RelayCommand]
     private void ShowPeriod(StatsPeriod period)
@@ -161,6 +186,12 @@ public sealed partial class StatisticsViewModel(Func<IProgress<(int Done, int To
         TokenDetail = $"{StatisticsViewModel.FormatTokens(tokens.CacheRead)} read from cache · {StatisticsViewModel.FormatTokens(tokens.CacheWrite)} written to it · "
                       + $"{StatisticsViewModel.FormatTokens(tokens.Input)} in · {StatisticsViewModel.FormatTokens(tokens.Output)} out";
         IsEmpty = _sessions.Count == 0;
+        var commits = _commits.Where(c => c.Date >= fromTime && c.Date < toTime).OrderByDescending(c => c.Date).ToList();
+        if (_commitsLoaded) CommitCount = commits.Count.ToString(Ui);
+        Replace(Commits, commits.Take(100).Select(c => new CommitRow(
+            Period == StatsPeriod.Day ? c.Date.ToString("HH:mm", Ui) : c.Date.ToString("d MMM HH:mm", Ui),
+            ProjectOf(c), _slots.GetValueOrDefault(ProjectOf(c)), c.Subject)));
+        var commitsByProject = commits.GroupBy(ProjectOf).ToDictionary(g => g.Key, g => g.Count());
 
         // Projects: time and tokens in the period
         var projects = inPeriod.GroupBy(s => s.Project).Select(g => (
@@ -172,7 +203,7 @@ public sealed partial class StatisticsViewModel(Func<IProgress<(int Done, int To
         var maxTime = Math.Max(1, projects.Select(p => p.Time.Ticks).DefaultIfEmpty(0).Max());
         var maxTokens = Math.Max(1, projects.Select(p => p.Tokens).DefaultIfEmpty(0).Max());
         Replace(Projects, projects.Select(p => new ProjectRow(p.Name, _slots.GetValueOrDefault(p.Name), p.Time, p.Tokens, p.Sessions,
-            (double)p.Time.Ticks / maxTime, (double)p.Tokens / maxTokens)));
+            (double)p.Time.Ticks / maxTime, (double)p.Tokens / maxTokens, commitsByProject.GetValueOrDefault(p.Name))));
 
         // Models: tokens in the period
         var models = inPeriod.SelectMany(s => s.TokenDays).Where(d => d.Day >= from && d.Day < to)

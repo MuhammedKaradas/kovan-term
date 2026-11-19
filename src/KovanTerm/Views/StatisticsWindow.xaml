@@ -86,6 +86,12 @@
 
         <!-- Period, refresh -->
         <DockPanel DockPanel.Dock="Top" Margin="20,4,20,10">
+            <TextBlock DockPanel.Dock="Right" x:Name="ShareStatus" VerticalAlignment="Center" Margin="8,0" Style="{StaticResource Muted}"/>
+            <ui:Button DockPanel.Dock="Right" Appearance="Secondary" Padding="10,3" Margin="6,0,0,0" FontSize="12" Click="Share_Click"
+                       Content="Copy as image" ToolTip="Copy a picture of the numbers and the calendar, to paste in a chat or a post (also saved to Pictures)"
+                       AutomationProperties.Name="Copy as image">
+                <ui:Button.Icon><ui:SymbolIcon Symbol="Image24"/></ui:Button.Icon>
+            </ui:Button>
             <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Padding="8,3" Command="{Binding RefreshCommand}"
                        ToolTip="Read the conversations again (F5)" AutomationProperties.Name="Refresh statistics">
                 <ui:Button.Icon><ui:SymbolIcon Symbol="ArrowClockwise20"/></ui:Button.Icon>
@@ -144,6 +150,10 @@
                     <TextBlock Text="No Claude Code or Codex conversations were found on this computer." Margin="0,0,0,12" Style="{StaticResource Muted}"
                                Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
 
+                    <!-- What "Copy as image" pictures: the period, its numbers and the calendar -->
+                    <StackPanel x:Name="ShareArea">
+                    <TextBlock x:Name="ShareTitle" Visibility="Collapsed" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                     <!-- Headline numbers for the period -->
                     <UniformGrid Rows="1" Margin="0,0,0,12">
                         <UniformGrid.Resources>
@@ -175,10 +185,17 @@
                                 <TextBlock Text="{Binding SessionCount}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                             </StackPanel>
                         </Border>
-                        <Border Margin="0" ToolTip="{Binding TokenDetail}">
+                        <Border ToolTip="{Binding TokenDetail}">
                             <StackPanel>
                                 <TextBlock Text="Tokens" Style="{StaticResource Muted}"/>
                                 <TextBlock Text="{Binding TokenCount}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Margin="0" ToolTip="Commits by you (the repository's git user) in the projects the conversations ran in, all branches">
+                            <StackPanel>
+                                <TextBlock Text="Commits" Style="{StaticResource Muted}"/>
+                                <TextBlock Text="{Binding CommitCount}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                           AutomationProperties.Name="Commit count"/>
                             </StackPanel>
                         </Border>
                     </UniformGrid>
@@ -305,6 +322,8 @@
                         </StackPanel>
                     </Border>
 
+                    </StackPanel>
+
                     <!-- Hours a day, and models -->
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -392,11 +411,13 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="70"/>
                                     <ColumnDefinition Width="70"/>
+                                    <ColumnDefinition Width="70"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Text="Project" Style="{StaticResource Muted}"/>
                                 <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Text="Time" Style="{StaticResource Muted}"/>
                                 <TextBlock Grid.Column="3" Grid.ColumnSpan="2" Text="Tokens" Style="{StaticResource Muted}"/>
                                 <TextBlock Grid.Column="5" Text="Sessions" Style="{StaticResource Muted}" TextAlignment="Right"/>
+                                <TextBlock Grid.Column="6" Text="Commits" Style="{StaticResource Muted}" TextAlignment="Right"/>
                             </Grid>
                             <ItemsControl ItemsSource="{Binding Projects}" AutomationProperties.Name="Projects">
                                 <ItemsControl.ItemTemplate>
@@ -407,6 +428,7 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="90"/>
                                                 <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="70"/>
                                                 <ColumnDefinition Width="70"/>
                                                 <ColumnDefinition Width="70"/>
                                             </Grid.ColumnDefinitions>
@@ -423,6 +445,44 @@
                                             </Grid>
                                             <TextBlock Grid.Column="4" Text="{Binding TokensText}" FontSize="12" Margin="8,0,0,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
                                             <TextBlock Grid.Column="5" Text="{Binding Sessions}" FontSize="12" TextAlignment="Right" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                            <TextBlock Grid.Column="6" Text="{Binding Commits}" FontSize="12" TextAlignment="Right" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Commits in the period -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Commits" Style="{StaticResource CardTitle}"/>
+                            <TextBlock Text="None in this period.">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Muted}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Commits.Count}" Value="0"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <ItemsControl ItemsSource="{Binding Commits}" AutomationProperties.Name="Commits">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:CommitRow}">
+                                        <Grid Margin="0,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="110"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="150"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding When}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                            <Ellipse Grid.Column="1" Style="{StaticResource SlotDot}" Margin="0,0,8,0"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding Project}" FontSize="12" TextTrimming="CharacterEllipsis"
+                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                            <TextBlock Grid.Column="3" Text="{Binding Subject}" Margin="8,0" TextTrimming="CharacterEllipsis"
+                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}" ToolTip="{Binding Subject}"/>
                                         </Grid>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
