@@ -69,6 +69,12 @@ public partial class MainViewModel : ObservableObject
     /// <summary>An agent started waiting for the user; the view flashes the taskbar if the window isn't active.</summary>
     public event Action<TerminalNodeViewModel>? AttentionNeeded;
 
+    /// <summary>An agent's turn ended: it went from working to idle or done.</summary>
+    public event Action<TerminalNodeViewModel>? TurnFinished;
+
+    /// <summary>App-wide preferences, read when needed (the file may have been edited by hand).</summary>
+    public Models.AppSettings Settings => _settings.Load();
+
     /// <summary>Text to type into a node's terminal (e.g. the answer to a permission prompt).</summary>
     public event Action<TerminalNodeViewModel, string>? TerminalInputRequested;
 
@@ -804,6 +810,14 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void GoToNode(TerminalNodeViewModel node) => GoTo(node);
 
+    /// <summary>Goes to the node (switching workspace if needed) and makes it the current one.</summary>
+    public void Show(TerminalNodeViewModel node)
+    {
+        if (!Nodes.Contains(node)) return;
+        GoTo(node);
+        CurrentNode = node;
+    }
+
     private readonly Dictionary<TerminalNodeViewModel, TranscriptUsage> _usage = new();
     // Nodes with a read in flight, and those that got another event meanwhile (read once more afterwards)
     private readonly HashSet<TerminalNodeViewModel> _usageReading = new(), _usageAgain = new();
@@ -882,7 +896,11 @@ public partial class MainViewModel : ObservableObject
     private void AdvanceBoard(TerminalNodeViewModel node, NodeStatus before)
     {
         if (before != NodeStatus.Working && node.Status == NodeStatus.Working) MeshBoard.AgentStarted(node.Id);
-        else if (before == NodeStatus.Working && node.Status is NodeStatus.Idle or NodeStatus.Done) MeshBoard.AgentFinished(node.Id);
+        else if (before == NodeStatus.Working && node.Status is NodeStatus.Idle or NodeStatus.Done)
+        {
+            MeshBoard.AgentFinished(node.Id);
+            TurnFinished?.Invoke(node);
+        }
     }
 
     /// <summary>Agents a Board task can be given to (Agents panel order is by folder; here by title).</summary>

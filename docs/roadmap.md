@@ -61,7 +61,7 @@ similar projects.
 
 | # | Item |
 |---|---|
-| #30 | Put the terminal control behind an interface |
+| #80 | Windows notifications when an agent needs you or finishes |
 
 ## Why this order
 
