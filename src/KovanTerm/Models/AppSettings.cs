@@ -28,4 +28,6 @@ public sealed record AppSettings
     public string DictationModel { get; init; } = "base";
     /// <summary>Language spoken when dictating: a code such as <c>tr</c> or <c>en</c>, or <c>auto</c> to detect it.</summary>
     public string DictationLanguage { get; init; } = "auto";
+    /// <summary>Windows doesn't go to sleep on its own while an agent is working.</summary>
+    public bool KeepAwakeWhileWorking { get; init; } = true;
 }
