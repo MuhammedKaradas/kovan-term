@@ -33,6 +33,20 @@ public sealed class SettingsViewModelTests : IDisposable
     }
 
     [Fact]
+    public void TheStatusLight_IsOffUntilTurnedOn_AndKeepsWhereItWasPut()
+    {
+        var store = new SettingsStore(_file);
+        store.Save(new AppSettings { StatusLightRightEdge = false, StatusLightTop = 0.8 });
+        var vm = new SettingsViewModel(store);
+        Assert.False(vm.StatusLight);
+
+        vm.StatusLight = true;
+
+        var s = store.Load();
+        Assert.Equal((true, false, 0.8), (s.StatusLight, s.StatusLightRightEdge, s.StatusLightTop));
+    }
+
+    [Fact]
     public void Opening_ItSavesNothing()
     {
         var store = new SettingsStore(_file);

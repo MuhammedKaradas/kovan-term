@@ -28,6 +28,11 @@ public sealed record AppSettings
     public string DictationModel { get; init; } = "base";
     /// <summary>Language spoken when dictating: a code such as <c>tr</c> or <c>en</c>, or <c>auto</c> to detect it.</summary>
     public string DictationLanguage { get; init; } = "auto";
+    /// <summary>A small light on the screen's edge while Kovan is in the background: agents working and waiting.</summary>
+    public bool StatusLight { get; init; }
+    /// <summary>The status light's edge (right or left) and height on it, 0 (top) to 1 (bottom).</summary>
+    public bool StatusLightRightEdge { get; init; } = true;
+    public double StatusLightTop { get; init; } = 0.4;
     /// <summary>Windows doesn't go to sleep on its own while an agent is working.</summary>
     public bool KeepAwakeWhileWorking { get; init; } = true;
 }

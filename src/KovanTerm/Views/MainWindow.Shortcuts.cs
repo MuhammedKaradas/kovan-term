@@ -155,7 +155,12 @@ public partial class MainWindow
 
     private void Settings_Click(object sender, RoutedEventArgs e) => ShowSettings();
 
-    private void ShowSettings() => SettingsWindow.Show(this, () => new SettingsViewModel(new Services.SettingsStore(), theme => _vm.Theme = theme));
+    private void ShowSettings() => SettingsWindow.Show(this, () =>
+    {
+        var settings = new SettingsViewModel(new Services.SettingsStore(), theme => _vm.Theme = theme);
+        settings.Saved += UpdateStatusLight;
+        return settings;
+    });
 
     /// <summary>Pans the viewport to the node (animated) and focuses its terminal.</summary>
     private void GoToNode(TerminalNodeViewModel node)

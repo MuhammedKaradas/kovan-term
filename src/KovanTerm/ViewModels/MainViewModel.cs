@@ -75,6 +75,9 @@ public partial class MainViewModel : ObservableObject
     /// <summary>App-wide preferences, read when needed (the file may have been edited by hand).</summary>
     public Models.AppSettings Settings => _settings.Load();
 
+    /// <summary>Changes and saves app-wide preferences (read first, so nothing else is lost).</summary>
+    public void SaveSettings(Func<Models.AppSettings, Models.AppSettings> change) => _settings.Save(change(_settings.Load()));
+
     /// <summary>Text to type into a node's terminal (e.g. the answer to a permission prompt).</summary>
     public event Action<TerminalNodeViewModel, string>? TerminalInputRequested;
 

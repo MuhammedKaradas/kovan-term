@@ -68,6 +68,10 @@
                           AutomationProperties.Name="Notify when waiting"/>
                 <CheckBox Content="When an agent finishes its turn" IsChecked="{Binding NotifyWhenDone}" Margin="0,8,0,0"
                           AutomationProperties.Name="Notify when done"/>
+                <CheckBox Content="Status light on the screen's edge" IsChecked="{Binding StatusLight}" Margin="0,8,0,0"
+                          AutomationProperties.Name="Status light"/>
+                <TextBlock Style="{StaticResource Hint}"
+                           Text="While Kovan is in the background, a small light shows how many agents work (green) and wait for you (yellow). Click it to go to the waiting one; drag it along the edge; right-click to move it to the other edge."/>
 
                 <TextBlock Text="Voice" Style="{StaticResource Section}"/>
                 <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,8"

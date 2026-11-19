@@ -238,6 +238,18 @@ model and language (#92). Each change is saved at once, reading the file first s
 kept. The theme goes through the main window, which owns and saves it. Everything else is read where it's used, so it
 takes effect without a restart.
 
+## Status light
+
+With **Status light on the screen's edge** on (Settings, off by default), a small always-on-top pill shows on the work
+area's edge while Kovan isn't in front (inactive or minimized) and an agent works or waits.
+- **What it shows:** a green dot with the number of agents working, a yellow one with the number waiting for you; a
+  dot is dim at zero, so the count tells it without color.
+- **Clicking it** brings Kovan forward on the next waiting agent.
+- **Moving it:** drag it along the edge, or right-click to move it to the other edge or turn it off. Its place is
+  saved (\`statusLightRightEdge\`, \`statusLightTop\`).
+- **Focus:** the window is \`WS_EX_NOACTIVATE\` and \`WS_EX_TOOLWINDOW\`, so it never takes focus and isn't in Alt+Tab.
+- **Accessibility:** the pill is a button (UI Automation Invoke, its help text the counts).
+
 ## Agents panel
 
 A list of every node beside the canvas (left), grouped by working folder, with the agents waiting for the user first
