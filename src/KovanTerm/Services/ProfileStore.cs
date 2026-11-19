@@ -35,12 +35,14 @@ public sealed class ProfileStore
         FilePath = filePath ?? Path.Combine(AppPaths.DataDirectory, "profiles.json");
     }
 
-    /// <summary>A shell and Claude Code for each installed WSL distro.</summary>
+    /// <summary>A shell, Claude Code, Codex and Gemini CLI for each installed WSL distro.</summary>
     public static IEnumerable<TerminalProfile> WslDefaults(IEnumerable<string> distros) =>
         distros.SelectMany(d => new TerminalProfile[]
         {
             new() { Id = $"wsl-{d}", Name = $"{d} (WSL)", Executable = "", Wsl = true, Distro = d, Color = "#E95420" },
             new() { Id = $"claude-wsl-{d}", Name = $"Claude Code ({d})", Executable = "claude", Wsl = true, Distro = d, Color = "#D97757" },
+            new() { Id = $"codex-wsl-{d}", Name = $"Codex ({d})", Executable = "codex", Wsl = true, Distro = d, Color = "#10A37F" },
+            new() { Id = $"gemini-wsl-{d}", Name = $"Gemini CLI ({d})", Executable = "gemini", Wsl = true, Distro = d, Color = "#4285F4" },
         });
 
     /// <summary>Profiles; only the defaults if the user file can't be read (the app still starts).</summary>

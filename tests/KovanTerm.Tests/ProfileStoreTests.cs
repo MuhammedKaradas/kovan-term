@@ -36,15 +36,14 @@ public sealed class ProfileStoreTests : IDisposable
     }
 
     [Fact]
-    public void Load_AddsShellAndClaudeForEachWslDistro()
+    public void Load_AddsShellAndAgentsForEachWslDistro()
     {
         var profiles = new ProfileStore(FilePath).Load(["Debian"]);
 
         var wsl = profiles.Skip(ProfileStore.Defaults.Count).ToList();
-        Assert.Equal(["wsl-Debian", "claude-wsl-Debian"], wsl.Select(p => p.Id));
+        Assert.Equal(["wsl-Debian", "claude-wsl-Debian", "codex-wsl-Debian", "gemini-wsl-Debian"], wsl.Select(p => p.Id));
         Assert.All(wsl, p => Assert.True(p.Wsl && p.Distro == "Debian"));
-        Assert.Equal("", wsl[0].Executable);
-        Assert.Equal("claude", wsl[1].Executable);
+        Assert.Equal(["", "claude", "codex", "gemini"], wsl.Select(p => p.Executable));
     }
 
     [Fact]

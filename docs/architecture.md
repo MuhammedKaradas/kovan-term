@@ -195,6 +195,14 @@ MCP stdio server that is a shell loop posting each JSON-RPC line the same way. B
 the settings it started with. The conversation is resumed by the shell (`$(ls ~/.claude/projects/*/<id>.jsonl …)`
 picks `--resume` or `--session-id`), and the reported Linux transcript path is read through `\\wsl.localhost`.
 
+**Codex and Gemini CLI inside WSL:** status needs nothing extra.
+- Codex's OSC 7501 reports and the screen rules (Gemini) read the terminal, which works the same for a distro.
+- The node knows its agent from the profile's executable (`AgentExecutable`); its command line is `wsl.exe`'s.
+- Codex reaches the agent mesh through the same stdio bridge as Claude Code, written as `<node id>.wsl.mcp.sh` and given with
+  `-c mcp_servers.kovan.command='sh' -c mcp_servers.kovan.args=['<script>']`.
+  - These are TOML literal strings, so no double quote has to survive wsl.exe's command line.
+  - The bridge skips blank lines.
+
 ## Notifications
 
 While Kovan isn't the active window, an agent that starts waiting for the user or finishes its turn shows a Windows

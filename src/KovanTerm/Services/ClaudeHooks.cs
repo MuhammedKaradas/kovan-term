@@ -66,6 +66,7 @@ public sealed class ClaudeHooks
             File.Delete(EndpointPath(nodeId));
             File.Delete(WslSettingsPath(nodeId));
             File.Delete(WslMcpConfigPath(nodeId));
+            File.Delete(WslMcpBridgePath(nodeId));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Debug.WriteLine(ex.Message); }
     }
@@ -115,6 +116,7 @@ public sealed class ClaudeHooks
     public string EndpointPath(Guid nodeId) => Path.Combine(_directory, $"{nodeId:D}.endpoint");
     public string WslSettingsPath(Guid nodeId) => Path.Combine(_directory, $"{nodeId:D}.wsl.json");
     public string WslMcpConfigPath(Guid nodeId) => Path.Combine(_directory, $"{nodeId:D}.wsl.mcp.json");
+    public string WslMcpBridgePath(Guid nodeId) => Path.Combine(_directory, $"{nodeId:D}.wsl.mcp.sh");
 
     /// <summary>Windows' curl.exe as seen from WSL.</summary>
     public static string WslCurl => ToWslPath(Path.Combine(Environment.SystemDirectory, "curl.exe"));
@@ -149,6 +151,33 @@ public sealed class ClaudeHooks
     }
 
     /// <summary>
+    /// Codex in WSL: the agent mesh through the same stdio bridge as Claude Code's, as a script file Codex runs with
+    /// <c>sh</c> (config overrides are TOML; single-quoted literal strings, so no double quote has to survive wsl.exe's
+    /// command line). Codex has no hooks: its status comes from its OSC 7501 reports, which reach the terminal from
+    /// anywhere. Empty on failure.
+    /// </summary>
+    public string PrepareWslCodexArguments(Guid nodeId)
+    {
+        try
+        {
+            Directory.CreateDirectory(_directory);
+            File.WriteAllText(EndpointPath(nodeId), $"{_server.UrlFor(nodeId)}\n{_server.Token}\n{_server.McpUrlFor(nodeId)}\n");
+            // LF only: sh reads a CR as part of the command
+            File.WriteAllText(WslMcpBridgePath(nodeId), WslMcpBridge(ToWslPath(EndpointPath(nodeId)), WslCurl) + "\n");
+            return CodexWslMcpArguments(ToWslPath(WslMcpBridgePath(nodeId)));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Debug.WriteLine($"Couldn't write the WSL MCP bridge, Codex won't reach the agent mesh: {ex.Message}");
+            return "";
+        }
+    }
+
+    public static string CodexWslMcpArguments(string bridgeScript) =>
+        $"-c {WslLauncher.ShellQuote("mcp_servers.kovan.command='sh'")}"
+        + $" -c {WslLauncher.ShellQuote($"mcp_servers.kovan.args=['{bridgeScript}']")}";
+
+    /// <summary>
     /// Command hooks that post the event (stdin) with Windows' curl and print Kovan's answer (stdout, e.g. the
     /// agent mesh's inbox reminder). A missing endpoint file or a closed Kovan just does nothing.
     /// </summary>
@@ -177,10 +206,7 @@ public sealed class ClaudeHooks
     /// <summary>An MCP stdio server that forwards each JSON-RPC line to Kovan's MCP endpoint and prints the answer.</summary>
     public static string BuildWslMcpConfig(string endpointFile, string curl)
     {
-        var f = WslLauncher.ShellQuote(endpointFile);
-        var bridge = "while IFS= read -r line; do"
-            + $" r=$(printf '%s' \"$line\" | {WslLauncher.ShellQuote(curl)} -s -m 60 -H 'Content-Type: application/json' --data-binary @- \"$(sed -n 3p {f})\");"
-            + " [ -n \"$r\" ] && printf '%s\\n' \"$r\"; done";
+        var bridge = WslMcpBridge(endpointFile, curl);
         return new JsonObject
         {
             ["mcpServers"] = new JsonObject
@@ -188,6 +214,16 @@ public sealed class ClaudeHooks
                 ["kovan"] = new JsonObject { ["type"] = "stdio", ["command"] = "sh", ["args"] = new JsonArray("-c", bridge) },
             },
         }.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    /// <summary>A shell loop that posts each JSON-RPC line from stdin to Kovan's MCP endpoint and prints the answer.</summary>
+    public static string WslMcpBridge(string endpointFile, string curl)
+    {
+        var f = WslLauncher.ShellQuote(endpointFile);
+        // A blank line isn't a message: posting it would only bring back a parse error
+        return "while IFS= read -r line; do [ -z \"$line\" ] && continue;"
+            + $" r=$(printf '%s' \"$line\" | {WslLauncher.ShellQuote(curl)} -s -m 60 -H 'Content-Type: application/json' --data-binary @- \"$(sed -n 3p {f})\");"
+            + " [ -n \"$r\" ] && printf '%s\\n' \"$r\"; done";
     }
 
     public static string BuildSettings(string url, string token)

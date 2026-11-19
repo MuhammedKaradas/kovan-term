@@ -21,13 +21,18 @@ dimmed and can't be selected. `.cmd`/`.bat` files (which is how npm installs CLI
 
 ## WSL profiles
 
-For every installed WSL distro (`wsl --list`, Docker Desktop's internal distros excluded) two more
+For every installed WSL distro (`wsl --list`, Docker Desktop's internal distros excluded) four more
 profiles are added:
 
 | Id | Name | Runs |
 |---|---|---|
 | `wsl-<distro>` | `<distro> (WSL)` | the distro's login shell |
 | `claude-wsl-<distro>` | `Claude Code (<distro>)` | `claude` inside the distro |
+| `codex-wsl-<distro>` | `Codex (<distro>)` | `codex` inside the distro |
+| `gemini-wsl-<distro>` | `Gemini CLI (<distro>)` | `gemini` inside the distro |
+
+Kovan can't tell whether an agent is installed in a distro without starting it, so all four are listed. If the
+program isn't on the distro's login shell PATH, the terminal says so and stays open at the shell.
 
 The working directory of a WSL profile is a Linux path (`/home/me/code`) or `~` for the Linux home
 folder; it's passed to `wsl.exe --cd`. Windows paths work too, but file access through `/mnt/c` is
