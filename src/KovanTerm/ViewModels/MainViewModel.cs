@@ -835,7 +835,15 @@ public partial class MainViewModel : ObservableObject
         Task.Run(() => usage.Update(path)).ContinueWith(t =>
         {
             _usageReading.Remove(node);
-            if (t.Result && Nodes.Contains(node)) node.SetContextTokens(usage.ContextTokens);
+            if (t.Result && Nodes.Contains(node))
+            {
+                node.SetContextTokens(usage.ContextTokens);
+                if (_settings.Load().TitlesFromClaude && node.ApplyConversationTitle(usage.CustomTitle, usage.AiTitle))
+                {
+                    StatusLog($"title -> {node.Title}");
+                    ScheduleSave();
+                }
+            }
             if (_usageAgain.Remove(node)) RefreshContext(node);
         }, TaskScheduler.FromCurrentSynchronizationContext());
     }

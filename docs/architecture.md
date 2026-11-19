@@ -179,6 +179,11 @@ Each Claude Code node keeps its conversation: a new node is started with `--sess
 (`ClaudeSessions`). Hook events carry the current id, so `/clear` moves the node to the new conversation.
 A profile that passes its own `--resume`, `--continue` or `--session-id` is left alone.
 
+**Titles:** a Claude Code node takes its conversation's title, read with the context size from the transcript
+(`TranscriptUsage`): a `/rename` (`custom-title`) always renames the node; Claude's own title (`ai-title`) only does
+while the user hasn't named the node (**Rename** on the header's context menu). Titles already applied are saved with
+the node, so a restart doesn't undo a name the user typed. `titlesFromClaude` in `settings.json` turns it off.
+
 **Recent** (`Ctrl+Shift+O`) lists saved Claude Code conversations (`ClaudeConversations`): the 300 most recently written
 transcripts in `<claude config dir>\projects\*\*.jsonl`, reading only each file's first 128 KB (folder, first prompt)
 and last 64 KB (latest `custom-title` / `ai-title`), since transcripts add up to hundreds of MB. Picking one opens a

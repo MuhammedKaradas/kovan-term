@@ -151,11 +151,47 @@ public partial class MainWindow : FluentWindow
         if (sender is FrameworkElement { DataContext: WorkspaceViewModel { IsRenaming: true } workspace }) _vm.FinishRenaming(workspace);
     }
 
+    // Renaming a node from its header: Enter keeps the name (and Claude's title no longer replaces it), Esc goes back
+    private void NodeName_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Enter or Key.Escape) || sender is not System.Windows.Controls.TextBox box) return;
+        FinishNodeRename(box, keep: e.Key == Key.Enter);
+        e.Handled = true;
+    }
+
+    private void NodeName_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.TextBox box) FinishNodeRename(box, keep: true);
+    }
+
+    private void FinishNodeRename(System.Windows.Controls.TextBox box, bool keep)
+    {
+        if (box.DataContext is not TerminalNodeViewModel { IsRenaming: true } node) return;
+        if (keep && box.Text.Trim() is { Length: > 0 } name && name != node.Title)
+        {
+            node.Rename(name);
+            _vm.SaveNow();
+        }
+        box.GetBindingExpression(System.Windows.Controls.TextBox.TextProperty)?.UpdateTarget();
+        node.IsRenaming = false;
+        Editor.Focus();
+    }
+
     // Right-click a node's header (or a group's): move it to another workspace
     private void NodeMenu_ContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: TerminalNodeViewModel node, ContextMenu: { } menu }) return;
         menu.Items.Clear();
+        if (!node.IsGroup)
+        {
+            var rename = new System.Windows.Controls.MenuItem
+            {
+                Header = "Rename",
+                Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = Wpf.Ui.Controls.SymbolRegular.Rename24 },
+            };
+            rename.Click += (_, _) => node.IsRenaming = true;
+            menu.Items.Add(rename);
+        }
         var move = new System.Windows.Controls.MenuItem
         {
             Header = node.IsGroup ? "Move group to workspace" : "Move to workspace",

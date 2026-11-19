@@ -359,7 +359,23 @@
                                 </Ellipse.Style>
                             </Ellipse>
                             <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextFillColorPrimaryBrush}"
-                                       FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                       FontWeight="SemiBold" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsRenaming}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <!-- Rename (header menu): Enter keeps the name, Esc goes back -->
+                            <TextBox Text="{Binding Title, UpdateSourceTrigger=Explicit}" MinWidth="120" Padding="2,0" FontWeight="SemiBold"
+                                     VerticalAlignment="Center" AutomationProperties.Name="Node name"
+                                     Visibility="{Binding IsRenaming, Converter={StaticResource BoolToVisibility}}"
+                                     IsVisibleChanged="WorkspaceName_IsVisibleChanged" KeyDown="NodeName_KeyDown"
+                                     LostKeyboardFocus="NodeName_LostKeyboardFocus"/>
                             <StackPanel Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center"
                                         ToolTip="{Binding Worktree.Path, StringFormat=Worktree: {0}}" Style="{StaticResource BranchVisibility}">
                                 <ui:SymbolIcon Symbol="Branch16" FontSize="12" Margin="0,0,3,0" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
