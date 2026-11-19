@@ -16,6 +16,7 @@ public enum ShortcutAction
     NewNote,
     NextWorkspace,
     PreviousWorkspace,
+    Settings,
     Statistics,
     Broadcast,
     Dictate,
@@ -44,6 +45,7 @@ public static class Shortcuts
         // Not Ctrl+Alt+digit: that's AltGr on many keyboard layouts, which types characters
         (Key.PageDown, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.NextWorkspace, "Show the next workspace"),
         (Key.PageUp, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.PreviousWorkspace, "Show the previous workspace"),
+        (Key.OemComma, ModifierKeys.Control, ShortcutAction.Settings, "Settings"),
         (Key.Y, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.Statistics, "Statistics: time and tokens by day, project and model"),
         (Key.S, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.Broadcast, "Send a prompt to several agents"),
         (Key.Space, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.Dictate, "Dictate into the current terminal (press again to stop)"),

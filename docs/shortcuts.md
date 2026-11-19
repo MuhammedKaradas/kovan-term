@@ -17,6 +17,7 @@ use, most of them use `Ctrl+Shift` (e.g. `Ctrl+T` transposes characters in bash/
 | `Ctrl+Shift+N` | New note (Markdown) |
 | `Ctrl+Shift+PgDn` | Show the next workspace |
 | `Ctrl+Shift+PgUp` | Show the previous workspace |
+| `Ctrl+,` | Settings |
 | `Ctrl+Shift+Y` | Statistics: time and tokens by day, project and model |
 | `Ctrl+Shift+S` | Send one prompt to several agents (the selected nodes, or this workspace's agents) |
 | `Ctrl+Shift+Space` | Dictate into the current terminal; press again to stop and type what was said |

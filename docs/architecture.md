@@ -230,6 +230,14 @@ While at least one agent is working, Windows doesn't go to sleep on its own (`Sl
 soon as no agent works (waiting for the user counts as not working). The display can still turn off, and closing a
 laptop's lid still does what the power settings say. `keepAwakeWhileWorking` in `settings.json` (`true`) turns it off.
 
+## Settings
+
+The Settings window (title bar, `Ctrl+,`; `SettingsViewModel`) shows what `settings.json` holds besides the panels and
+worktree setup commands: theme, titles from Claude, keeping the computer awake, notifications, and the dictation
+model and language (#92). Each change is saved at once, reading the file first so what the window doesn't show is
+kept. The theme goes through the main window, which owns and saves it. Everything else is read where it's used, so it
+takes effect without a restart.
+
 ## Agents panel
 
 A list of every node beside the canvas (left), grouped by working folder, with the agents waiting for the user first
