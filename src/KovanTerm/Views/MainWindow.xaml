@@ -645,6 +645,34 @@
                     </MultiBinding>
                 </TextBlock.Text>
             </TextBlock>
+
+            <!-- Dictation: speech is turned into text on this computer and typed into the current terminal -->
+            <ui:Button DockPanel.Dock="Right" Width="30" Height="30" Padding="0" Margin="0,0,10,0" VerticalAlignment="Center"
+                       Click="Dictate_Click" AutomationProperties.Name="Dictate"
+                       ToolTip="Dictate into the current terminal (Ctrl+Shift+Space, again to stop). Speech stays on this computer.">
+                <ui:Button.Style>
+                    <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                        <Setter Property="Appearance" Value="Transparent"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Dictation.IsRecording}" Value="True">
+                                <Setter Property="Appearance" Value="Primary"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Dictation.IsBusy}" Value="True">
+                                <Setter Property="IsEnabled" Value="False"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Dictation}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ui:Button.Style>
+                <ui:Button.Icon>
+                    <ui:SymbolIcon Symbol="Mic24"/>
+                </ui:Button.Icon>
+            </ui:Button>
+            <TextBlock DockPanel.Dock="Right" Text="{Binding Dictation.Status}" Margin="0,0,8,0" VerticalAlignment="Center"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                       Visibility="{Binding Dictation.HasStatus, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}"/>
         </DockPanel>
 
         <Grid Grid.Row="2">

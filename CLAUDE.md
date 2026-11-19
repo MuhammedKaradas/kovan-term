@@ -32,7 +32,10 @@ dotnet test                         # unit tests (tests/KovanTerm.Tests)
   and snapshot-mode timings to the file, then closes the window. Run it before and after every change
   that can affect smoothness and put the results in the PR. Needs no mouse input.
 - `KOVAN_STATUS_LOG=<log file>`: appends every agent status event (hooks, OSC 7501 reports, Allow/Deny)
-  and the resulting node status. Use it to debug agent integrations.
+  and the resulting node status. Use it to debug agent integrations. Dictation adds a line per use
+  (audio length, time taken, memory, text).
+- `KOVAN_DICTATION_WAV=<wav file>`: dictation "records" this file instead of the microphone (16-bit PCM,
+  any rate). Windows' voices can make one (`Windows.Media.SpeechSynthesis`; Turkish needs the tr-TR voice).
 - `<data dir>\crash.log`: unhandled exceptions are appended here before the app goes down.
 - Don't send **real mouse/keyboard input** on the user's machine (SetCursorPos, mouse_event,
   SendInput): it goes to whatever window is in front. Only use UI Automation patterns (Invoke,
