@@ -429,6 +429,8 @@ public partial class MainWindow : FluentWindow
             new DialogService(this), new SettingsStore(), MainViewModel.StatusLog);
     }
 
+    private void Statistics_Click(object sender, RoutedEventArgs e) => StatisticsWindow.Show(this);
+
     // Terminal controls are HwndHosts, so they're registered with the canvas controller in the view layer
     private void Terminal_Ready(object sender, RoutedEventArgs e)
     {

@@ -94,6 +94,9 @@ public partial class MainWindow
             case ShortcutAction.PreviousWorkspace:
                 _vm.PreviousWorkspaceCommand.Execute(null);
                 break;
+            case ShortcutAction.Statistics:
+                StatisticsWindow.Show(this);
+                break;
             case ShortcutAction.Broadcast:
                 _ = _vm.BroadcastAsync(SelectedNodes());
                 break;

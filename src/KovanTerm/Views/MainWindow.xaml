@@ -677,6 +677,14 @@
                 </TextBlock.Text>
             </TextBlock>
 
+            <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Width="30" Height="30" Padding="0" Margin="0,0,4,0" VerticalAlignment="Center"
+                       Click="Statistics_Click" AutomationProperties.Name="Statistics"
+                       ToolTip="Statistics: time and tokens by day, project and model (Ctrl+Shift+Y)">
+                <ui:Button.Icon>
+                    <ui:SymbolIcon Symbol="DataHistogram24"/>
+                </ui:Button.Icon>
+            </ui:Button>
+
             <!-- Dictation: speech is turned into text on this computer and typed into the current terminal -->
             <ui:Button DockPanel.Dock="Right" Width="30" Height="30" Padding="0" Margin="0,0,10,0" VerticalAlignment="Center"
                        Click="Dictate_Click" AutomationProperties.Name="Dictate"
