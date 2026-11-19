@@ -51,7 +51,7 @@ public sealed class DictationTests : IDisposable
     private sealed class Whisper(string text) : ISpeechToText
     {
         public List<(int Samples, string Language)> Calls { get; } = [];
-        public Task<string> TranscribeAsync(float[] samples, string language, CancellationToken cancellation = default)
+        public Task<string> TranscribeAsync(float[] samples, string language, string? prompt = null, CancellationToken cancellation = default)
         {
             Calls.Add((samples.Length, language));
             return Task.FromResult(text);

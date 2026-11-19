@@ -19,6 +19,7 @@ use, most of them use `Ctrl+Shift` (e.g. `Ctrl+T` transposes characters in bash/
 | `Ctrl+Shift+PgUp` | Show the previous workspace |
 | `Ctrl+Shift+S` | Send one prompt to several agents (the selected nodes, or this workspace's agents) |
 | `Ctrl+Shift+Space` | Dictate into the current terminal; press again to stop and type what was said |
+| `Ctrl+Shift+K` | Voice command ("go to the waiting agent", "Claude'a söyle testleri çalıştır"); press again to carry it out |
 
 **Mouse:**
 
