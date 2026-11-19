@@ -431,6 +431,24 @@ public partial class MainWindow : FluentWindow
 
     private void Statistics_Click(object sender, RoutedEventArgs e) => StatisticsWindow.Show(this);
 
+    private void Terminal_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) || e.Data.GetDataPresent(DataFormats.UnicodeText)
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void Terminal_Drop(object sender, DragEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: TerminalNodeViewModel node }) return;
+        var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+        var text = files == null ? e.Data.GetData(DataFormats.UnicodeText) as string : null;
+        _vm.DropOnNode(node, files, text);
+        _canvas.FocusNode(node);
+        e.Handled = true;
+    }
+
     // Terminal controls are HwndHosts, so they're registered with the canvas controller in the view layer
     private void Terminal_Ready(object sender, RoutedEventArgs e)
     {
