@@ -59,6 +59,7 @@ public sealed class ThemeService
     private void SetIsDark(bool dark)
     {
         Application.Current.Resources[TerminalBackgroundBrushKey] = new SolidColorBrush(TerminalThemes.BackgroundFor(dark));
+        ChartPalette.Apply(Application.Current.Resources, dark);
         if (dark == IsDark) return;
         IsDark = dark;
         IsDarkChanged?.Invoke(dark);

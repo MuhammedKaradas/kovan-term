@@ -329,6 +329,30 @@ its output stops), at most every 1.5 s, and every 3 s while output keeps flowing
 The agent's own reports win; the screen only adds a "waiting" they didn't report, or is the only source for agents
 that report nothing. Captured screens in `tests/KovanTerm.Tests/ScreenFixtures` keep the rules honest.
 
+## Statistics
+
+`Ctrl+Shift+Y` or the chart button in the toolbar opens Statistics in its own window (#88), so the canvas's terminals
+don't cover it.
+- **Source:** `Services/Stats/WorkStats` reads Claude Code's transcripts (`<claude config dir>\projects\*\*.jsonl`, each
+  with its subagents' files) and Codex's sessions (`~\.codex\sessions`, or `%CODEX_HOME%`).
+  - One `WorkSession` per conversation: folder (the project), title (`/rename`, Claude's title, or the first prompt),
+    up to 40 prompts, stretches of work, and tokens per day and model.
+  - Lines over 64 KB are tool output: only their timestamp and usage are taken, without parsing them.
+- **Counting:**
+  - **Time:** events more than 10 minutes apart end a stretch of work, and a stretch is at least a minute.
+    Overlapping sessions are counted once (`Union`), and days split at midnight.
+  - **Tokens:** a reply streamed in parts repeats its usage, so it's counted once per message id. Cache reads are
+    shown apart from cache writes, input and output.
+- **Cache:** `<data dir>\stats-cache.json`, keyed by file size and time; only changed files are read again.
+  Measured here: 1.1 GB in 121 conversations took 3.7 s the first time and 23 ms from the cache.
+- **The window** (`StatisticsWindow`, `StatisticsViewModel`):
+  - **Period:** the last 7 or 30 days, 12 months, or a day picked on the calendar or the daily bars. It filters the
+    headline numbers, the projects table, tokens by model and the session log (each session expands to its prompts).
+  - **Calendar:** shaded by time or tokens in quartiles of the active days.
+  - **Hours a day:** the last two weeks.
+  - **Colors:** `ChartPalette` sets them for each theme. A project keeps its color whatever the period (the 7 with
+    the most time overall; the rest are gray), and the calendar uses one hue from light to dark.
+
 ## Plan usage
 
 The bottom of the Agents panel shows the Claude plan's limits (5-hour session, week, per-model week), as Claude Code's

@@ -15,12 +15,15 @@ public sealed partial class ClaudeSessions
     /// <param name="projectsDirectory">Where Claude keeps transcripts; defaults to <c>%CLAUDE_CONFIG_DIR%\projects</c> or <c>~\.claude\projects</c>.</param>
     public ClaudeSessions(string? projectsDirectory = null)
     {
-        _projectsDirectory = projectsDirectory ?? Path.Combine(
-            Environment.GetEnvironmentVariable("CLAUDE_CONFIG_DIR") is { Length: > 0 } config
-                ? config
-                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude"),
-            "projects");
+        _projectsDirectory = projectsDirectory ?? DefaultProjectsDirectory;
     }
+
+    /// <summary><c>%CLAUDE_CONFIG_DIR%\projects</c>, or <c>~\.claude\projects</c>.</summary>
+    public static string DefaultProjectsDirectory => Path.Combine(
+        Environment.GetEnvironmentVariable("CLAUDE_CONFIG_DIR") is { Length: > 0 } config
+            ? config
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude"),
+        "projects");
 
     // The user's profile already picks the conversation; don't add a second, conflicting choice
     [GeneratedRegex(@"(^|\s)(--resume|-r|--continue|-c|--session-id|--fork-session)(\s|=|$)")]
