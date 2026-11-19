@@ -516,6 +516,12 @@
                     <ui:SymbolIcon Symbol="PanelRight24"/>
                 </ui:Button.Icon>
             </ui:Button>
+            <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Margin="8,0,0,0" Click="Settings_Click"
+                       ToolTip="Settings (Ctrl+,)" AutomationProperties.Name="Settings">
+                <ui:Button.Icon>
+                    <ui:SymbolIcon Symbol="Settings24"/>
+                </ui:Button.Icon>
+            </ui:Button>
             <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Command="{Binding CycleThemeCommand}" Margin="8,0,0,0"
                        AutomationProperties.Name="Change theme">
                 <ui:Button.Style>

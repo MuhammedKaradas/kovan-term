@@ -94,6 +94,9 @@ public partial class MainWindow
             case ShortcutAction.PreviousWorkspace:
                 _vm.PreviousWorkspaceCommand.Execute(null);
                 break;
+            case ShortcutAction.Settings:
+                ShowSettings();
+                break;
             case ShortcutAction.Statistics:
                 StatisticsWindow.Show(this);
                 break;
@@ -149,6 +152,10 @@ public partial class MainWindow
             }
         };
     }
+
+    private void Settings_Click(object sender, RoutedEventArgs e) => ShowSettings();
+
+    private void ShowSettings() => SettingsWindow.Show(this, () => new SettingsViewModel(new Services.SettingsStore(), theme => _vm.Theme = theme));
 
     /// <summary>Pans the viewport to the node (animated) and focuses its terminal.</summary>
     private void GoToNode(TerminalNodeViewModel node)
