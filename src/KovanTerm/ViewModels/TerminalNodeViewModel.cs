@@ -98,6 +98,15 @@ public partial class TerminalNodeViewModel : ObservableObject
     /// <summary>The git worktree this node's agent works in (created by Kovan); <c>null</c> for a normal folder.</summary>
     public WorktreeInfo? Worktree { get; init; }
     public string? BranchText => Worktree?.Branch;
+
+    /// <summary>The worktree branch's pull request, if it has one (looked up with gh).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PullRequestText), nameof(HasFailedChecks), nameof(IsPullRequestMerged))]
+    public partial Services.PullRequestStatus? PullRequest { get; set; }
+
+    public string? PullRequestText => PullRequest?.Summary;
+    public bool HasFailedChecks => PullRequest is { Checks: Services.ChecksState.Failing, State: not Services.PullRequestState.Merged };
+    public bool IsPullRequestMerged => PullRequest?.State == Services.PullRequestState.Merged;
     public string MergeLabel => Worktree?.BaseBranch is { } b ? $"Merge into {b}" : "Merge";
     /// <summary>Header accent color (#RRGGBB); default if empty.</summary>
     public string? Color { get; init; }

@@ -380,6 +380,21 @@
                                         ToolTip="{Binding Worktree.Path, StringFormat=Worktree: {0}}" Style="{StaticResource BranchVisibility}">
                                 <ui:SymbolIcon Symbol="Branch16" FontSize="12" Margin="0,0,3,0" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
                                 <TextBlock Text="{Binding BranchText}" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                <TextBlock Text="{Binding PullRequestText, StringFormat=· {0}}" FontSize="12" Margin="6,0,0,0" AutomationProperties.Name="Pull request status">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding PullRequestText}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding HasFailedChecks}" Value="True">
+                                                    <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                             </StackPanel>
                             <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                        Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
@@ -793,6 +808,44 @@
                                 </ui:Button.Icon>
                             </ui:Button>
                         </StackPanel>
+                        <!-- The branch's pull request: open it, send its failed checks to the agent, delete the worktree once merged -->
+                        <WrapPanel Margin="0,2,0,2">
+                            <WrapPanel.Style>
+                                <Style TargetType="WrapPanel">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Node.PullRequest}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </WrapPanel.Style>
+                            <ui:Button Appearance="Transparent" Height="26" Padding="6,0" FontSize="12" Margin="0,0,6,4"
+                                       Content="{Binding Node.PullRequestText}" ToolTip="Open the pull request"
+                                       AutomationProperties.Name="Open pull request"
+                                       Command="{Binding DataContext.OpenPullRequestCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                       CommandParameter="{Binding Node}">
+                                <ui:Button.Icon>
+                                    <ui:SymbolIcon Symbol="Open16"/>
+                                </ui:Button.Icon>
+                            </ui:Button>
+                            <ui:Button Appearance="Danger" Height="26" Padding="10,0" FontSize="12" Margin="0,0,6,4"
+                                       Content="Send failed checks to the agent"
+                                       ToolTip="Paste which checks failed and the end of their log into the agent, for you to send"
+                                       AutomationProperties.Name="Send failed checks"
+                                       Visibility="{Binding Node.HasFailedChecks, Converter={StaticResource BoolToVisibility}}"
+                                       Command="{Binding DataContext.SendFailedChecksCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                       CommandParameter="{Binding Node}"/>
+                            <ui:Button Appearance="Secondary" Height="26" Padding="10,0" FontSize="12" Margin="0,0,6,4"
+                                       Content="Delete worktree" ToolTip="The pull request was merged: close this terminal and delete its worktree and branch"
+                                       AutomationProperties.Name="Delete merged worktree"
+                                       Visibility="{Binding Node.IsPullRequestMerged, Converter={StaticResource BoolToVisibility}}"
+                                       Command="{Binding DataContext.DeleteMergedWorktreeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                       CommandParameter="{Binding Node}">
+                                <ui:Button.Icon>
+                                    <ui:SymbolIcon Symbol="Delete16"/>
+                                </ui:Button.Icon>
+                            </ui:Button>
+                        </WrapPanel>
                         <TextBlock Text="{Binding Node.BranchText, StringFormat=Branch {0} · since it started}" FontSize="11"
                                    Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                                    ToolTip="Committed and uncommitted work on this branch, compared with the commit it started from">

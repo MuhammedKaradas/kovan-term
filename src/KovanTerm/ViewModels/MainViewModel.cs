@@ -81,8 +81,9 @@ public partial class MainViewModel : ObservableObject
     public MainViewModel(WorkspaceStore store, ProfileStore profiles, CommandResolver resolver, WslLauncher wsl,
         IDialogService dialogs, SettingsStore settings,
         AgentHookServer? hookServer = null, ClaudeSessions? sessions = null, ClaudeUsage? usage = null,
-        DictationViewModel? dictation = null)
+        DictationViewModel? dictation = null, PullRequests? pullRequests = null)
     {
+        InitPullRequests(pullRequests);
         Dictation = dictation;
         if (dictation != null) dictation.TextReady += (node, text) => TerminalInputRequested?.Invoke((TerminalNodeViewModel)node, text);
         _sessions = sessions ?? new ClaudeSessions();
@@ -190,7 +191,8 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private Task CloseNode(TerminalNodeViewModel node) => CloseNodeAsync(node, askForNote: true);
 
-    private async Task CloseNodeAsync(TerminalNodeViewModel node, bool askForNote)
+    /// <param name="worktreeChoice">What to do with the node's worktree, decided already; asked otherwise.</param>
+    private async Task CloseNodeAsync(TerminalNodeViewModel node, bool askForNote, WorktreeCloseChoice? worktreeChoice = null)
     {
         if (node.IsGroup)
         {
@@ -214,8 +216,8 @@ public partial class MainViewModel : ObservableObject
             stopSession = choice == 0;
         }
 
-        var deleteWorktree = false;
-        if (node.Worktree is { } w && Directory.Exists(w.Path))
+        var deleteWorktree = worktreeChoice == WorktreeCloseChoice.Delete;
+        if (worktreeChoice == null && node.Worktree is { } w && Directory.Exists(w.Path))
         {
             var state = (await GitWorktrees.StateAsync(w)).Value;
             var work = state is { HasWork: true }
@@ -231,6 +233,7 @@ public partial class MainViewModel : ObservableObject
         if (stopSession) _ = _wsl.KillSessionAsync(DistroOf(node), WslLauncher.SessionName(node.Id));
         _hooks?.Remove(node.Id);
         _usage.Remove(node);
+        _pullRequestChecked.Remove(node);
         if (CurrentNode == node) CurrentNode = null;
 
         // After the node is gone: its shell must not hold the folder any more
@@ -706,6 +709,8 @@ public partial class MainViewModel : ObservableObject
             _dialogs.OpenInBrowser(url);
         else
             await _dialogs.ShowMessageAsync("Pushed", $"{w.Branch} was pushed. Open a pull request for it on your git host.");
+        // An existing pull request picks up the push; a new one is seen on the next check
+        _ = RefreshPullRequestAsync(node);
     }
 
     /// <summary>Goes to the next node waiting for the user, in reading order after the last one visited.</summary>
@@ -792,6 +797,8 @@ public partial class MainViewModel : ObservableObject
 
     private void ScheduleChangesRefresh(TerminalNodeViewModel node)
     {
+        // A turn ended: the agent may have pushed, so the pull request's checks may have started
+        _ = RefreshPullRequestAsync(node, force: false);
         if (!ShowChangesPanel || node != CurrentNode) return;
         _changesTimer.Stop();
         _changesTimer.Start();
