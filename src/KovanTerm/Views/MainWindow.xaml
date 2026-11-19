@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:nodify="https://miroiu.github.io/nodify"
-        xmlns:term="clr-namespace:EasyWindowsTerminalControl;assembly=EasyWindowsTerminalControl"
+        xmlns:term="clr-namespace:KovanTerm.Terminals"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         xmlns:vm="clr-namespace:KovanTerm.ViewModels"
         xmlns:models="clr-namespace:KovanTerm.Models"
@@ -173,10 +173,9 @@
         <DataTemplate x:Key="TerminalBody" DataType="{x:Type vm:TerminalNodeViewModel}">
             <Grid>
                 <Image Visibility="Collapsed" Stretch="Fill"/>
-                <term:EasyTerminalControl StartupCommandLine="{Binding StartupCommandLine}"
-                                          WorkingDirectory="{Binding ProcessDirectory}"
-                                          FontSizeWhenSettingTheme="13"
-                                          Loaded="Terminal_Loaded"/>
+                <term:TerminalHost CommandLine="{Binding StartupCommandLine}"
+                                   WorkingDirectory="{Binding ProcessDirectory}"
+                                   Ready="Terminal_Ready"/>
             </Grid>
         </DataTemplate>
 

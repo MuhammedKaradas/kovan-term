@@ -15,13 +15,14 @@ MainWindow  (DataContext: MainViewModel)
              ├─ Header (status dot, title, close → CloseNodeCommand)
              └─ Grid
                  ├─ Image                (snapshot shown in snapshot mode)
-                 └─ EasyTerminalControl  (HwndHost → Windows Terminal control → ConPTY → process)
+                 └─ TerminalHost         (ITerminalSurface: HwndHost → Windows Terminal control → ConPTY → process)
 ```
 
 ```
 src/KovanTerm/
 ├─ Models/        Plain data: NodeStatus, TerminalProfile, WorkspaceState, AppSettings
 ├─ ViewModels/    MainViewModel, TerminalNodeViewModel, NewTerminalViewModel, NodePlacement, NodeNavigation
+├─ Terminals/     ITerminalSurface, TerminalHost; WindowsTerminal/ (the one implementation)
 ├─ Views/         MainWindow (+ .Shortcuts), NewTerminalWindow, DialogService, TerminalCanvasController,
 │                 ThemeService, TerminalThemes, Shortcuts, PerfSelfTest, Converters/
 ├─ Services/      WorkspaceStore, SettingsStore, ProfileStore, CommandResolver, WslLauncher, AppPaths, IDialogService
@@ -48,9 +49,11 @@ tests/KovanTerm.Tests/   xUnit unit tests
 | `Views/PerfSelfTest.cs` | Reproducible smoothness benchmark (`KOVAN_PERF_SELFTEST`) |
 | `Interop/TerminalSnapshot.cs` | Captures a terminal HWND |
 
-Rule: view models never touch WPF controls (`EasyTerminalControl`, `NodifyEditor`). Code that must
-work with the terminal control directly lives under `Views/`. Windows a view model needs to open go
-through `IDialogService` (implemented by `DialogService` in the view layer), so view models stay testable.
+Rule: view models never touch WPF controls (the terminal, `NodifyEditor`). Code that must work with
+the terminal directly lives under `Views/` and only knows `Terminals/ITerminalSurface`; the package's
+types (`EasyTerminalControl`, `Microsoft.Terminal.Wpf`) appear only in `Terminals/WindowsTerminal/`.
+Windows a view model needs to open go through `IDialogService` (implemented by `DialogService` in the
+view layer), so view models stay testable.
 
 The viewport (zoom/location) only changes through the user or explicit commands. Nodify's automatic
 panning to a focused node (`NodifyEditor.AutoPanOnNodeFocus`) is disabled: terminals take focus on
@@ -61,12 +64,17 @@ overlapping terminals would cover each other's headers.
 
 ## Terminal layer and its constraints
 
-`EasyTerminalControl` hosts Windows Terminal's native C++/DirectX control inside an **HwndHost**.
-Processes are started through ConPTY. Consequences:
+The terminal is an `ITerminalSurface` (`Terminals/`): start a command in a folder, output and typed-input
+events, write, colors and font size, focus, terminate the process tree. `TerminalHost` puts one in the
+node template and raises `Ready` once it's in the visual tree; `TerminalCanvasController` registers it
+then. The one implementation, `WindowsTerminalSurface`, wraps `EasyTerminalControl`, which hosts Windows
+Terminal's native C++/DirectX control inside an **HwndHost**; processes are started through ConPTY.
+Another implementation (e.g. xterm.js in WebView2, decision record 0002) would only replace that folder
+and the line in `TerminalHost.CreateSurface`. Consequences of the current one:
 
 1. **No scaling**: an HwndHost ignores WPF's `RenderTransform`; when Nodify zooms, the HWND shrinks but
    the text doesn't. Fix: when the zoom changes, set the font size to `13 × zoom` via
-   `Terminal.SetTheme(..., fontSize)`.
+   `ITerminalSurface.SetAppearance(..., fontSize)` (`SetTheme` in the control).
 2. **Airspace**: WPF content can't be drawn on top of a terminal. Overlapping nodes, popups over
    terminals, etc. are limited because of this.
 3. **Cost of movement**: on every pan/zoom frame all HWNDs are repositioned and resized, which stutters.

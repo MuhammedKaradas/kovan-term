@@ -51,10 +51,10 @@ We stay with the native control and manage the risk as follows:
 2. **Build-from-source fallback:** if the repackaging team disappears, the `Microsoft.Terminal.Wpf`
    control can be built from the Windows Terminal source (`src/cascadia/WpfTerminalControl`, MIT).
    `EasyWindowsTerminalControl` is MIT too and can be vendored and maintained if needed.
-3. **Abstract the terminal control:** the code that touches the terminal already lives in the view
-   layer, mostly in `TerminalCanvasController`. Putting the control behind an interface, so another
-   implementation can be swapped in, is planned as a separate item (#30). That would keep a move to
-   WebView2 down to days if it's ever needed.
+3. **Abstract the terminal control:** done in #30. The app only knows `ITerminalSurface`
+   (`src/KovanTerm/Terminals/`); the package's types appear only in `Terminals/WindowsTerminal/`. A move
+   to WebView2 means writing one class of that interface, which keeps it down to days if it's ever
+   needed.
 4. **Triggers:** this decision is revisited if any of the following happens:
    - The packages go more than 12 months without an update **and** a critical unresolved bug appears
    - Microsoft publishes an official WPF/WinUI terminal control (microsoft/terminal#6999 is closed)
@@ -64,4 +64,4 @@ We stay with the native control and manage the risk as follows:
 
 - The memory and smoothness advantage is kept. It's the reason this project exists.
 - Package updates come with a manual testing cost.
-- Until the abstraction is done, the cost of switching stays high.
+- Switching costs one implementation of `ITerminalSurface`, plus the manual checks above.
