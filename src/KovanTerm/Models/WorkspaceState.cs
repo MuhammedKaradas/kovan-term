@@ -6,13 +6,25 @@ public sealed record WorkspaceState
     public const int CurrentVersion = 1;
 
     public int Version { get; init; } = CurrentVersion;
+    /// <summary>The active workspace's viewport (kept for older versions, which read only this).</summary>
     public ViewportState Viewport { get; init; } = new();
+    /// <summary>The canvases the user switches between; empty in files from before workspaces (one implicit workspace).</summary>
+    public List<WorkspaceInfo> Workspaces { get; init; } = [];
+    public Guid? ActiveWorkspaceId { get; init; }
     public List<NodeState> Nodes { get; init; } = [];
     /// <summary>Most recently used working directories, newest first.</summary>
     public List<string> RecentDirectories { get; init; } = [];
     public string? LastProfileId { get; init; }
     /// <summary>The agents' shared task board and recent messages.</summary>
     public Services.Mesh.MeshBoardState? Board { get; init; }
+}
+
+/// <summary>One canvas: its name and where it was looked at last. Its nodes point to it with <see cref="NodeState.WorkspaceId"/>.</summary>
+public sealed record WorkspaceInfo
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public required string Name { get; init; }
+    public ViewportState Viewport { get; init; } = new();
 }
 
 public sealed record ViewportState
@@ -25,6 +37,8 @@ public sealed record ViewportState
 public sealed record NodeState
 {
     public Guid Id { get; init; } = Guid.NewGuid();
+    /// <summary>The workspace the node is on; <c>null</c> (older files) or unknown means the first one.</summary>
+    public Guid? WorkspaceId { get; init; }
     public string? ProfileId { get; init; }
     public required string Title { get; init; }
     public required string CommandLine { get; init; }

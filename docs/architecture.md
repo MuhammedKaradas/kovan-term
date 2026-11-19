@@ -131,8 +131,10 @@ resources. UI colors come from WPF-UI's theme resources (`DynamicResource`), nev
 The workspace is stored in `%APPDATA%\KovanTerm\workspace.json` (`WorkspaceStore`); app-wide
 preferences such as the theme in `settings.json` (`SettingsStore`).
 
-- **What's saved:** nodes (id, profile, title, command, color, working directory, WSL or not, location, size),
-  the viewport (zoom, location), recent directories and the last used profile. Terminal contents and
+- **What's saved:** nodes (id, workspace, profile, title, command, color, working directory, WSL or not, location,
+  size), the workspaces (id, name, viewport) and which one is shown, recent directories and the last used profile.
+  The top-level `viewport` is the shown workspace's, so an older version still opens where you were; a file from
+  before workspaces opens as a single "Workspace 1". Terminal contents and
   agent state aren't saved; on startup terminals restart with the same command.
 - **When:** 500 ms after a node is added/closed/moved/resized or the viewport changes, and on window close.
 - **Safety:** written to a `.tmp` file first and then swapped in (no half-written files). A file that
@@ -206,6 +208,27 @@ behind the terminals, airspace isn't an issue. The moved terminals go through sn
 the group after their folder if they share one; "New group here" adds an empty frame. The header's name is an
 editable text box; its × removes only the frame. Groups aren't terminals: not in the Agents panel, the terminal count,
 keyboard navigation or the free-spot search for new nodes (a new node may be placed inside a group).
+
+## Workspaces
+
+Several canvases in one window, e.g. one per project, shown as tabs next to the toolbar buttons
+(`WorkspaceViewModel`). All nodes stay in the one `MainViewModel.Nodes` collection, each with a `WorkspaceId`, so the
+agent mesh, the Agents panel, status tracking and the waiting count keep covering every workspace. Switching only
+changes which nodes are shown: nodes of the other workspaces get `IsInActiveWorkspace = false`, which makes their
+Nodify container `Hidden` (not `Collapsed`: a collapsed node is never laid out, and its terminal wouldn't start until
+its workspace was first shown) and not selectable or draggable, and `TerminalCanvasController` treats them like
+off-screen terminals: their HWNDs sleep, their processes keep running. Each workspace remembers its viewport, and
+the node last worked with on it. Keyboard navigation, "fit all", the free-spot search and grouping only look at the
+shown workspace; going to a node on another one (Agents panel, "N waiting", Recent) switches to it first.
+
+A tab shows how many of its agents are waiting or working, so another workspace can call for attention; the Agents
+panel names the workspace of agents that aren't on the shown one. Double-click a tab to rename it; its right-click
+menu closes it, after asking, together with its nodes (closing a worktree or tmux node still asks its own
+question, and cancelling one keeps the workspace). A node's or group's header menu moves it to another workspace or a
+new one; a group takes the nodes inside it along. `Ctrl+Shift+PgUp`/`PgDn` switch to the previous/next workspace
+(`Ctrl+Alt+digit` would be AltGr on many keyboard layouts). Hidden workspaces cost nothing measurable while panning
+and zooming: 12 terminals plus 12 more on a hidden workspace at the same spots ran the self-test at ~58-59 fps, the
+same as the 12 alone.
 
 ## Note nodes
 

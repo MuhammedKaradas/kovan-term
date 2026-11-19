@@ -118,7 +118,12 @@ public partial class MainViewModel : ObservableObject
         if (_store.Load() is { } state)
             Restore(state);
         else
+        {
+            Workspaces.Add(new WorkspaceViewModel { Name = DefaultWorkspaceName(1) });
+            ActiveWorkspace = Workspaces[0];
             AddDefaultNodes();
+        }
+        foreach (var w in Workspaces) w.PropertyChanged += OnWorkspacePropertyChanged;
 
         Nodes.CollectionChanged += OnNodesChanged;
         foreach (var node in Nodes)
@@ -174,7 +179,9 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task CloseNode(TerminalNodeViewModel node)
+    private Task CloseNode(TerminalNodeViewModel node) => CloseNodeAsync(node, askForNote: true);
+
+    private async Task CloseNodeAsync(TerminalNodeViewModel node, bool askForNote)
     {
         if (node.IsGroup)
         {
@@ -183,7 +190,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         // A note's text exists nowhere else
-        if (node.IsNote && node.NoteText.Trim().Length > 0
+        if (askForNote && node.IsNote && node.NoteText.Trim().Length > 0
             && !await _dialogs.ConfirmAsync("Delete note", "Delete this note? Its text can't be brought back.", "Delete"))
             return;
 
@@ -269,6 +276,183 @@ public partial class MainViewModel : ObservableObject
 
     private static string Plural(int n, string word) => n == 1 ? $"1 {word}" : $"{n} {word}s";
 
+    // ---- Workspaces ----
+
+    /// <summary>The canvases shown as tabs above the canvas; always at least one.</summary>
+    public ObservableCollection<WorkspaceViewModel> Workspaces { get; } = new();
+
+    /// <summary>The workspace being shown; nodes on the others are hidden but keep running.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedWorkspace))]
+    public partial WorkspaceViewModel ActiveWorkspace { get; private set; } = null!;
+
+    /// <summary>The tab strip's selection: picking a tab switches to it.</summary>
+    public WorkspaceViewModel SelectedWorkspace
+    {
+        get => ActiveWorkspace;
+        set => SwitchWorkspace(value);
+    }
+
+    /// <summary>Another workspace is now shown (the view refreshes which terminals are visible).</summary>
+    public event Action? WorkspaceSwitched;
+
+    partial void OnActiveWorkspaceChanged(WorkspaceViewModel oldValue, WorkspaceViewModel newValue)
+    {
+        // null before the first workspace is set
+        if (oldValue is not null) oldValue.IsActive = false;
+        newValue.IsActive = true;
+    }
+
+    public static string DefaultWorkspaceName(int n) => $"Workspace {n}";
+
+    private string NextWorkspaceName()
+    {
+        var n = 1;
+        while (Workspaces.Any(w => string.Equals(w.Name, DefaultWorkspaceName(n), StringComparison.OrdinalIgnoreCase))) n++;
+        return DefaultWorkspaceName(n);
+    }
+
+    /// <summary>A new, empty workspace, shown right away with its name ready to edit.</summary>
+    [RelayCommand]
+    private void NewWorkspace()
+    {
+        var workspace = AddWorkspace();
+        SwitchWorkspace(workspace);
+        workspace.IsRenaming = true;
+    }
+
+    private WorkspaceViewModel AddWorkspace()
+    {
+        var workspace = new WorkspaceViewModel { Name = NextWorkspaceName() };
+        workspace.PropertyChanged += OnWorkspacePropertyChanged;
+        Workspaces.Add(workspace);
+        return workspace;
+    }
+
+    public void SwitchWorkspace(WorkspaceViewModel? workspace)
+    {
+        if (workspace == null || workspace == ActiveWorkspace || !Workspaces.Contains(workspace)) return;
+        StoreViewport();
+        ActiveWorkspace.LastNode = CurrentNode;
+        ActiveWorkspace = workspace;
+        UpdateWorkspaceVisibility();
+        ViewportZoom = workspace.Zoom;
+        ViewportLocation = workspace.Location;
+        CurrentNode = workspace.LastNode is { } last && Nodes.Contains(last) && last.WorkspaceId == workspace.Id ? last : null;
+        ScheduleSave();
+        WorkspaceSwitched?.Invoke();
+    }
+
+    [RelayCommand]
+    private void NextWorkspace() => SwitchWorkspace(NeighborWorkspace(+1));
+
+    [RelayCommand]
+    private void PreviousWorkspace() => SwitchWorkspace(NeighborWorkspace(-1));
+
+    private WorkspaceViewModel NeighborWorkspace(int step) =>
+        Workspaces[((Workspaces.IndexOf(ActiveWorkspace) + step) % Workspaces.Count + Workspaces.Count) % Workspaces.Count];
+
+    /// <summary>Renaming ended; a blank name gets a default one back.</summary>
+    public void FinishRenaming(WorkspaceViewModel workspace)
+    {
+        workspace.IsRenaming = false;
+        workspace.Name = workspace.Name.Trim();
+        if (workspace.Name.Length == 0) workspace.Name = NextWorkspaceName();
+    }
+
+    /// <summary>
+    /// Closes a workspace and the nodes on it, after asking. Closing a node can still ask about its worktree or tmux
+    /// session; if one of those is cancelled the workspace stays, with what's left on it.
+    /// </summary>
+    [RelayCommand]
+    private async Task CloseWorkspace(WorkspaceViewModel workspace)
+    {
+        if (Workspaces.Count < 2 || !Workspaces.Contains(workspace)) return;
+        var nodes = Nodes.Where(n => n.WorkspaceId == workspace.Id).ToList();
+        var count = nodes.Count(n => !n.IsGroup);
+        if (count > 0 && !await _dialogs.ConfirmAsync("Close workspace",
+                $"Close \"{workspace.Name}\" and the {Plural(count, "node")} on it? Its terminals and agents are stopped and its notes deleted.",
+                "Close workspace"))
+            return;
+        if (workspace == ActiveWorkspace) SwitchWorkspace(NeighborWorkspace(Workspaces.IndexOf(workspace) == 0 ? +1 : -1));
+        foreach (var node in nodes) await CloseNodeAsync(node, askForNote: false);
+        if (Nodes.Any(n => n.WorkspaceId == workspace.Id)) return;
+        workspace.PropertyChanged -= OnWorkspacePropertyChanged;
+        Workspaces.Remove(workspace);
+        UpdateAgentCounts();
+        ScheduleSave();
+    }
+
+    /// <summary>Workspaces a node can be moved to (all but its own).</summary>
+    public IEnumerable<WorkspaceViewModel> OtherWorkspaces(TerminalNodeViewModel node) => Workspaces.Where(w => w.Id != node.WorkspaceId);
+
+    /// <summary>
+    /// Moves a node to another workspace, into a free spot near where it was; a group takes the nodes inside it along.
+    /// The terminal keeps running.
+    /// </summary>
+    public void MoveToWorkspace(TerminalNodeViewModel node, WorkspaceViewModel target)
+    {
+        if (!Nodes.Contains(node) || !Workspaces.Contains(target) || node.WorkspaceId == target.Id) return;
+        if (node.IsGroup)
+        {
+            var frame = node.Bounds;
+            foreach (var member in Nodes.Where(n => !n.IsGroup && n.WorkspaceId == node.WorkspaceId && frame.Contains(n.Bounds)).ToList())
+                member.WorkspaceId = target.Id;
+        }
+        else
+            node.Location = FreeSpot(node, target, node.Location, null);
+        node.WorkspaceId = target.Id;
+        if (CurrentNode == node) CurrentNode = null;
+        UpdateWorkspaceVisibility();
+        UpdateAgentCounts();
+        ScheduleSave();
+        WorkspaceSwitched?.Invoke();
+    }
+
+    /// <summary>A new workspace with the node on it, shown right away with its name ready to edit.</summary>
+    public void MoveToNewWorkspace(TerminalNodeViewModel node)
+    {
+        if (!Nodes.Contains(node)) return;
+        var target = AddWorkspace();
+        // Looked at from the same spot, so the node (which keeps its place on the empty canvas) stays in view
+        StoreViewport();
+        target.Zoom = ActiveWorkspace.Zoom;
+        target.Location = ActiveWorkspace.Location;
+        MoveToWorkspace(node, target);
+        SwitchWorkspace(target);
+        CurrentNode = node.IsGroup ? null : node;
+        target.IsRenaming = true;
+    }
+
+    /// <summary>Goes to a node, showing its workspace first if it's on another one.</summary>
+    private void GoTo(TerminalNodeViewModel node)
+    {
+        if (node.WorkspaceId != ActiveWorkspace.Id) SwitchWorkspace(Workspaces.FirstOrDefault(w => w.Id == node.WorkspaceId));
+        GoToNodeRequested?.Invoke(node);
+    }
+
+    private void StoreViewport()
+    {
+        ActiveWorkspace.Zoom = ViewportZoom;
+        ActiveWorkspace.Location = ViewportLocation;
+    }
+
+    private void UpdateWorkspaceVisibility()
+    {
+        foreach (var node in Nodes)
+        {
+            node.IsInActiveWorkspace = node.WorkspaceId == ActiveWorkspace.Id;
+            node.OtherWorkspaceName = node.IsInActiveWorkspace ? null : Workspaces.FirstOrDefault(w => w.Id == node.WorkspaceId)?.Name;
+        }
+    }
+
+    private void OnWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(WorkspaceViewModel.Name)) return;
+        UpdateWorkspaceVisibility();
+        ScheduleSave();
+    }
+
     // ---- Plan usage (Agents panel footer) ----
 
     private readonly ClaudeUsage? _usageLimits;
@@ -319,7 +503,7 @@ public partial class MainViewModel : ObservableObject
         var url = node.PreviewUrl ?? DefaultPreviewUrl;
         if (Nodes.FirstOrDefault(n => n.IsBrowser && string.Equals(n.Url, url, StringComparison.OrdinalIgnoreCase)) is { } open)
         {
-            GoToNodeRequested?.Invoke(open);
+            GoTo(open);
             return;
         }
         AddPreview(url, node.Location + new Vector(node.Width + 40, 0), node.WorkingDirectory, node.Width, node.Height);
@@ -340,9 +524,11 @@ public partial class MainViewModel : ObservableObject
     /// </summary>
     public void AddGroup(Point location, IReadOnlyCollection<TerminalNodeViewModel> members)
     {
-        var inside = members.Where(n => !n.IsGroup && Nodes.Contains(n)).ToList();
+        var inside = members.Where(n => !n.IsGroup && Nodes.Contains(n) && n.WorkspaceId == ActiveWorkspace.Id).ToList();
+        var group = CreateGroup(location, inside);
+        group.WorkspaceId = ActiveWorkspace.Id;
         // Drawn behind everything (the ZIndex setter); first in the list as well, for the save
-        Nodes.Insert(0, CreateGroup(location, inside));
+        Nodes.Insert(0, group);
     }
 
     /// <summary>The frame around <paramref name="members"/>, named after their folder if they share one.</summary>
@@ -394,7 +580,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     /// <summary>Terminals a note can be sent to.</summary>
-    public IEnumerable<TerminalNodeViewModel> NoteTargets => Nodes.Where(n => n.IsTerminal && !n.HasStartError && !n.IsStarting);
+    public IEnumerable<TerminalNodeViewModel> NoteTargets => Nodes.Where(n => n.IsTerminal && n.IsInActiveWorkspace && !n.HasStartError && !n.IsStarting);
 
     /// <summary>
     /// Pastes the note into a terminal (as one paste, so an agent doesn't submit it line by line); the user reviews it
@@ -404,7 +590,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (!note.IsNote || note.NoteText.Trim().Length == 0 || !Nodes.Contains(target)) return;
         TerminalInputRequested?.Invoke(target, ChangesViewModel.BracketedPaste(note.NoteText.Trim()));
-        GoToNodeRequested?.Invoke(target);
+        GoTo(target);
     }
 
     private void AddPreview(string url, Point location, string? folder, double width, double height)
@@ -450,7 +636,7 @@ public partial class MainViewModel : ObservableObject
         // Already on the canvas: go there instead of opening it twice
         if (Nodes.FirstOrDefault(n => string.Equals(n.SessionId, picked.SessionId, StringComparison.OrdinalIgnoreCase)) is { } existing)
         {
-            GoToNodeRequested?.Invoke(existing);
+            GoTo(existing);
             return;
         }
         if (picked.Folder is not { } folder || !Directory.Exists(folder))
@@ -517,11 +703,14 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void GoToWaiting()
     {
-        var waiting = NodeNavigation.ReadingOrder(Nodes.Where(n => n.Status == NodeStatus.Waiting), n => n.Bounds);
+        // This workspace's first, then the others' in tab order
+        var waiting = Workspaces.OrderBy(w => w == ActiveWorkspace ? 0 : 1)
+            .SelectMany(w => NodeNavigation.ReadingOrder(Nodes.Where(n => n.Status == NodeStatus.Waiting && n.WorkspaceId == w.Id), n => n.Bounds))
+            .ToList();
         if (waiting.Count == 0) return;
         var next = waiting.SkipWhile(n => n != _lastWaitingVisited).Skip(1).FirstOrDefault() ?? waiting[0];
         _lastWaitingVisited = next;
-        GoToNodeRequested?.Invoke(next);
+        GoTo(next);
     }
 
     private TerminalNodeViewModel? _lastWaitingVisited;
@@ -610,7 +799,7 @@ public partial class MainViewModel : ObservableObject
     private void ToggleAgentsPanel() => ShowAgentsPanel = !ShowAgentsPanel;
 
     [RelayCommand]
-    private void GoToNode(TerminalNodeViewModel node) => GoToNodeRequested?.Invoke(node);
+    private void GoToNode(TerminalNodeViewModel node) => GoTo(node);
 
     private readonly Dictionary<TerminalNodeViewModel, TranscriptUsage> _usage = new();
     // Nodes with a read in flight, and those that got another event meanwhile (read once more afterwards)
@@ -684,6 +873,11 @@ public partial class MainViewModel : ObservableObject
         WorkingCount = Nodes.Count(n => n.Status == NodeStatus.Working);
         TerminalCount = Nodes.Count(n => n.IsTerminal);
         WaitingCount = Nodes.Count(n => n.Status == NodeStatus.Waiting);
+        foreach (var w in Workspaces)
+        {
+            w.WaitingCount = Nodes.Count(n => n.WorkspaceId == w.Id && n.Status == NodeStatus.Waiting);
+            w.WorkingCount = Nodes.Count(n => n.WorkspaceId == w.Id && n.Status == NodeStatus.Working);
+        }
         UpdateMeshAgents();
     }
 
@@ -767,11 +961,19 @@ public partial class MainViewModel : ObservableObject
     public void SaveNow()
     {
         _saveTimer.Stop();
+        StoreViewport();
         try
         {
             _store.Save(new WorkspaceState
             {
                 Viewport = new ViewportState { Zoom = ViewportZoom, X = ViewportLocation.X, Y = ViewportLocation.Y },
+                Workspaces = Workspaces.Select(w => new WorkspaceInfo
+                {
+                    Id = w.Id,
+                    Name = w.Name,
+                    Viewport = new ViewportState { Zoom = w.Zoom, X = w.Location.X, Y = w.Location.Y },
+                }).ToList(),
+                ActiveWorkspaceId = ActiveWorkspace.Id,
                 Nodes = Nodes.Select(n => n.ToState()).ToList(),
                 RecentDirectories = _recentDirectories.ToList(),
                 LastProfileId = _lastProfileId,
@@ -890,9 +1092,14 @@ public partial class MainViewModel : ObservableObject
     {
         // Overlapping terminals cover each other, so place it in the nearest free spot
         var viewport = ViewportSize.IsEmpty || ViewportSize.Width <= 0 ? (Rect?)null : new Rect(ViewportLocation, ViewportSize);
-        node.Location = NodePlacement.FindFreeSpot(Nodes.Where(n => !n.IsGroup).Select(n => n.Bounds).ToList(), node.Location, node.Bounds.Size, viewport);
+        node.WorkspaceId = ActiveWorkspace.Id;
+        node.Location = FreeSpot(node, ActiveWorkspace, node.Location, viewport);
         Nodes.Add(node);
     }
+
+    private Point FreeSpot(TerminalNodeViewModel node, WorkspaceViewModel workspace, Point near, Rect? viewport) =>
+        NodePlacement.FindFreeSpot(Nodes.Where(n => !n.IsGroup && n != node && n.WorkspaceId == workspace.Id).Select(n => n.Bounds).ToList(),
+            near, node.Bounds.Size, viewport);
 
     private Point ViewportCenterForNewNode()
     {
@@ -902,15 +1109,30 @@ public partial class MainViewModel : ObservableObject
 
     private void Restore(WorkspaceState state)
     {
+        // A file from before workspaces: everything is on one, looked at where the canvas was
+        var saved = state.Workspaces.Count > 0 ? state.Workspaces
+            : [new WorkspaceInfo { Name = DefaultWorkspaceName(1), Viewport = state.Viewport }];
+        foreach (var w in saved.DistinctBy(w => w.Id))
+            Workspaces.Add(new WorkspaceViewModel
+            {
+                Id = w.Id,
+                Name = w.Name is { Length: > 0 } name ? name : DefaultWorkspaceName(Workspaces.Count + 1),
+                Zoom = w.Viewport.Zoom > 0 ? w.Viewport.Zoom : 1,
+                Location = new Point(w.Viewport.X, w.Viewport.Y),
+            });
+        ActiveWorkspace = Workspaces.FirstOrDefault(w => w.Id == state.ActiveWorkspaceId) ?? Workspaces[0];
+
         foreach (var s in state.Nodes)
         {
             var node = RestoreNode(s);
+            if (Workspaces.All(w => w.Id != node.WorkspaceId)) node.WorkspaceId = Workspaces[0].Id;
             if (node.IsWsl && !node.HasStartError)
                 StartDistroFirst(node, _profiles.FirstOrDefault(p => p.Id == s.ProfileId)?.Distro);
             Nodes.Add(node);
         }
-        ViewportZoom = state.Viewport.Zoom > 0 ? state.Viewport.Zoom : 1;
-        ViewportLocation = new Point(state.Viewport.X, state.Viewport.Y);
+        ViewportZoom = ActiveWorkspace.Zoom;
+        ViewportLocation = ActiveWorkspace.Location;
+        UpdateWorkspaceVisibility();
         _recentDirectories.AddRange(state.RecentDirectories.Take(MaxRecentDirectories));
         _lastProfileId = state.LastProfileId;
         MeshBoard.Load(state.Board);

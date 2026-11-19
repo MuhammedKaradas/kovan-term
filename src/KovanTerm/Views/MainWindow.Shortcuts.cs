@@ -56,12 +56,14 @@ public partial class MainWindow
         {
             case ShortcutAction.NextTerminal:
             case ShortcutAction.PreviousTerminal:
-                var next = NodeNavigation.Next(_vm.Nodes.Where(n => !n.IsGroup).ToList(), n => n.Bounds, _currentNode,
+                var next = NodeNavigation.Next(VisibleNodes().ToList(), n => n.Bounds, _currentNode,
                     forward: action == ShortcutAction.NextTerminal, ViewportCenter());
                 if (next != null) GoToNode(next);
                 break;
             case ShortcutAction.FitAll:
-                if (_vm.Nodes.Count > 0) Editor.FitToScreen();
+                // Only this workspace's nodes: the hidden ones are still on the canvas
+                if (VisibleNodes().Select(n => n.Bounds).Aggregate(Rect.Empty, Rect.Union) is { IsEmpty: false } all)
+                    Editor.FitToScreen(all);
                 break;
             case ShortcutAction.ZoomToFocused:
                 if ((_currentNode ?? NearestToCenter()) is { } node)
@@ -84,6 +86,12 @@ public partial class MainWindow
                 break;
             case ShortcutAction.NewNote:
                 _vm.NewNoteCommand.Execute(null);
+                break;
+            case ShortcutAction.NextWorkspace:
+                _vm.NextWorkspaceCommand.Execute(null);
+                break;
+            case ShortcutAction.PreviousWorkspace:
+                _vm.PreviousWorkspaceCommand.Execute(null);
                 break;
         }
     }
@@ -121,8 +129,11 @@ public partial class MainWindow
     private TerminalNodeViewModel? NearestToCenter()
     {
         var c = ViewportCenter();
-        return _vm.Nodes.Where(n => !n.IsGroup).MinBy(n => (Center(n.Bounds) - c).LengthSquared);
+        return VisibleNodes().MinBy(n => (Center(n.Bounds) - c).LengthSquared);
     }
+
+    /// <summary>Nodes on the workspace being shown, without group frames.</summary>
+    private IEnumerable<TerminalNodeViewModel> VisibleNodes() => _vm.Nodes.Where(n => !n.IsGroup && n.IsInActiveWorkspace);
 
     private static Point Center(Rect r) => new(r.Left + r.Width / 2, r.Top + r.Height / 2);
 }

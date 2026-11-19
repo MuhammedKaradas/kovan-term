@@ -62,6 +62,7 @@ public partial class MainWindow : FluentWindow
         PerfSelfTest.AttachIfRequested(this, Editor, _canvas);
         InitShortcuts();
         _vm.GoToNodeRequested += GoToNode;
+        _vm.WorkspaceSwitched += () => Dispatcher.BeginInvoke(_canvas.RefreshVisibility, System.Windows.Threading.DispatcherPriority.Loaded);
         AgentsList.ItemsSource = CreateAgentsView(_vm.Nodes);
 
         // ViewportSize is read-only so it can't be bound; pass it to the ViewModel to center new nodes
@@ -101,7 +102,73 @@ public partial class MainWindow : FluentWindow
     private void AgentRow_Click(object sender, MouseButtonEventArgs e)
     {
         if (e.OriginalSource is DependencyObject source && FindAncestor<ButtonBase>(source) != null) return;
-        if (sender is FrameworkElement { DataContext: TerminalNodeViewModel node }) GoToNode(node);
+        if (sender is FrameworkElement { DataContext: TerminalNodeViewModel node }) _vm.GoToNodeCommand.Execute(node);
+    }
+
+    // ---- Workspace tabs ----
+
+    // Double-click a tab: rename it
+    private void WorkspaceTab_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount != 2 || sender is not FrameworkElement { DataContext: WorkspaceViewModel workspace }) return;
+        workspace.IsRenaming = true;
+        e.Handled = true;
+    }
+
+    private void RenameWorkspace_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: WorkspaceViewModel workspace }) workspace.IsRenaming = true;
+    }
+
+    private void CloseWorkspace_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: WorkspaceViewModel workspace }) _vm.CloseWorkspaceCommand.Execute(workspace);
+    }
+
+    private void WorkspaceName_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is not true || sender is not System.Windows.Controls.TextBox box) return;
+        Dispatcher.BeginInvoke(() =>
+        {
+            box.Focus();
+            box.SelectAll();
+        }, System.Windows.Threading.DispatcherPriority.Input);
+    }
+
+    private void WorkspaceName_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Enter or Key.Escape)) return;
+        Keyboard.ClearFocus();
+        Editor.Focus();
+        e.Handled = true;
+    }
+
+    private void WorkspaceName_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: WorkspaceViewModel { IsRenaming: true } workspace }) _vm.FinishRenaming(workspace);
+    }
+
+    // Right-click a node's header (or a group's): move it to another workspace
+    private void NodeMenu_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: TerminalNodeViewModel node, ContextMenu: { } menu }) return;
+        menu.Items.Clear();
+        var move = new System.Windows.Controls.MenuItem
+        {
+            Header = node.IsGroup ? "Move group to workspace" : "Move to workspace",
+            Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = Wpf.Ui.Controls.SymbolRegular.TabDesktopArrowClockwise24 },
+        };
+        foreach (var workspace in _vm.OtherWorkspaces(node))
+        {
+            var item = new System.Windows.Controls.MenuItem { Header = workspace.Name };
+            item.Click += (_, _) => _vm.MoveToWorkspace(node, workspace);
+            move.Items.Add(item);
+        }
+        if (move.Items.Count > 0) move.Items.Add(new Separator());
+        var fresh = new System.Windows.Controls.MenuItem { Header = "New workspace" };
+        fresh.Click += (_, _) => _vm.MoveToNewWorkspace(node);
+        move.Items.Add(fresh);
+        menu.Items.Add(move);
     }
 
     // ---- Web preview nodes ----

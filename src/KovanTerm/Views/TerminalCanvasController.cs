@@ -280,6 +280,13 @@ public sealed class TerminalCanvasController
     /// Gives keyboard focus to the node's terminal. If the terminal is currently hidden (snapshot mode or sleeping),
     /// it's focused once the live terminal is back.
     /// </summary>
+    /// <summary>Another workspace is shown: wake its terminals in view, put the hidden ones to sleep.</summary>
+    public void RefreshVisibility()
+    {
+        UpdateSleepStates();
+        UpdateClipRegions();
+    }
+
     public void FocusNode(object node)
     {
         if (!_byNode.TryGetValue(node, out var entry)) return;
@@ -423,7 +430,8 @@ public sealed class TerminalCanvasController
         foreach (var entry in _byNode.Values)
         {
             if (entry.Host.DataContext is not ViewModels.TerminalNodeViewModel node) continue;
-            var offscreen = !viewport.IntersectsWith(node.Bounds);
+            // A node on another workspace is hidden (its container is collapsed) and sleeps like one off screen
+            var offscreen = !node.IsInActiveWorkspace || !viewport.IntersectsWith(node.Bounds);
             // A terminal without a snapshot isn't put to sleep when zoomed out, otherwise a blank would show in its place
             var sleep = offscreen || (lowZoom && entry.Snapshot != null);
             var image = GetSnapshotImage(entry.Host);

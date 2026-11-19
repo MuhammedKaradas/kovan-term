@@ -290,7 +290,11 @@
                     <!-- Header: drag from here -->
                     <Border DockPanel.Dock="Top" Background="{DynamicResource SolidBackgroundFillColorTertiaryBrush}"
                             CornerRadius="8,8,0,0" Padding="10,0,4,0" Height="32"
-                            MouseLeftButtonDown="NodeHeader_MouseLeftButtonDown" ToolTip="Double-click: zoom to this terminal">
+                            MouseLeftButtonDown="NodeHeader_MouseLeftButtonDown" ToolTip="Double-click: zoom to this terminal"
+                            ContextMenuOpening="NodeMenu_ContextMenuOpening">
+                        <Border.ContextMenu>
+                            <ContextMenu/>
+                        </Border.ContextMenu>
                         <DockPanel>
                             <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Width="26" Height="26" Padding="0"
                                        ToolTip="Close terminal" AutomationProperties.Name="Close terminal"
@@ -398,7 +402,11 @@
                                  Background="#14808080" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
                                  HeaderBrush="{DynamicResource ControlFillColorSecondaryBrush}" Padding="0" AutomationProperties.Name="{Binding Title}">
                 <nodify:GroupingNode.Header>
-                    <DockPanel Height="30" Margin="4,0,0,0" ToolTip="Drag to move the group with its contents · Shift+drag: only the frame">
+                    <DockPanel Height="30" Margin="4,0,0,0" ToolTip="Drag to move the group with its contents · Shift+drag: only the frame"
+                               Background="Transparent" ContextMenuOpening="NodeMenu_ContextMenuOpening">
+                        <DockPanel.ContextMenu>
+                            <ContextMenu/>
+                        </DockPanel.ContextMenu>
                         <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Width="26" Height="26" Padding="0"
                                    ToolTip="Remove the group (its contents stay)" AutomationProperties.Name="Ungroup"
                                    Command="{Binding DataContext.UngroupCommand, RelativeSource={RelativeSource AncestorType=nodify:NodifyEditor}}"
@@ -518,6 +526,99 @@
                     <ui:SymbolIcon Symbol="AlertUrgent24"/>
                 </ui:Button.Icon>
                 <TextBlock Text="{Binding WaitingCount, StringFormat={}{0} waiting}"/>
+            </ui:Button>
+
+            <!-- Workspaces: one canvas each (e.g. per project); the others keep running while hidden -->
+            <ListBox DockPanel.Dock="Left" Margin="16,0,0,0" ItemsSource="{Binding Workspaces}" SelectedItem="{Binding SelectedWorkspace}"
+                     Background="Transparent" BorderThickness="0" VerticalAlignment="Center" AutomationProperties.Name="Workspaces"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="AutomationProperties.Name" Value="{Binding Name}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}"/>
+                        <Setter Property="ToolTip" Value="Double-click to rename, right-click for more (Ctrl+Shift+PgUp/PgDn: previous/next)"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Border x:Name="Tab" Padding="10,5" Margin="0,0,2,0" BorderThickness="0,0,0,2" BorderBrush="Transparent"
+                                            Background="Transparent" Cursor="Hand">
+                                        <ContentPresenter/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="Tab" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:WorkspaceViewModel}">
+                        <StackPanel Orientation="Horizontal" Background="Transparent" MouseLeftButtonDown="WorkspaceTab_MouseLeftButtonDown">
+                            <StackPanel.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Rename" Click="RenameWorkspace_Click">
+                                        <MenuItem.Icon><ui:SymbolIcon Symbol="Rename24"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Close workspace…" Click="CloseWorkspace_Click">
+                                        <MenuItem.Icon><ui:SymbolIcon Symbol="Dismiss24"/></MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </StackPanel.ContextMenu>
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" MaxWidth="220" TextTrimming="CharacterEllipsis">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsRenaming}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" MinWidth="100" MaxWidth="220" Padding="2,0"
+                                     FontWeight="SemiBold" VerticalAlignment="Center" AutomationProperties.Name="Workspace name"
+                                     Visibility="{Binding IsRenaming, Converter={StaticResource BoolToVisibility}}"
+                                     IsVisibleChanged="WorkspaceName_IsVisibleChanged" KeyDown="WorkspaceName_KeyDown"
+                                     LostKeyboardFocus="WorkspaceName_LostKeyboardFocus"/>
+                            <!-- Another workspace's agents can call for attention from here -->
+                            <TextBlock Text="{Binding BadgeText}" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding BadgeText}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding HasWaiting}" Value="True">
+                                                <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}"/>
+                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <ui:Button DockPanel.Dock="Left" Appearance="Transparent" Width="30" Height="30" Padding="0" VerticalAlignment="Center"
+                       Command="{Binding NewWorkspaceCommand}" ToolTip="New workspace: an empty canvas, e.g. for another project"
+                       AutomationProperties.Name="New workspace">
+                <ui:Button.Icon>
+                    <ui:SymbolIcon Symbol="Add16"/>
+                </ui:Button.Icon>
             </ui:Button>
 
             <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}">
@@ -877,6 +978,20 @@
                                         <TextBlock Text="{Binding BranchText}" FontSize="11" TextTrimming="CharacterEllipsis"
                                                    Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
                                     </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="16,1,0,0" ToolTip="On another workspace; click to go there">
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding OtherWorkspaceName}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <ui:SymbolIcon Symbol="TabDesktop16" FontSize="11" Margin="0,0,3,0" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                        <TextBlock Text="{Binding OtherWorkspaceName}" FontSize="11" TextTrimming="CharacterEllipsis"
+                                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                    </StackPanel>
                                     <TextBlock Text="{Binding StatusText}" Margin="16,2,0,0" FontSize="12" TextTrimming="CharacterEllipsis"
                                                Foreground="{DynamicResource TextFillColorSecondaryBrush}">
                                         <TextBlock.Style>
@@ -973,6 +1088,13 @@
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding IsGroup}" Value="True">
                             <Setter Property="Panel.ZIndex" Value="-1"/>
+                        </DataTrigger>
+                        <!-- On another workspace: hidden (the terminal keeps running) and out of reach of selection and group drags.
+                             Hidden, not Collapsed: a collapsed node is never laid out, so its terminal wouldn't start until shown. -->
+                        <DataTrigger Binding="{Binding IsInActiveWorkspace}" Value="False">
+                            <Setter Property="Visibility" Value="Hidden"/>
+                            <Setter Property="IsSelectable" Value="False"/>
+                            <Setter Property="IsDraggable" Value="False"/>
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>

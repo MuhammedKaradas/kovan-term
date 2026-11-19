@@ -18,6 +18,18 @@ public partial class TerminalNodeViewModel : ObservableObject
 
     public Guid Id { get; init; } = Guid.NewGuid();
     public string? ProfileId { get; init; }
+
+    /// <summary>The workspace (canvas) the node is on; set by <see cref="MainViewModel"/>, which can move it to another.</summary>
+    public Guid WorkspaceId { get; set; }
+
+    /// <summary>On the workspace being shown. Nodes on other workspaces are hidden but keep running.</summary>
+    [ObservableProperty]
+    public partial bool IsInActiveWorkspace { get; set; } = true;
+
+    /// <summary>The node's workspace name while that workspace isn't shown (Agents panel); <c>null</c> otherwise.</summary>
+    [ObservableProperty]
+    public partial string? OtherWorkspaceName { get; set; }
+
     /// <summary>Header text; a group's name can be edited.</summary>
     [ObservableProperty]
     public required partial string Title { get; set; }
@@ -306,6 +318,7 @@ public partial class TerminalNodeViewModel : ObservableObject
     public NodeState ToState() => new()
     {
         Id = Id,
+        WorkspaceId = WorkspaceId,
         ProfileId = ProfileId,
         Title = Title,
         CommandLine = CommandLine,
@@ -330,6 +343,7 @@ public partial class TerminalNodeViewModel : ObservableObject
         AgentExecutable = profile is { Wsl: true } ? profile.Executable : null,
         Distro = profile is { Wsl: true, Distro.Length: > 0 } ? profile.Distro : null,
         Id = s.Id,
+        WorkspaceId = s.WorkspaceId ?? Guid.Empty,
         ProfileId = s.ProfileId,
         Title = s.Title,
         CommandLine = commandLine ?? s.CommandLine,
