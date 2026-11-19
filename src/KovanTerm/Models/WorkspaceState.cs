@@ -41,6 +41,11 @@ public sealed record NodeState
     public Guid? WorkspaceId { get; init; }
     public string? ProfileId { get; init; }
     public required string Title { get; init; }
+    /// <summary>The user named the node; Claude Code's own title doesn't replace it (a <c>/rename</c> still does).</summary>
+    public bool TitleSetByUser { get; init; }
+    /// <summary>The conversation's <c>/rename</c> and Claude Code's title last seen, so a restart doesn't apply them again.</summary>
+    public string? ClaudeCustomTitle { get; init; }
+    public string? ClaudeAiTitle { get; init; }
     public required string CommandLine { get; init; }
     /// <summary>The agent's conversation id (Claude Code), resumed on the next launch.</summary>
     public string? SessionId { get; init; }

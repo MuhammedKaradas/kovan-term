@@ -147,7 +147,8 @@ public sealed partial class ClaudeConversations
         return plain.Length == 0 || text.TrimStart().StartsWith("<command-", StringComparison.Ordinal) ? null : plain;
     }
 
-    private static string Shorten(string s)
+    /// <summary>One line, at most <see cref="MaxTitle"/> characters.</summary>
+    public static string Shorten(string s)
     {
         var one = string.Join(' ', s.Split((char[])['\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim())).Trim();
         return one.Length > MaxTitle ? one[..MaxTitle] + "…" : one;

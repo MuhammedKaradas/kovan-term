@@ -33,6 +33,45 @@ public partial class TerminalNodeViewModel : ObservableObject
     /// <summary>Header text; a group's name can be edited.</summary>
     [ObservableProperty]
     public required partial string Title { get; set; }
+
+    /// <summary>The user named the node: Claude Code's automatic title doesn't replace that name (a <c>/rename</c> does).</summary>
+    public bool TitleSetByUser { get; set; }
+
+    /// <summary>The header shows a box to type a new name in.</summary>
+    [ObservableProperty]
+    public partial bool IsRenaming { get; set; }
+
+    private string? _seenCustomTitle, _seenAiTitle;
+
+    /// <summary>
+    /// Follows the title of the Claude Code conversation (#41, #44 in the issue): a <c>/rename</c> always renames the
+    /// node; Claude's automatic title only does while the user hasn't named it. Titles already seen (also before a
+    /// restart) change nothing, so a name the user types stays until the conversation's title changes again.
+    /// <c>true</c> if the title changed.
+    /// </summary>
+    public bool ApplyConversationTitle(string? custom, string? ai)
+    {
+        var customChanged = custom != null && custom != _seenCustomTitle;
+        var aiChanged = ai != null && ai != _seenAiTitle;
+        if (custom != null) _seenCustomTitle = custom;
+        if (ai != null) _seenAiTitle = ai;
+        string? title = null;
+        if (customChanged) title = custom;
+        else if (aiChanged && custom == null && !TitleSetByUser) title = ai;
+        if (title == null || title == Title) return false;
+        Title = title;
+        TitleSetByUser = false;
+        return true;
+    }
+
+    /// <summary>The user typed a name: it's kept until the conversation is renamed.</summary>
+    public void Rename(string title)
+    {
+        title = title.Trim();
+        if (title.Length == 0) return;
+        Title = title;
+        TitleSetByUser = true;
+    }
     public required string CommandLine { get; init; }
     /// <summary>
     /// What the terminal actually runs: <see cref="CommandLine"/> plus per-run arguments such as the hook settings.
@@ -321,6 +360,9 @@ public partial class TerminalNodeViewModel : ObservableObject
         WorkspaceId = WorkspaceId,
         ProfileId = ProfileId,
         Title = Title,
+        TitleSetByUser = TitleSetByUser,
+        ClaudeCustomTitle = _seenCustomTitle,
+        ClaudeAiTitle = _seenAiTitle,
         CommandLine = CommandLine,
         SessionId = SessionId,
         Worktree = Worktree,
@@ -346,6 +388,9 @@ public partial class TerminalNodeViewModel : ObservableObject
         WorkspaceId = s.WorkspaceId ?? Guid.Empty,
         ProfileId = s.ProfileId,
         Title = s.Title,
+        TitleSetByUser = s.TitleSetByUser,
+        _seenCustomTitle = s.ClaudeCustomTitle,
+        _seenAiTitle = s.ClaudeAiTitle,
         CommandLine = commandLine ?? s.CommandLine,
         LaunchCommandLine = launchCommandLine,
         SessionId = s.SessionId,
