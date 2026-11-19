@@ -195,6 +195,21 @@ MCP stdio server that is a shell loop posting each JSON-RPC line the same way. B
 the settings it started with. The conversation is resumed by the shell (`$(ls ~/.claude/projects/*/<id>.jsonl …)`
 picks `--resume` or `--session-id`), and the reported Linux transcript path is read through `\\wsl.localhost`.
 
+## Notifications
+
+While Kovan isn't the active window, an agent that starts waiting for the user or finishes its turn shows a Windows
+notification (#80): "Claude needs you" with what it asks ("Allow Bash: npm test?"), or "Codex finished", with the
+workspace if it's another one. Clicking it brings Kovan forward on that agent (switching workspace).
+- **Summary:** `AgentNotifications` keeps what's pending since Kovan was last active and sums it up ("2 agents need
+  you", "Also finished: …"), since a newer notification replaces the one on screen. Nodes closed or answered in the
+  terminal meanwhile are dropped. Activating Kovan clears it.
+- **How it's shown:** `TrayNotifier` uses the notification area (`Shell_NotifyIcon` with a balloon), which Windows 10
+  and 11 show as a toast: no WinRT projection (~25 MB) or notification package. The icon is added with the first
+  notification and removed when Kovan is activated, taking its notifications in the notification center along. Clicks
+  come back to a message-only window. Focus assist holds them back like any app's.
+- **Settings:** `settings.json` has `notifyWhenWaiting` and `notifyWhenDone` (both `true`). The taskbar button still
+  flashes too.
+
 ## Agents panel
 
 A list of every node beside the canvas (left), grouped by working folder, with the agents waiting for the user first

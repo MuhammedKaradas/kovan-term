@@ -47,6 +47,7 @@ public partial class MainWindow : FluentWindow
         };
         _canvas.ScreenRead += (node, text) => _vm.OnScreenRead((TerminalNodeViewModel)node, text);
         _vm.AttentionNeeded += _ => FlashIfInactive();
+        InitNotifications();
 
         // Theme: WPF-UI resources + terminal colors; re-applied when the preference changes
         var theme = new ThemeService(this);

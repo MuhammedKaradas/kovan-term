@@ -21,6 +21,7 @@ Terminal'in GPU hızlandırmalı terminal bileşeniyle, düşük kaynak tüketim
 - Tuval üzerinde sürüklenip boyutlandırılabilen gerçek terminaller
 - Profiller: PowerShell, cmd, Claude Code, Codex, Gemini CLI + kendi profillerin ([docs/profiles.md](docs/profiles.md))
 - Çalışma dizini seçimi, tuvalde sağ tıkla "Burada yeni terminal"
+- Başka bir uygulamadayken bir ajan seni beklediğinde ya da işini bitirdiğinde Windows bildirimi; tıklayınca ona gider
 - Sekmeler halinde birden çok çalışma alanı (ör. proje başına bir tane); gizli olanlardaki ajanlar çalışmayı sürdürür, seni beklediklerinde sekmede görünür
 - Çalışma alanı otomatik kaydedilir ve açılışta geri gelir
 - Dikte: konuşarak terminale yaz; ses bilgisayarında Whisper ile yazıya çevrilir (`Ctrl+Shift+Space`)
