@@ -68,7 +68,7 @@ dotnet run --project src/KovanTerm -c Release
 ## Acknowledgements
 
 Kovan Term began as a lightweight, Windows-native take on canvas-based agent apps. As it grew, it learned a great
-deal from **[omux](https://github.com/onurozcan/omux)** by [onurozcan](https://github.com/onurozcan): a native macOS
+deal from **[omux](https://github.com/onurozcan/omux)** by [Onur Özcan](https://github.com/onurozcan): a native macOS
 app (SwiftUI) that runs Claude Code and Codex sessions side by side, each on its own branch. Thank you for building it
 in the open.
 

@@ -67,7 +67,7 @@ dotnet run --project src/KovanTerm -c Release
 ## Teşekkürler
 
 Kovan Term, tuval tabanlı ajan uygulamalarının hafif ve Windows'a özgü bir yorumu olarak başladı. Büyüdükçe
-[onurozcan](https://github.com/onurozcan)'ın **[omux](https://github.com/onurozcan/omux)**'undan çok şey öğrendi:
+[Onur Özcan](https://github.com/onurozcan)'ın **[omux](https://github.com/onurozcan/omux)**'undan çok şey öğrendi:
 Claude Code ve Codex oturumlarını yan yana, her birini kendi dalında çalıştıran yerel bir macOS uygulaması (SwiftUI).
 Açık kaynak olarak geliştirdiği için teşekkürler.
 
