@@ -5,9 +5,14 @@ namespace KovanTerm.Services.Mesh;
 /// <summary>A message between agents. <see cref="To"/> = <c>null</c>: to everyone.</summary>
 public sealed record MeshMessage(long Id, DateTimeOffset At, Guid From, string FromName, Guid? To, string? ToName, string Text);
 
-/// <summary>A task on the shared board: <c>todo</c> → <c>doing</c> (claimed by an agent) → <c>done</c>.</summary>
+/// <summary>
+/// A task on the shared board: <c>todo</c> → <c>doing</c> (claimed by an agent) → <c>done</c>.
+/// <see cref="Assigned"/>: the user gave it to <see cref="Owner"/> from the Board, so Kovan moves it along with that
+/// agent's status (<see cref="MeshBoard.AgentStarted"/>, <see cref="MeshBoard.AgentFinished"/>); a task an agent claimed
+/// itself is completed by the agent.
+/// </summary>
 public sealed record MeshTask(int Id, string Title, string? Detail, string State, Guid? Owner, string? OwnerName, string? Note,
-    DateTimeOffset Updated);
+    DateTimeOffset Updated, bool Assigned = false);
 
 /// <summary>An advisory lock: "I'm editing these paths" (globs allowed), until <see cref="Expires"/>.</summary>
 public sealed record MeshLease(Guid Owner, string OwnerName, IReadOnlyList<string> Paths, DateTimeOffset Expires);
@@ -134,13 +139,48 @@ public sealed class MeshBoard
         return t with { State = "done", Owner = agent, OwnerName = agentName, Note = note is { Length: > 0 } n ? Cut(n.Trim(), 2000) : t.Note };
     });
 
-    /// <summary>The user moving a task (Board panel); no ownership checks.</summary>
+    /// <summary>The user moving a task (Board panel); no ownership checks. Back to <c>todo</c> it's nobody's again.</summary>
     public MeshTask MoveTask(int id, string state) => Update(id, t => t with
     {
         State = state,
         Owner = state == "todo" ? null : t.Owner,
         OwnerName = state == "todo" ? null : t.OwnerName,
+        Assigned = state != "todo" && t.Assigned,
     });
+
+    /// <summary>
+    /// The user gives a task to an agent: it stays in <c>todo</c> until the agent starts working, then follows its
+    /// status. A done task starts over.
+    /// </summary>
+    public MeshTask AssignTask(int id, Guid agent, string agentName) => Update(id, t => t with
+    {
+        State = "todo",
+        Owner = agent,
+        OwnerName = agentName,
+        Assigned = true,
+        Note = t.State == "done" ? null : t.Note,
+    });
+
+    /// <summary>The agent started working: the tasks the user gave it move to <c>doing</c>.</summary>
+    public void AgentStarted(Guid agent) => Advance(agent, "todo", "doing");
+
+    /// <summary>The agent's turn ended (not a question or a permission prompt): its <c>doing</c> tasks the user gave it are done.</summary>
+    public void AgentFinished(Guid agent) => Advance(agent, "doing", "done");
+
+    private void Advance(Guid agent, string from, string to)
+    {
+        var changed = false;
+        lock (_lock)
+        {
+            for (var i = 0; i < _tasks.Count; i++)
+            {
+                if (_tasks[i] is not { Assigned: true } t || t.Owner != agent || t.State != from) continue;
+                _tasks[i] = t with { State = to, Updated = _now() };
+                changed = true;
+            }
+        }
+        if (changed) Changed?.Invoke();
+    }
 
     public void DeleteTask(int id)
     {

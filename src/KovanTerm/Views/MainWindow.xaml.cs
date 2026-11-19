@@ -209,6 +209,53 @@ public partial class MainWindow : FluentWindow
             Dispatcher.BeginInvoke(() => { box.Focus(); box.CaretIndex = box.Text.Length; }, System.Windows.Threading.DispatcherPriority.Input);
     }
 
+    // ---- Board cards ----
+
+    private Point? _cardPressedAt;
+
+    private void TaskCard_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e) =>
+        _cardPressedAt = e.OriginalSource is DependencyObject source && FindAncestor<ButtonBase>(source) != null ? null : e.GetPosition(this);
+
+    // Dragging starts once the mouse moved a few pixels with the button down (not on the card's buttons)
+    private void TaskCard_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _cardPressedAt is not { } start
+            || sender is not FrameworkElement { DataContext: TaskCard card } element) return;
+        var moved = e.GetPosition(this) - start;
+        if (Math.Abs(moved.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(moved.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+        _cardPressedAt = null;
+        DragDrop.DoDragDrop(element, new DataObject(typeof(TaskCard), card), DragDropEffects.Move);
+    }
+
+    private void TaskColumn_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(typeof(TaskCard)) ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void TaskColumn_Drop(object sender, DragEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: string state } && e.Data.GetData(typeof(TaskCard)) is TaskCard card)
+            _vm.BoardPanel.Drop(card, state);
+        e.Handled = true;
+    }
+
+    // "Give to an agent": a menu of the agents on the canvas
+    private void AssignTask_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: TaskCard card } button) return;
+        var menu = new ContextMenu { PlacementTarget = button, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        foreach (var agent in _vm.TaskAgents())
+        {
+            var item = new System.Windows.Controls.MenuItem { Header = MainViewModel.MeshName(agent) };
+            item.Click += (_, _) => _vm.AssignTask(card, agent);
+            menu.Items.Add(item);
+        }
+        if (menu.Items.Count == 0) menu.Items.Add(new System.Windows.Controls.MenuItem { Header = "No agents on the canvas", IsEnabled = false });
+        menu.IsOpen = true;
+    }
+
     // Board: Enter in the new task box adds it
     private void NewTask_KeyDown(object sender, KeyEventArgs e)
     {

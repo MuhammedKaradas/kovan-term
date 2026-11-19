@@ -11,7 +11,16 @@ public sealed class TaskCard(MeshTask task)
     public MeshTask Task { get; } = task;
     public string Title => $"#{Task.Id} {Task.Title}";
     public string? Detail => Task.Detail;
-    public string? Owner => Task.OwnerName;
+    public string? Owner => Task switch
+    {
+        { OwnerName: null } => null,
+        { Assigned: true, State: "todo" } => $"Given to {Task.OwnerName}; moves on when it starts working",
+        { Assigned: true, State: "doing" } => $"{Task.OwnerName}; done when its turn ends",
+        _ => Task.OwnerName,
+    };
+    public string State => Task.State;
+    /// <summary>Can be given to an agent (not while one is working on it).</summary>
+    public bool CanAssign => Task.State != "doing";
     public string? Note => Task.Note;
     public bool CanStart => Task.State == "todo";
     public bool CanFinish => Task.State == "doing";
@@ -93,4 +102,10 @@ public partial class BoardViewModel(MeshBoard board) : ObservableObject
 
     [RelayCommand]
     private void DeleteTask(TaskCard card) => board.DeleteTask(card.Task.Id);
+
+    /// <summary>A card was dropped on a column (<c>todo</c>, <c>doing</c>, <c>done</c>).</summary>
+    public void Drop(TaskCard card, string state)
+    {
+        if (card.Task.State != state) board.MoveTask(card.Task.Id, state);
+    }
 }

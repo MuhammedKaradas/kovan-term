@@ -63,11 +63,19 @@
 
         <!-- A task card on the Board -->
         <DataTemplate x:Key="TaskCardTemplate" DataType="{x:Type vm:TaskCard}">
-            <Border Margin="0,0,0,6" Padding="10,8" CornerRadius="4" BorderThickness="1"
-                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" Background="{DynamicResource SubtleFillColorSecondaryBrush}">
+            <!-- Drag a card onto another column to move it -->
+            <Border Margin="0,0,0,6" Padding="10,8" CornerRadius="4" BorderThickness="1" Cursor="SizeAll"
+                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" Background="{DynamicResource SubtleFillColorSecondaryBrush}"
+                    PreviewMouseLeftButtonDown="TaskCard_PreviewMouseLeftButtonDown" MouseMove="TaskCard_MouseMove">
                 <StackPanel>
                     <DockPanel>
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Cursor="Arrow">
+                            <ui:Button Appearance="Transparent" Padding="4" Width="26" Height="24"
+                                       ToolTip="Give to an agent: pastes the task into its terminal, then the card follows the agent's status"
+                                       AutomationProperties.Name="Give task to agent" Visibility="{Binding CanAssign, Converter={StaticResource BoolToVisibility}}"
+                                       Click="AssignTask_Click">
+                                <ui:Button.Icon><ui:SymbolIcon Symbol="PersonArrowRight16"/></ui:Button.Icon>
+                            </ui:Button>
                             <ui:Button Appearance="Transparent" Padding="4" Width="26" Height="24" ToolTip="Start (in progress)"
                                        AutomationProperties.Name="Start task" Visibility="{Binding CanStart, Converter={StaticResource BoolToVisibility}}"
                                        Command="{Binding DataContext.StartTaskCommand, RelativeSource={RelativeSource AncestorType=ItemsControl, AncestorLevel=1}}"
@@ -115,12 +123,19 @@
                                     AutomationProperties.Name="New task" KeyDown="NewTask_KeyDown"/>
                     </DockPanel>
 
-                    <TextBlock Text="In progress" Style="{StaticResource BoardHeader}"/>
-                    <ItemsControl ItemsSource="{Binding Doing}" ItemTemplate="{StaticResource TaskCardTemplate}"/>
-                    <TextBlock Text="To do" Style="{StaticResource BoardHeader}"/>
-                    <ItemsControl ItemsSource="{Binding Todo}" ItemTemplate="{StaticResource TaskCardTemplate}"/>
-                    <TextBlock Text="Done" Style="{StaticResource BoardHeader}"/>
-                    <ItemsControl ItemsSource="{Binding Done}" ItemTemplate="{StaticResource TaskCardTemplate}"/>
+                    <!-- Columns: drop targets for dragged cards (Tag = the state they stand for) -->
+                    <StackPanel Tag="doing" AllowDrop="True" Background="Transparent" MinHeight="30" DragOver="TaskColumn_DragOver" Drop="TaskColumn_Drop">
+                        <TextBlock Text="In progress" Style="{StaticResource BoardHeader}"/>
+                        <ItemsControl ItemsSource="{Binding Doing}" ItemTemplate="{StaticResource TaskCardTemplate}"/>
+                    </StackPanel>
+                    <StackPanel Tag="todo" AllowDrop="True" Background="Transparent" MinHeight="30" DragOver="TaskColumn_DragOver" Drop="TaskColumn_Drop">
+                        <TextBlock Text="To do" Style="{StaticResource BoardHeader}"/>
+                        <ItemsControl ItemsSource="{Binding Todo}" ItemTemplate="{StaticResource TaskCardTemplate}"/>
+                    </StackPanel>
+                    <StackPanel Tag="done" AllowDrop="True" Background="Transparent" MinHeight="30" DragOver="TaskColumn_DragOver" Drop="TaskColumn_Drop">
+                        <TextBlock Text="Done" Style="{StaticResource BoardHeader}"/>
+                        <ItemsControl ItemsSource="{Binding Done}" ItemTemplate="{StaticResource TaskCardTemplate}"/>
+                    </StackPanel>
 
                     <StackPanel Visibility="{Binding HasLeases, Converter={StaticResource BoolToVisibility}}">
                         <TextBlock Text="Leased files" Style="{StaticResource BoardHeader}"/>

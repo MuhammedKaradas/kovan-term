@@ -672,12 +672,42 @@ public partial class MainViewModel : ObservableObject
 
     private void UpdateStatus(TerminalNodeViewModel node, Action apply)
     {
-        var wasWaiting = node.Status == NodeStatus.Waiting;
+        var before = node.Status;
         apply();
         StatusLog($"{node.Title} -> {node.Status} {node.StatusText}");
         UpdateAgentCounts();
-        if (!wasWaiting && node.Status == NodeStatus.Waiting) AttentionNeeded?.Invoke(node);
+        if (before != NodeStatus.Waiting && node.Status == NodeStatus.Waiting) AttentionNeeded?.Invoke(node);
+        AdvanceBoard(node, before);
     }
+
+    /// <summary>
+    /// Board tasks the user gave this agent follow its status: <c>doing</c> once it works, <c>done</c> when its turn
+    /// ends. Waiting for an answer or a permission isn't the end of a turn.
+    /// </summary>
+    private void AdvanceBoard(TerminalNodeViewModel node, NodeStatus before)
+    {
+        if (before != NodeStatus.Working && node.Status == NodeStatus.Working) MeshBoard.AgentStarted(node.Id);
+        else if (before == NodeStatus.Working && node.Status is NodeStatus.Idle or NodeStatus.Done) MeshBoard.AgentFinished(node.Id);
+    }
+
+    /// <summary>Agents a Board task can be given to (Agents panel order is by folder; here by title).</summary>
+    public IReadOnlyList<TerminalNodeViewModel> TaskAgents() =>
+        Nodes.Where(n => n.AgentKind is { Length: > 0 } && !n.HasStartError).OrderBy(n => n.Title).ThenBy(n => n.Id).ToList();
+
+    /// <summary>
+    /// Gives a Board task to an agent: the task is pasted into its terminal (one paste, for the user to review and
+    /// submit, like a note), and the card follows the agent's status from then on.
+    /// </summary>
+    public void AssignTask(TaskCard card, TerminalNodeViewModel agent)
+    {
+        if (!Nodes.Contains(agent)) return;
+        var task = MeshBoard.AssignTask(card.Task.Id, agent.Id, MeshName(agent));
+        TerminalInputRequested?.Invoke(agent, ChangesViewModel.BracketedPaste(TaskPrompt(task)));
+        GoToNodeRequested?.Invoke(agent);
+    }
+
+    public static string TaskPrompt(MeshTask task) =>
+        $"Task #{task.Id} from the Kovan board: {task.Title}" + (task.Detail is { } d ? $"\n\n{d}" : "");
 
     private void UpdateAgentCounts()
     {
