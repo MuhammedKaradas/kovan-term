@@ -68,12 +68,12 @@ dotnet run --project src/KovanTerm -c Release
 ## Acknowledgements
 
 Kovan Term began as a lightweight, Windows-native take on canvas-based agent apps. As it grew, it learned a great
-deal from **[omux](https://github.com/onurozcan/omux)** by [Onur Özcan](https://github.com/onurozcan): a native macOS
+deal from **[omux](https://github.com/onurozcan/omux)** by Onur Özcan ([onurozcan](https://github.com/onurozcan)): a native macOS
 app (SwiftUI) that runs Claude Code and Codex sessions side by side, each on its own branch. Thank you for building it
 in the open.
 
-If you're on a Mac, use omux. On Linux, [omux for Linux](https://github.com/radioheavy/omux-linux) by
-[radioheavy](https://github.com/radioheavy) brings the same app there (GTK 4, Rust). Kovan Term isn't a port: it's
+On a Mac you can use omux itself. On Linux, [omux for Linux](https://github.com/radioheavy/omux-linux) by
+İsmail Oktay Dak ([radioheavy](https://github.com/radioheavy)) brings the same app there (GTK 4, Rust). Kovan Term isn't a port: it's
 a canvas of its own for Windows that learned from omux.
 
 Many of Kovan Term's features follow omux's lead, among them:
