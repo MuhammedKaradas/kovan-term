@@ -925,8 +925,17 @@
                 BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                 Visibility="{Binding ShowAgentsPanel, Converter={StaticResource BoolToVisibility}}">
             <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Text="Agents" FontWeight="SemiBold" Margin="12,10,12,6"
-                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <DockPanel DockPanel.Dock="Top" Margin="12,6,6,2">
+                    <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Width="28" Height="28" Padding="0"
+                               Command="{Binding BroadcastCommand}" AutomationProperties.Name="Send to agents"
+                               ToolTip="Send one prompt to several agents (Ctrl+Shift+S)">
+                        <ui:Button.Icon>
+                            <ui:SymbolIcon Symbol="Send24"/>
+                        </ui:Button.Icon>
+                    </ui:Button>
+                    <TextBlock Text="Agents" FontWeight="SemiBold" VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                </DockPanel>
 
                 <!-- Claude plan limits; hidden when unknown (not logged in, endpoint changed) -->
                 <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
@@ -1096,6 +1105,11 @@
                     <MenuItem Header="Open a recent conversation here…" Click="RecentConversationHere_Click">
                         <MenuItem.Icon>
                             <ui:SymbolIcon Symbol="History24"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="Send to agents…" Click="Broadcast_Click" InputGestureText="Ctrl+Shift+S">
+                        <MenuItem.Icon>
+                            <ui:SymbolIcon Symbol="Send24"/>
                         </MenuItem.Icon>
                     </MenuItem>
                     <MenuItem x:Name="GroupSelectionItem" Header="Group the selected nodes" Click="GroupSelection_Click">

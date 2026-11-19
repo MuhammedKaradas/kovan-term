@@ -22,6 +22,7 @@ about 3.5× less than an xterm.js-in-WebView2 equivalent
 - Profiles: PowerShell, cmd, Claude Code, Codex, Gemini CLI, plus your own ([docs/profiles.md](docs/profiles.md))
 - WSL: a shell and Claude Code for each installed distro, started in a Linux directory
 - Pick a working directory; right-click the canvas for "New terminal here"
+- Send one prompt to several agents at once, e.g. to compare Claude Code, Codex and Gemini CLI on the same task
 - Windows notifications when an agent needs you or finishes while you're in another app; click to go to it
 - Several workspaces (e.g. one per project) as tabs; agents on hidden ones keep running and show when they wait
 - The workspace is saved automatically and restored on startup
