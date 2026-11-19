@@ -192,6 +192,14 @@ public sealed class TerminalCanvasController
         }, DispatcherPriority.ApplicationIdle);
     }
 
+    /// <summary>The node whose terminal window is <paramref name="hwnd"/>; <c>null</c> for any other window.</summary>
+    public object? NodeOfWindow(IntPtr hwnd)
+    {
+        foreach (var (node, entry) in _byNode)
+            if (entry.Terminal != null && TerminalSnapshot.FindHwnd(entry.Host) == hwnd) return node;
+        return null;
+    }
+
     /// <summary>Types text into the node's terminal as if the user had (works while it sleeps too).</summary>
     public void SendInput(object node, string text)
     {

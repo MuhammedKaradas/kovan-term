@@ -530,9 +530,18 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>Opens a web preview of the terminal's local address, next to it (or goes to an open one).</summary>
     [RelayCommand]
-    private void OpenPreview(TerminalNodeViewModel node)
+    private void OpenPreview(TerminalNodeViewModel node) => OpenPreviewOf(node, node.PreviewUrl ?? DefaultPreviewUrl);
+
+    /// <summary>A web link Ctrl+clicked in the node's terminal, in a preview next to it (or the open one with that address).</summary>
+    public void OpenLinkInPreview(TerminalNodeViewModel node, string url)
     {
-        var url = node.PreviewUrl ?? DefaultPreviewUrl;
+        if (!Nodes.Contains(node)) return;
+        StatusLog($"{node.Title} link -> preview {url}");
+        OpenPreviewOf(node, url);
+    }
+
+    private void OpenPreviewOf(TerminalNodeViewModel node, string url)
+    {
         if (Nodes.FirstOrDefault(n => n.IsBrowser && string.Equals(n.Url, url, StringComparison.OrdinalIgnoreCase)) is { } open)
         {
             GoTo(open);

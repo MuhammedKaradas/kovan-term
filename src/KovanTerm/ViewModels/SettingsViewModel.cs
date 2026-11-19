@@ -30,6 +30,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         NotifyWhenDone = s.NotifyWhenDone;
         KeepAwakeWhileWorking = s.KeepAwakeWhileWorking;
         StatusLight = s.StatusLight;
+        OpenWebLinksInPreview = s.OpenWebLinksInPreview;
         DictationModel = SpeechModel.Find(s.DictationModel).Name;
         // A language typed into the file by hand is kept, and shown
         if (Languages.All(l => l.Value != s.DictationLanguage))
@@ -64,6 +65,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] public partial bool NotifyWhenDone { get; set; }
     [ObservableProperty] public partial bool KeepAwakeWhileWorking { get; set; }
     [ObservableProperty] public partial bool StatusLight { get; set; }
+    [ObservableProperty] public partial bool OpenWebLinksInPreview { get; set; }
     [ObservableProperty] public partial string DictationModel { get; set; } = SpeechModel.DefaultName;
     [ObservableProperty] public partial string DictationLanguage { get; set; } = "auto";
 
@@ -83,6 +85,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     partial void OnNotifyWhenDoneChanged(bool value) => Save();
     partial void OnKeepAwakeWhileWorkingChanged(bool value) => Save();
     partial void OnStatusLightChanged(bool value) => Save();
+    partial void OnOpenWebLinksInPreviewChanged(bool value) => Save();
     partial void OnDictationModelChanged(string value) => Save();
     partial void OnDictationLanguageChanged(string value) => Save();
 
@@ -98,6 +101,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             NotifyWhenDone = NotifyWhenDone,
             KeepAwakeWhileWorking = KeepAwakeWhileWorking,
             StatusLight = StatusLight,
+            OpenWebLinksInPreview = OpenWebLinksInPreview,
             DictationModel = DictationModel,
             DictationLanguage = DictationLanguage,
         });

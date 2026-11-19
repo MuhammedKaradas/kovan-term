@@ -62,6 +62,11 @@
                 <TextBlock Style="{StaticResource Hint}"
                            Text="Windows doesn't go to sleep on its own until no agent is working. The screen can still turn off, and closing a laptop's lid still does what your power settings say."/>
 
+                <CheckBox Content="Open web links in a preview next to the terminal" IsChecked="{Binding OpenWebLinksInPreview}"
+                          AutomationProperties.Name="Open web links in a preview"/>
+                <TextBlock Style="{StaticResource Hint}"
+                           Text="Ctrl+click a link in a terminal: on the canvas, beside it, instead of the default browser. Handy for the local addresses dev servers print."/>
+
                 <TextBlock Text="Notifications" Style="{StaticResource Section}"/>
                 <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,4" Text="Shown only while Kovan isn't the active window; clicking one goes to that agent."/>
                 <CheckBox Content="When an agent needs you (a permission, a question)" IsChecked="{Binding NotifyWhenWaiting}"

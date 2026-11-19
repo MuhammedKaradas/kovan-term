@@ -410,6 +410,19 @@ don't cover it.
   - **Colors:** `ChartPalette` sets them for each theme. A project keeps its color whatever the period (the 7 with
     the most time overall; the rest are gray), and the calendar uses one hue from light to dark.
 
+## Links in terminals
+
+The terminal control finds links itself and opens one in the default browser on Ctrl+click. With **Open web links
+in a preview next to the terminal** on (Settings, off by default), Kovan takes that click instead (#101).
+- **The click:** the Ctrl+click's \`WM_LBUTTONDOWN\` and its release are caught in the thread's message hook (the same
+  one shortcuts use) before the terminal's window gets them.
+- **The link:** \`TerminalLinkReader\` reads the line under the point through the UI Automation text pattern
+  (\`RangeFromPoint\`, off the UI thread), plus the next line for a link wrapped at the last column.
+  \`TerminalLinks.At\` picks the link covering that column, without the sentence's closing punctuation.
+- **Where it opens:** a web link opens in a preview beside the terminal, or goes to the open preview with that
+  address. Other links (\`file:\`, \`mailto:\`) go to the system, as the terminal would send them. A Ctrl+click on no
+  link does nothing.
+
 ## Dropping files on a terminal
 
 Files dropped on a terminal are pasted into it as their paths, in one bracketed paste ending in a space (#90): an agent
