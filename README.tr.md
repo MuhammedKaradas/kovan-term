@@ -64,6 +64,35 @@ dotnet run --project src/KovanTerm -c Release
 - [Mimari karar kayıtları](docs/decisions/)
 - [Katkı kuralları](CONTRIBUTING.md)
 
+## Teşekkürler
+
+Kovan Term, tuval tabanlı ajan uygulamalarının hafif ve Windows'a özgü bir yorumu olarak başladı. Büyüdükçe
+Onur Özcan'ın ([onurozcan](https://github.com/onurozcan)) **[omux](https://github.com/onurozcan/omux)**'undan çok şey öğrendi:
+Claude Code ve Codex oturumlarını yan yana, her birini kendi dalında çalıştıran yerel bir macOS uygulaması (SwiftUI).
+Açık kaynak olarak geliştirdiği için teşekkürler.
+
+Mac'te doğrudan omux'u kullanabilirsiniz. Linux'ta İsmail Oktay Dak'ın ([radioheavy](https://github.com/radioheavy))
+[omux for Linux](https://github.com/radioheavy/omux-linux)'u aynı uygulamayı oraya taşıyor (GTK 4, Rust). Kovan Term
+bir port değil: Windows için kendi tuvali olan, omux'tan öğrenmiş ayrı bir uygulama.
+
+Kovan Term'in birçok özelliği omux'un izinden gidiyor, bunlardan bazıları:
+- Codex'in durumunu OSC 7501 bildirimlerinden okumak ve izin sorularını terminalin dışından cevaplamak;
+- ajana not gönderilebilen Changes paneli;
+- worktree'nin PR durumu ve kırık kontrollerin ajana gönderilmesi;
+- bildirimler, durum ışığı ve bilgisayarı uyanık tutmak;
+- terminallere konuşmalarının adını vermek ve terminale dosya bırakmak;
+- süre ve token istatistikleri.
+
+Kod Kovan Term'in kendisinin (C#/WPF), ama bunlardan birçoğunun nasıl çalıştığı omux'un kaynağından (MIT)
+öğrenildi.
+
+Kendi yolundan gittiği yerler:
+- notlar, gruplar, web önizlemeleri ve çalışma alanları olan sonsuz bir tuval;
+- dikte ve sesli komutlar;
+- mesajlar, görev panosu ve dosya kilitleriyle bir ajan ağı;
+- WSL içindeki ajanlar;
+- tek istemi birden çok ajana göndermek.
+
 ## Lisans
 
 [MIT](LICENSE)
