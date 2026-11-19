@@ -192,6 +192,12 @@ node in its folder with that session id, so it's resumed; one already on the can
 Programs that write OSC 7501 status reports without waiting for the terminal's answer (Codex) are read from
 the terminal output by `ProgramStatusParser`; Allow types the program's own "Yes" key (`y` for Codex).
 
+**Cursor CLI** nodes keep their conversation too (#97): the first time a node starts, its terminal waits ("Starting a
+Cursor chat…") while `cursor-agent create-chat` makes an empty chat (`CursorChats`; its output must be the id alone
+on one line). The id is saved as the node's `SessionId` and every start adds `--resume <id>`. Without an id (not
+signed in, an update notice) the node starts unpinned; a profile that picks its own chat is left alone. Cursor and
+Antigravity (`agy`) report no status, so their nodes show none, but they count as agents (Board, Send to agents).
+
 **Claude Code inside WSL:** a distro can't reach 127.0.0.1 on Windows with WSL 2's default NAT network, and
 listening on the WSL adapter would mean a firewall prompt. So `ClaudeHooks.PrepareWslArguments` writes *command*
 hooks that pipe the event to Windows' `curl.exe` (run through WSL interop, it connects from the Windows side) and an

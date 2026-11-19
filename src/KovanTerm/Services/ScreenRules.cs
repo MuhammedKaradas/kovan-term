@@ -148,6 +148,12 @@ public sealed partial class ScreenRules
     public static string? AgentOfExecutable(string path)
     {
         var name = Path.GetFileNameWithoutExtension(path).ToLowerInvariant();
-        return name is "claude" or "codex" or "gemini" ? name : null;
+        return name switch
+        {
+            "claude" or "codex" or "gemini" => name,
+            "cursor-agent" => "cursor",
+            "agy" => "antigravity",
+            _ => null,
+        };
     }
 }

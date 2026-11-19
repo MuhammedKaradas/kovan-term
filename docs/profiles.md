@@ -14,6 +14,8 @@ directory in the dialog opened by the "+ New terminal" button or by right-clicki
 | `claude` | Claude Code | `claude` |
 | `codex` | Codex | `codex` |
 | `gemini` | Gemini CLI | `gemini` |
+| `cursor` | Cursor CLI | `cursor-agent` |
+| `antigravity` | Antigravity | `agy` |
 
 Executables are resolved through `PATH` and `PATHEXT`. Profiles whose program isn't found are shown
 dimmed and can't be selected. `.cmd`/`.bat` files (which is how npm installs CLIs) are started through

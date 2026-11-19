@@ -77,7 +77,9 @@ public partial class TerminalNodeViewModel : ObservableObject
     /// What the terminal actually runs: <see cref="CommandLine"/> plus per-run arguments such as the hook settings.
     /// Not persisted; the saved command stays reusable on the next run.
     /// </summary>
-    public string? LaunchCommandLine { get; init; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StartupCommandLine))]
+    public partial string? LaunchCommandLine { get; set; }
     public string StartupCommandLine => LaunchCommandLine ?? CommandLine;
     /// <summary>For WSL nodes a Linux path (or <c>~</c>), passed via <c>wsl.exe --cd</c>.</summary>
     public string? WorkingDirectory { get; init; }

@@ -19,6 +19,8 @@ public sealed class ProfileStore
         new() { Id = "claude", Name = "Claude Code", Executable = "claude", Color = "#D97757" },
         new() { Id = "codex", Name = "Codex", Executable = "codex", Color = "#10A37F" },
         new() { Id = "gemini", Name = "Gemini CLI", Executable = "gemini", Color = "#4285F4" },
+        new() { Id = "cursor", Name = "Cursor CLI", Executable = "cursor-agent", Color = "#8A8A8A" },
+        new() { Id = "antigravity", Name = "Antigravity", Executable = "agy", Color = "#3B82F6" },
     ];
 
     private static readonly JsonSerializerOptions JsonOptions = new()
