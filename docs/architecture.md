@@ -271,7 +271,16 @@ last 300 messages are saved with the workspace, leases expire). Messages are pul
 an agent with unread messages gets a prompt, Kovan's answer to its `UserPromptSubmit` hook adds a one-line
 `additionalContext` telling it to read its inbox. Messages are information, not instructions (the server's
 instructions say so), size- and rate-limited. The **Board** tab of the right panel shows the tasks (the user can add,
-start, finish, reopen and delete them), the leases and every message.
+start, finish, reopen and delete them, or drag a card onto another column), the leases and every message.
+
+The Board is also the kanban for the user's own work (#16), kept in the panel rather than as a canvas node: a node
+would be one more HWND-free but large WPF surface to snapshot and keep in view, and the panel already shows the same
+tasks the agents see. **Give to an agent** (the person icon on a card) picks an agent on the canvas, pastes the task
+into its terminal as one bracketed paste for the user to submit, and marks the task `Assigned` to that agent. From
+then on Kovan moves it along with the agent's status, whatever reported it (hooks, OSC 7501): `todo` → `doing` when
+the agent starts working, `doing` → `done` when it goes from working to idle or done. Waiting for an answer or a
+permission isn't the end of a turn. A task an agent claimed itself (`task_claim`) isn't advanced this way; the agent
+completes it. Moving a card back to *To do* makes it nobody's again.
 
 ## Screen rules
 
