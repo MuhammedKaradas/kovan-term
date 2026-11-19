@@ -317,6 +317,19 @@ menu open `BroadcastWindow`.
   default), Enter goes to all of them 150 ms later, since some agents take an Enter that arrives with a paste as part
   of it.
 
+## Pull requests of worktrees
+
+A worktree node's branch is looked up with the GitHub CLI (`PullRequests`, `gh pr view <branch> --json …`, which
+keeps the user's login) shortly after startup, every 3 minutes, after a push and when a turn ends (at most every 30 s
+per node) (#86). Without `gh`, or for a worktree inside WSL, nothing is shown.
+- **Shown:** next to the branch on the node's header and in the Changes panel: "PR #12 · checks failing", running,
+  passed, draft, merged or closed. Check runs and commit statuses both count.
+- **Failed checks:** **Send failed checks to the agent** pastes which checks failed and the last 120 lines of each
+  failed Actions run's log (`gh run view <id> --log-failed`, at most 10 000 characters, without colors or control
+  characters) into the agent, for the user to send.
+- **Merged:** **Delete worktree** closes the node and deletes the worktree and branch, after saying what would be
+  lost: commits made after the pull request's last commit, uncommitted files.
+
 ## Screen rules
 
 For prompts no hook or status report announces (folder trust questions, Codex's hook review) and for agents that

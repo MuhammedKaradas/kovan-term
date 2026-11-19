@@ -31,7 +31,8 @@ public partial class MainWindow : FluentWindow
         var resolver = new CommandResolver();
         _vm = new MainViewModel(new WorkspaceStore(), new ProfileStore(), resolver, new WslLauncher(resolver), new DialogService(this),
             new SettingsStore(), _hookServer, usage: new ClaudeUsage(new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(15) }),
-            dictation: CreateDictation());
+            dictation: CreateDictation(),
+            pullRequests: resolver.Resolve("gh") is { } gh ? new PullRequests(gh) : null);
         DataContext = _vm;
         _canvas = new TerminalCanvasController(Editor);
         _vm.TerminalInputRequested += _canvas.SendInput;
