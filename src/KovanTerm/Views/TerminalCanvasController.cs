@@ -3,11 +3,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using EasyWindowsTerminalControl;
 using Microsoft.Web.WebView2.Wpf;
 using KovanTerm.Interop;
 using KovanTerm.Services;
-using Microsoft.Terminal.Wpf;
+using KovanTerm.Terminals;
 using Nodify;
 
 namespace KovanTerm.Views;
@@ -31,11 +30,11 @@ public sealed class TerminalCanvasController
     public const double SleepZoomThreshold = 0.4;
 
     /// <summary>A terminal on the canvas and its cached snapshot.</summary>
-    private sealed class Entry(FrameworkElement host, EasyTerminalControl? terminal, WebView2? browser)
+    private sealed class Entry(FrameworkElement host, ITerminalSurface? terminal, WebView2? browser)
     {
-        /// <summary>What's hidden and shown and snapshotted: the terminal control, or the preview's host border.</summary>
+        /// <summary>What's hidden and shown and snapshotted: the terminal's host, or the preview's host border.</summary>
         public FrameworkElement Host { get; } = host;
-        public EasyTerminalControl? Terminal { get; } = terminal;
+        public ITerminalSurface? Terminal { get; } = terminal;
         /// <summary>A web preview node's WebView2 (also an HWND, so the same rules apply).</summary>
         public WebView2? Browser { get; } = browser;
         /// <summary>When a preview was last captured (<see cref="Environment.TickCount64"/>); pages change without telling.</summary>
@@ -125,7 +124,7 @@ public sealed class TerminalCanvasController
             var sinceRead = now - entry.LastScreenRead;
             if (sinceRead < MinScreenReadMs || (!settled && sinceRead < BusyScreenReadMs)) continue;
             entry.LastScreenRead = now;
-            if (entry.Terminal?.Terminal is not { } terminal || TerminalSnapshot.FindHwnd(terminal) is not { } hwnd) continue;
+            if (entry.Terminal == null || TerminalSnapshot.FindHwnd(entry.Host) is not { } hwnd) continue;
             entry.ScreenChanged = false;
             entry.ScreenReading = true;
             Task.Run(() => _screenReader.Read(hwnd)).ContinueWith(t =>
@@ -153,40 +152,38 @@ public sealed class TerminalCanvasController
         _editor.AddHandler(ItemContainer.LocationChangedEvent, new RoutedEventHandler((_, _) => OnCanvasMoving()));
     }
 
-    public void Register(EasyTerminalControl term)
+    /// <summary>A terminal node's terminal, once it's in the visual tree (<see cref="TerminalHost.Ready"/>).</summary>
+    public void Register(TerminalHost host)
     {
-        if (term.DataContext is not { } node || _byNode.ContainsKey(node)) return;
-        var entry = new Entry(term, term, null);
+        if (host.Surface is not { } term || host.DataContext is not { } node || _byNode.ContainsKey(node)) return;
+        var entry = new Entry(host, term, null);
         _byNode[node] = entry;
         // The snapshot goes stale as output arrives; it must also be retaken when the size changes (resize, font size)
-        if (term.ConPTYTerm != null)
+        var status = new ProgramStatusParser();
+        term.Output += data =>
         {
-            var status = new ProgramStatusParser();
-            term.ConPTYTerm.TerminalOutput += (_, e) =>
-            {
-                entry.Dirty = true;
-                entry.ScreenChanged = true;
-                entry.LastOutput = Environment.TickCount64;
-                if (LocalUrls.FindLast(e.Data) is { } url)
-                    term.Dispatcher.BeginInvoke(() => LocalUrlPrinted?.Invoke(node, url));
-                // Reader thread: only a vectorized search per chunk unless a status report is in it
-                var reports = status.Feed(e.Data);
-                if (reports.Count > 0)
-                    term.Dispatcher.BeginInvoke(() => ProgramStatusReported?.Invoke(node, reports));
-            };
-            term.ConPTYTerm.InterceptInputToTermApp += (ref Span<char> input) =>
-            {
-                if (PromptKeys.IsAnswer(input))
-                    term.Dispatcher.BeginInvoke(() => AnswerKeyTyped?.Invoke(node));
-            };
-        }
-        term.SizeChanged += (_, _) => entry.Dirty = true;
-        term.IsKeyboardFocusWithinChanged += (_, e) =>
+            entry.Dirty = true;
+            entry.ScreenChanged = true;
+            entry.LastOutput = Environment.TickCount64;
+            if (LocalUrls.FindLast(data) is { } url)
+                host.Dispatcher.BeginInvoke(() => LocalUrlPrinted?.Invoke(node, url));
+            // Reader thread: only a vectorized search per chunk unless a status report is in it
+            var reports = status.Feed(data);
+            if (reports.Count > 0)
+                host.Dispatcher.BeginInvoke(() => ProgramStatusReported?.Invoke(node, reports));
+        };
+        term.Input += input =>
+        {
+            if (PromptKeys.IsAnswer(input))
+                host.Dispatcher.BeginInvoke(() => AnswerKeyTyped?.Invoke(node));
+        };
+        host.SizeChanged += (_, _) => entry.Dirty = true;
+        host.IsKeyboardFocusWithinChanged += (_, e) =>
         {
             if (e.NewValue is true) NodeFocused?.Invoke(node);
         };
         // Once the terminal is ready, apply the font size for the current zoom (the workspace may have opened at a different zoom)
-        term.Dispatcher.BeginInvoke(() =>
+        host.Dispatcher.BeginInvoke(() =>
         {
             _appliedFontSize = FontSizeForZoom(_editor.ViewportZoom);
             SetFont(term, _appliedFontSize);
@@ -199,7 +196,7 @@ public sealed class TerminalCanvasController
     public void SendInput(object node, string text)
     {
         if (_byNode.TryGetValue(node, out var entry))
-            entry.Terminal?.ConPTYTerm?.WriteToTerm(text);
+            entry.Terminal?.Write(text);
     }
 
     private const long PreviewRecaptureMs = 2000;
@@ -231,8 +228,8 @@ public sealed class TerminalCanvasController
     {
         if (entry.Terminal is { } term)
         {
-            if (term.Terminal is { } terminal && TerminalSnapshot.FindHwnd(terminal) is { } hwnd) _screenReader.Forget(hwnd);
-            KillProcessTree(term);
+            if (TerminalSnapshot.FindHwnd(entry.Host) is { } hwnd) _screenReader.Forget(hwnd);
+            term.Terminate();
         }
         entry.Browser?.Dispose();
     }
@@ -252,30 +249,6 @@ public sealed class TerminalCanvasController
         _byNode.Clear();
     }
 
-    private static void KillProcessTree(EasyTerminalControl term)
-    {
-        var pty = term.ConPTYTerm;
-        if (pty == null) return;
-        try
-        {
-            if (pty.Process is { HasExited: false } process)
-                process.Kill(EntireProcessTree: true);
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or ArgumentException)
-        {
-            // The process may have exited on its own in the meantime
-            Debug.WriteLine($"Couldn't kill terminal process: {ex.Message}");
-        }
-
-        // The library doesn't close the pseudo-console when the process ends, leaving conhost.exe running.
-        // ClosePseudoConsole can block, so it isn't called on the UI thread.
-        Task.Run(() =>
-        {
-            try { ((ITerminalConnection)pty).Close(); }
-            catch (Exception ex) { Debug.WriteLine($"Couldn't close pseudo-console: {ex.Message}"); }
-        });
-    }
-
     /// <summary>
     /// Gives keyboard focus to the node's terminal. If the terminal is currently hidden (snapshot mode or sleeping),
     /// it's focused once the live terminal is back.
@@ -289,8 +262,7 @@ public sealed class TerminalCanvasController
             return;
         }
         _pendingFocus = null;
-        // The terminal control is the TerminalControl containing the HwndHost; focusing it calls SetFocus on the HWND
-        if (entry.Terminal?.Terminal?.Focus() != true)
+        if (entry.Terminal?.Focus() != true)
             entry.Host.Focus();
     }
 
@@ -514,6 +486,6 @@ public sealed class TerminalCanvasController
         }
     }
 
-    private void SetFont(EasyTerminalControl term, int size) =>
-        term.Terminal?.SetTheme(TerminalThemes.For(_dark), "Cascadia Code", (short)size);
+    private void SetFont(ITerminalSurface term, int size) =>
+        term.SetAppearance(TerminalThemes.For(_dark), "Cascadia Code", size);
 }

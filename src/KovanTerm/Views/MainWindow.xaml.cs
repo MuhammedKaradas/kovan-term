@@ -7,9 +7,9 @@ using System.Windows.Media;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using EasyWindowsTerminalControl;
 using KovanTerm.Interop;
 using KovanTerm.Services;
+using KovanTerm.Terminals;
 using KovanTerm.ViewModels;
 using Nodify;
 using Wpf.Ui.Controls;
@@ -266,10 +266,10 @@ public partial class MainWindow : FluentWindow
     }
 
     // Terminal controls are HwndHosts, so they're registered with the canvas controller in the view layer
-    private void Terminal_Loaded(object sender, RoutedEventArgs e)
+    private void Terminal_Ready(object sender, RoutedEventArgs e)
     {
-        if (sender is EasyTerminalControl term)
-            _canvas.Register(term);
+        if (sender is TerminalHost host)
+            _canvas.Register(host);
     }
 
     // Mouse position when the menu opened (canvas coordinates); by the time a menu item is clicked the mouse has moved
