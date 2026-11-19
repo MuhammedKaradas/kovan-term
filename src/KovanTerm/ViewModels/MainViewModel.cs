@@ -186,6 +186,7 @@ public partial class MainViewModel : ObservableObject
         var setup = worktree != null ? dialog.SetupCommand.Trim() : "";
         var node = CreateNode(choice.Profile, choice.ResolvedPath!, directory, at, worktree, setup, persistent: dialog.KeepRunning);
         if (choice.Profile.Wsl) StartDistroFirst(node, choice.Profile.Distro);
+        else PinCursorChat(node, choice.Profile, choice.ResolvedPath!);
         AddNode(node);
         // The terminal just opened is the one the user is about to work with
         CurrentNode = node;
@@ -1127,10 +1128,41 @@ public partial class MainViewModel : ObservableObject
         }
         // Codex reaches the same agent mesh through a config override
         else if (agent == "codex" && _hooks != null) extra.Add(_hooks.CodexMcpArguments(nodeId));
+        else if (agent == "cursor" && sessionId != null) extra.Add(CursorChats.Arguments(sessionId, arguments));
         else return null;
         var all = string.Join(' ', extra.Where(a => a.Length > 0));
         return all == arguments ? null : CommandResolver.BuildCommandLine(resolvedPath, all);
     }
+
+    /// <summary>
+    /// A Cursor CLI node without a chat yet: its terminal waits while one is created (<c>cursor-agent create-chat</c>),
+    /// then starts resuming it, now and on every later start. Without a chat (Cursor not signed in…) it starts anyway.
+    /// </summary>
+    private void PinCursorChat(TerminalNodeViewModel node, TerminalProfile profile, string resolvedPath)
+    {
+        if (node.SessionId != null || ScreenRules.AgentOfExecutable(resolvedPath) != "cursor" || node.HasStartError
+            || CursorChats.Arguments("x0000000", profile.Arguments).Length == 0)
+            return;
+        node.StartingText = "Starting a Cursor chat…";
+        node.IsStarting = true;
+        _ = PinAsync();
+
+        async Task PinAsync()
+        {
+            var chat = await CreateCursorChat(resolvedPath, node.WorkingDirectory);
+            if (chat != null)
+            {
+                node.SessionId = chat;
+                node.LaunchCommandLine = LaunchCommandLine(node.Id, resolvedPath, profile.Arguments, chat);
+                ScheduleSave();
+            }
+            StatusLog($"{node.Title} cursor chat {chat ?? "(none: starting unpinned)"}");
+            node.IsStarting = false;
+        }
+    }
+
+    /// <summary>Makes a Cursor chat; replaced in tests.</summary>
+    internal Func<string, string?, Task<string?>> CreateCursorChat { get; set; } = CursorChats.CreateAsync;
 
     /// <summary>
     /// Holds a WSL node's terminal until its distro is running: started inside a pseudo console while the distro is
@@ -1260,11 +1292,13 @@ public partial class MainViewModel : ObservableObject
                 return TerminalNodeViewModel.FromState(state, startError: profile.Wsl ? WslNotFoundMessage(profile.Distro) : NotFoundMessage(profile.Executable));
             // Nodes saved before sessions were tracked get a fresh conversation, as they did before
             if (IsClaude(profile, path) && state.SessionId == null) state = state with { SessionId = Guid.NewGuid().ToString() };
-            return TerminalNodeViewModel.FromState(state, BuildCommandLine(profile, path, s.WorkingDirectory, state.Persistent ? s.Id : null),
+            var restored = TerminalNodeViewModel.FromState(state, BuildCommandLine(profile, path, s.WorkingDirectory, state.Persistent ? s.Id : null),
                 launchCommandLine: profile.Wsl
                     ? WslLaunchCommandLine(s.Id, profile, path, s.WorkingDirectory, state.SessionId, state.Persistent)
                     : LaunchCommandLine(s.Id, path, profile.Arguments, state.SessionId),
                 profile: profile);
+            if (!profile.Wsl) PinCursorChat(restored, profile, path);
+            return restored;
         }
 
         var exe = CommandResolver.FirstToken(s.CommandLine);
