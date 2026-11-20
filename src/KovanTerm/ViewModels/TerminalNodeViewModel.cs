@@ -261,7 +261,7 @@ public partial class TerminalNodeViewModel : ObservableObject
     /// Gemini CLI and OpenCode: Enter (their first choice, "Allow once", is highlighted); Antigravity: <c>y</c>;
     /// Qwen Code: <c>1</c>. Deny is Escape for all.
     /// </summary>
-    public string AllowKey => _allowKey ?? AgentKind switch { "codex" or "antigravity" => "y", "gemini" or "opencode" => "", _ => "1" };
+    public string AllowKey => _allowKey ?? AgentKind switch { "codex" or "antigravity" => "y", "gemini" or "opencode" => "\r", _ => "1" };
     private string? _allowKey;
 
     /// <summary>Updates the status from the program's own OSC 7501 report.</summary>
