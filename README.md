@@ -7,6 +7,10 @@ an **infinite canvas**, each in its own **real terminal**.
 
 > ⚠️ Early development (v0.1). Roadmap: [docs/roadmap.md](docs/roadmap.md)
 
+![Four agents on the canvas: two Claude Code nodes, Codex and Antigravity](docs/images/canvas.png)
+
+<sub>Two Claude Code agents, Codex and Antigravity working on one small project. Both Claude Code agents wait for your approval: Allow and Deny are on their title bars and in the Agents panel.</sub>
+
 ## Why?
 
 Juggling several agents across terminal tabs is hard. Electron-based canvas apps (OpenCove, TermCanvas)
@@ -33,6 +37,15 @@ about 3.5× less than an xterm.js-in-WebView2 equivalent
 - Keyboard shortcuts: switch between terminals, fit all, zoom to a terminal ([docs/shortcuts.md](docs/shortcuts.md))
 - Smooth panning and zooming with "snapshot mode"; off-screen terminals sleep
 - Windows 11 look (Mica, Fluent controls) with light, dark or follow-Windows themes
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Changes panel](docs/images/changes.png) | ![Board](docs/images/board.png) |
+| **Changes**: what the agents changed in the selected project, as a diff | **Board**: tasks for the agents, which they pick up and mark done themselves |
+| ![Statistics window](docs/images/statistics.png) | ![Light theme](docs/images/light.png) |
+| **Statistics**: time, tokens and commits by day, project and model | The light theme |
 
 ## Requirements
 
