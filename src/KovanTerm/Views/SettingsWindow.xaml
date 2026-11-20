@@ -101,11 +101,18 @@
                 <TextBlock Style="{StaticResource Hint}" Margin="140,4,0,8"
                            Text="Setting one language makes dictation faster and more accurate in it; voice commands in another language are then misheard."/>
 
-                <StackPanel Visibility="{Binding CanSendCrashReports, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel Visibility="{Binding ShowsPrivacy, Converter={StaticResource BoolToVisibility}}">
                     <TextBlock Text="Privacy" Style="{StaticResource Section}"/>
-                    <CheckBox Content="Send crash reports" IsChecked="{Binding SendCrashReports}" AutomationProperties.Name="Send crash reports"/>
-                    <TextBlock Style="{StaticResource Hint}"
-                               Text="When Kovan crashes: the app and Windows versions, the error and where in Kovan's code it happened, and a random id for this install. File paths, user and computer names are removed; nothing from your terminals, files or prompts is sent. Reports wait in your data folder until they can be sent."/>
+                    <StackPanel Visibility="{Binding CanSendCrashReports, Converter={StaticResource BoolToVisibility}}">
+                        <CheckBox Content="Send crash reports" IsChecked="{Binding SendCrashReports}" AutomationProperties.Name="Send crash reports"/>
+                        <TextBlock Style="{StaticResource Hint}"
+                                   Text="When Kovan crashes: the app and Windows versions, the error and where in Kovan's code it happened, and a random id for this install. File paths, user and computer names are removed; nothing from your terminals, files or prompts is sent. Reports wait in your data folder until they can be sent."/>
+                    </StackPanel>
+                    <StackPanel Visibility="{Binding CanSendUsageStats, Converter={StaticResource BoolToVisibility}}" Margin="0,8,0,0">
+                        <CheckBox Content="Send usage statistics" IsChecked="{Binding SendUsageStats}" AutomationProperties.Name="Send usage statistics"/>
+                        <TextBlock Style="{StaticResource Hint}"
+                                   Text="How many times a day each feature is used (for example &quot;a Codex node was opened&quot;), from a fixed list, with the same random id; sent once a day. No file names, paths, prompts or terminal text. They're kept in usage.json in your data folder until sent."/>
+                    </StackPanel>
                 </StackPanel>
 
                 <TextBlock Text="About" Style="{StaticResource Section}"/>

@@ -34,6 +34,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         StartAgentsOnOpen = s.StartAgentsOnOpen;
         CheckForUpdates = s.CheckForUpdates;
         SendCrashReports = s.SendCrashReports == true;
+        SendUsageStats = s.SendUsageStats == true;
         DictationModel = SpeechModel.Find(s.DictationModel).Name;
         // A language typed into the file by hand is kept, and shown
         if (Languages.All(l => l.Value != s.DictationLanguage))
@@ -72,9 +73,12 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] public partial bool StartAgentsOnOpen { get; set; }
     [ObservableProperty] public partial bool CheckForUpdates { get; set; }
     [ObservableProperty] public partial bool SendCrashReports { get; set; }
+    [ObservableProperty] public partial bool SendUsageStats { get; set; }
 
-    /// <summary>Only builds with a report address show the Privacy section.</summary>
+    /// <summary>Only builds with an address for them show these settings, and the Privacy section if either.</summary>
     public bool CanSendCrashReports => CrashReports.Endpoint != null;
+    public bool CanSendUsageStats => UsageStats.Endpoint != null;
+    public bool ShowsPrivacy => CanSendCrashReports || CanSendUsageStats;
 
     /// <summary>The running version, for the About section.</summary>
     public string Version => $"Kovan Term {UpdateCheck.CurrentVersion}";
@@ -107,6 +111,14 @@ public sealed partial class SettingsViewModel : ObservableObject
         if (_loading) return;
         _store.Save(CrashReports.With(_store.Load(), value));
         CrashReports.Apply(_store.Load());
+        Saved?.Invoke();
+    }
+
+    partial void OnSendUsageStatsChanged(bool value)
+    {
+        if (_loading) return;
+        _store.Save(UsageStats.With(_store.Load(), value));
+        UsageStats.Apply(_store.Load());
         Saved?.Invoke();
     }
     partial void OnDictationModelChanged(string value) => Save();

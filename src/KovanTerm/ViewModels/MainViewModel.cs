@@ -75,28 +75,48 @@ public partial class MainViewModel : ObservableObject
     /// <summary>App-wide preferences, read when needed (the file may have been edited by hand).</summary>
     public Models.AppSettings Settings => _settings.Load();
 
-    // ---- Crash reports ----
+    // ---- Crash reports and usage statistics ----
+
+    private const string CrashText =
+        "If Kovan Term crashes, it can send a report so the crash can be fixed: the app and Windows versions, the error "
+        + "and where in Kovan's code it happened, and a random id for this install. File paths, user and computer names "
+        + "are removed first.";
+
+    private const string UsageText =
+        "It can also count which features are used (for example \"a Codex node was opened\", \"dictation was used\"), "
+        + "sent once a day as numbers per day.";
 
     /// <summary>
-    /// Asks once whether to send crash reports (only builds with an address ask), then sends what earlier crashes
-    /// queued. Closing the question without an answer asks again next time.
+    /// Asks once about crash reports and usage statistics (only builds with an address for them ask), then sends what
+    /// waits. Closing the question without an answer asks again next time.
     /// </summary>
-    public async Task CrashReportsOnStartAsync()
+    public async Task PrivacyOnStartAsync()
     {
-        if (CrashReports.Endpoint == null) return;
-        if (Settings.SendCrashReports == null)
+        var askCrash = CrashReports.Endpoint != null && Settings.SendCrashReports == null;
+        var askUsage = UsageStats.Endpoint != null && Settings.SendUsageStats == null;
+        const string never = "Nothing from your terminals, files or prompts is ever sent. You can change this in Settings → Privacy.";
+        if (askCrash && askUsage)
         {
-            var choice = await _dialogs.ChooseAsync("Send crash reports?",
-                "If Kovan Term crashes, it can send a report so the crash can be fixed: the app and Windows versions, the "
-                + "error and where in Kovan's code it happened, and a random id for this install. File paths, user and "
-                + "computer names are removed first; nothing from your terminals, files or prompts is ever sent.\n\n"
-                + "You can change this in Settings → Privacy.",
-                "Send crash reports", "Don't send");
-            if (choice == null) return;
-            SaveSettings(s => CrashReports.With(s, choice == 0));
+            var choice = await _dialogs.ChooseAsync("Help improve Kovan Term?", $"{CrashText}\n\n{UsageText}\n\n{never}",
+                "Send both", "Only crash reports", "Don't send");
+            if (choice != null) SaveSettings(s => UsageStats.With(CrashReports.With(s, choice is 0 or 1), choice == 0));
+        }
+        else if (askCrash)
+        {
+            var choice = await _dialogs.ChooseAsync("Send crash reports?", $"{CrashText}\n\n{never}", "Send crash reports", "Don't send");
+            if (choice != null) SaveSettings(s => CrashReports.With(s, choice == 0));
+        }
+        else if (askUsage)
+        {
+            var choice = await _dialogs.ChooseAsync("Send usage statistics?",
+                $"{UsageText.Replace("It can also count", "Kovan Term can count")}\n\n{never}", "Send usage statistics", "Don't send");
+            if (choice != null) SaveSettings(s => UsageStats.With(s, choice == 0));
         }
         CrashReports.Apply(Settings);
+        UsageStats.Apply(Settings);
+        UsageStats.Count("app.start");
         await CrashReports.SendQueuedAsync();
+        await UsageStats.SendAsync();
     }
 
     // ---- Updates ----
@@ -242,6 +262,10 @@ public partial class MainViewModel : ObservableObject
         if (choice.Profile.Wsl) StartDistroFirst(node, choice.Profile.Distro);
         else PinCursorChat(node, choice.Profile, choice.ResolvedPath!);
         AddNode(node);
+        // Built-in: the defaults and the WSL profiles made for each distro (their ids all have "wsl" in them)
+        var builtIn = ProfileStore.Defaults.Any(d => d.Id == choice.Profile.Id) || choice.Profile.Id.Contains("wsl", StringComparison.Ordinal);
+        if (UsageStats.ProfileEvent(choice.Profile.Id, builtIn) is { } profileEvent) UsageStats.Count(profileEvent);
+        if (worktree != null) UsageStats.Count("feature.worktree");
         // The terminal just opened is the one the user is about to work with
         CurrentNode = node;
     }
@@ -456,6 +480,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void NewWorkspace()
     {
+        UsageStats.Count("feature.workspace");
         var workspace = AddWorkspace();
         SwitchWorkspace(workspace);
         workspace.IsRenaming = true;
@@ -796,6 +821,7 @@ public partial class MainViewModel : ObservableObject
         RememberDirectory(folder);
         var node = CreateNode(claude.Profile, claude.Path, folder, at, existingSessionId: picked.SessionId);
         AddNode(node);
+        UsageStats.Count("feature.recent");
         CurrentNode = node;
     }
 
@@ -815,6 +841,7 @@ public partial class MainViewModel : ObservableObject
     private async Task MergeWorktree(TerminalNodeViewModel? node)
     {
         if (node?.Worktree is not { } w) return;
+        UsageStats.Count("feature.pull_request");
         if (w.BaseBranch == null)
         {
             await _dialogs.ShowMessageAsync("Merge", "This worktree doesn't know which branch it started from; merge it by hand.");
@@ -836,6 +863,7 @@ public partial class MainViewModel : ObservableObject
     private async Task CreatePullRequest(TerminalNodeViewModel? node)
     {
         if (node?.Worktree is not { } w) return;
+        UsageStats.Count("feature.pull_request");
         if (!await _dialogs.ConfirmAsync("Pull request",
                 $"Push {w.Branch} to origin and open the page to create a pull request?", "Push and open"))
             return;
@@ -877,6 +905,7 @@ public partial class MainViewModel : ObservableObject
     private void AnswerPermission(TerminalNodeViewModel node, string keys, bool allowed)
     {
         if (!node.AwaitsPermission) return;
+        UsageStats.Count("feature.allow");
         TerminalInputRequested?.Invoke(node, keys);
         node.PromptAnswered(allowed);
         StatusLog($"{node.Title} answered allowed={allowed} -> {node.Status}");
@@ -1358,6 +1387,7 @@ public partial class MainViewModel : ObservableObject
         node.WorkspaceId = ActiveWorkspace.Id;
         node.Location = FreeSpot(node, ActiveWorkspace, node.Location, viewport);
         Nodes.Add(node);
+        UsageStats.Count(UsageStats.NodeEvent(node.AgentKind, node.IsNote, node.IsBrowser, node.IsGroup, node.ProfileId));
     }
 
     private Point FreeSpot(TerminalNodeViewModel node, WorkspaceViewModel workspace, Point near, Rect? viewport) =>

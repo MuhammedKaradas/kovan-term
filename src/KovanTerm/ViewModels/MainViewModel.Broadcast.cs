@@ -38,7 +38,11 @@ public partial class MainViewModel
     }
 
     [RelayCommand]
-    private Task Broadcast() => BroadcastAsync();
+    private Task Broadcast()
+    {
+        Services.UsageStats.Count("feature.broadcast");
+        return BroadcastAsync();
+    }
 
     /// <summary>Pastes <paramref name="text"/> into each terminal as one paste, then presses Enter if asked.</summary>
     public async Task<int> SendToAsync(IReadOnlyList<TerminalNodeViewModel> targets, string text, bool pressEnter)

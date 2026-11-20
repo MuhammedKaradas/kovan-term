@@ -11,12 +11,17 @@
     <Version>0.1.0</Version>
     <!-- Our own symbols are embedded in the dll: crash reports keep line numbers without shipping a separate .pdb -->
     <DebugType>embedded</DebugType>
-    <!-- Crash reports are sent only by builds given an address (the release workflow sets it); empty: never asked or sent -->
+    <!--
+      Crash reports and usage statistics are sent only by builds given an address (the release workflow sets them);
+      empty: never asked or sent
+    -->
     <KovanCrashReportEndpoint Condition="'$(KovanCrashReportEndpoint)' == ''"></KovanCrashReportEndpoint>
+    <KovanUsageEndpoint Condition="'$(KovanUsageEndpoint)' == ''"></KovanUsageEndpoint>
   </PropertyGroup>
 
   <ItemGroup>
     <AssemblyMetadata Include="CrashReportEndpoint" Value="$(KovanCrashReportEndpoint)" />
+    <AssemblyMetadata Include="UsageEndpoint" Value="$(KovanUsageEndpoint)" />
   </ItemGroup>
 
   <!-- Don't publish .pdb files that come from packages (e.g. the 81 MB Microsoft.Terminal.Control.pdb) -->
