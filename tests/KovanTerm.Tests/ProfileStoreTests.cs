@@ -65,4 +65,17 @@ public sealed class ProfileStoreTests : IDisposable
         File.WriteAllText(FilePath, "[ { corrupt");
         Assert.Equal(ProfileStore.Defaults, new ProfileStore(FilePath).Load());
     }
+
+    [Fact]
+    public void DeepSeek_profile_runs_Claude_Code_with_its_key_in_Credential_Manager()
+    {
+        var p = Assert.Single(ProfileStore.Defaults, d => d.Id == "claude-deepseek");
+
+        Assert.Equal("claude", p.Executable);
+        Assert.Equal("https://api.deepseek.com/anthropic", p.Environment!["ANTHROPIC_BASE_URL"]);
+        Assert.Equal("secret:deepseek", p.Environment["ANTHROPIC_AUTH_TOKEN"]);
+        // Claude Code maps unset Opus names to DeepSeek's pricier Pro model: every model it might ask for is set
+        foreach (var name in new[] { "ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL", "CLAUDE_CODE_SUBAGENT_MODEL" })
+            Assert.StartsWith("deepseek-flash", p.Environment[name]);
+    }
 }
