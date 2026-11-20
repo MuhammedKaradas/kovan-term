@@ -7,6 +7,10 @@ kendi **gerçek terminalinde**, yan yana çalıştıran hafif bir Windows uygula
 
 > ⚠️ Erken geliştirme aşamasında (v0.1). Yol haritası: [docs/roadmap.md](docs/roadmap.md) (İngilizce)
 
+![Tuvalde dört ajan: iki Claude Code, Codex ve Antigravity](docs/images/canvas.png)
+
+<sub>İki Claude Code ajanı, Codex ve Antigravity küçük bir proje üzerinde çalışıyor. İki Claude Code ajanı da onayını bekliyor: Allow ve Deny düğmeleri hem başlık çubuklarında hem Ajanlar panelinde.</sub>
+
 ## Neden?
 
 Birden fazla ajanı terminal sekmeleri arasında yönetmek zor. Electron tabanlı tuval uygulamaları
@@ -32,6 +36,15 @@ Terminal'in GPU hızlandırmalı terminal bileşeniyle, düşük kaynak tüketim
 - Klavye kısayolları: terminaller arası geçiş, tümünü sığdır, yakınlaş ([docs/shortcuts.md](docs/shortcuts.md))
 - "Fotoğraf modu" ile akıcı kaydırma ve zoom; ekran dışındaki terminaller uyur
 - Windows 11 görünümü (Mica, Fluent kontroller); açık, koyu ya da Windows'a uyan tema
+
+## Ekran görüntüleri
+
+| | |
+|---|---|
+| ![Değişiklikler paneli](docs/images/changes.png) | ![Pano](docs/images/board.png) |
+| **Değişiklikler**: seçili projede ajanların değiştirdikleri, fark (diff) olarak | **Pano**: ajanlara görevler; görevi kendileri alıp bitince tamamlandı olarak işaretliyorlar |
+| ![İstatistik penceresi](docs/images/statistics.png) | ![Açık tema](docs/images/light.png) |
+| **İstatistikler**: güne, projeye ve modele göre süre, token ve commit | Açık tema |
 
 ## Gereksinimler
 
