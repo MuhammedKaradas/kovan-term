@@ -54,7 +54,55 @@ public partial class NewTerminalViewModel : ObservableObject
         : !DirectoryExists(WorkingDirectory) ? "This folder doesn't exist."
         : UseWorktree && CanUseWorktree && !GitWorktrees.IsValidBranch(BranchName)
             ? "Branch names can use letters, digits, '.', '_', '-' and '/'."
+        : PicksModel && string.IsNullOrWhiteSpace(Model) ? "Pick a model."
         : null;
+
+    // ---- Model (Ollama) ----
+
+    /// <summary>Lists a model source's models; <c>null</c> when it isn't answering. Set by whoever creates the dialog.</summary>
+    public Func<string, Task<IReadOnlyList<string>?>>? ListModels { get; init; }
+
+    /// <summary>The profile runs a model picked here (<see cref="Models.TerminalProfile.ModelSource"/>).</summary>
+    public bool PicksModel => SelectedProfile?.Profile.ModelSource != null;
+
+    [ObservableProperty]
+    public partial IReadOnlyList<string> ModelOptions { get; private set; } = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ValidationMessage))]
+    [NotifyCanExecuteChangedFor(nameof(ConfirmCommand))]
+    public partial string Model { get; set; } = "";
+
+    /// <summary>Under the model box: loading, nothing installed, or Ollama not running.</summary>
+    [ObservableProperty]
+    public partial string? ModelStatus { get; private set; }
+
+    /// <summary>The node's title with the model in it, e.g. "Claude Code (Ollama · qwen3-coder)"; <c>null</c> otherwise.</summary>
+    public string? ModelTitle => PicksModel && !string.IsNullOrWhiteSpace(Model) && SelectedProfile is { } p
+        ? (p.Name.EndsWith(')') ? $"{p.Name[..^1]} · {Model.Trim()})" : $"{p.Name} ({Model.Trim()})")
+        : null;
+
+    private int _modelLoad;
+
+    /// <summary>Lists the selected profile's models; the last call wins when the profile changes meanwhile.</summary>
+    public async Task LoadModelsAsync()
+    {
+        var load = ++_modelLoad;
+        if (SelectedProfile?.Profile.ModelSource is not { } source || ListModels == null)
+        {
+            ModelOptions = [];
+            ModelStatus = null;
+            return;
+        }
+        ModelStatus = "Looking for installed models…";
+        var models = await ListModels(source);
+        if (load != _modelLoad) return;
+        ModelOptions = models ?? [];
+        ModelStatus = models == null ? $"Ollama isn't answering at {OllamaModels.DefaultAddress}. Start Ollama (or install it from ollama.com), then reopen this dialog."
+            : models.Count == 0 ? "No models installed yet. Get one with: ollama pull qwen3-coder"
+            : "Small local models struggle with agent work; pick a larger one with a 64k+ context if you can.";
+        if (string.IsNullOrWhiteSpace(Model) && ModelOptions.Count > 0) Model = ModelOptions[0];
+    }
 
     // ---- Worktree ----
 
@@ -117,6 +165,10 @@ public partial class NewTerminalViewModel : ObservableObject
     partial void OnSelectedProfileChanged(ProfileOptionViewModel? value)
     {
         OnPropertyChanged(nameof(IsWsl));
+        OnPropertyChanged(nameof(PicksModel));
+        OnPropertyChanged(nameof(ValidationMessage));
+        ConfirmCommand.NotifyCanExecuteChanged();
+        _ = LoadModelsAsync();
         KeepRunning = value?.Profile is { Wsl: true, Persistent: true };
         // Keep the branch suggestion in step with the profile until the user types their own name
         if (!_branchEdited && value != null)

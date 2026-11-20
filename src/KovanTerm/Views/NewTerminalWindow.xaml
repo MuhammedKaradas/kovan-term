@@ -67,6 +67,15 @@
                 </StackPanel>
             </CheckBox>
 
+            <!-- Model: profiles that run a model picked here (Ollama) -->
+            <StackPanel Margin="0,14,0,0" Visibility="{Binding PicksModel, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="Model" Margin="0,0,0,6" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                <ComboBox IsEditable="True" ItemsSource="{Binding ModelOptions}" AutomationProperties.Name="Model"
+                          Text="{Binding Model, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBlock Text="{Binding ModelStatus}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+            </StackPanel>
+
             <!-- Worktree: only for folders inside a git repository -->
             <StackPanel Margin="0,14,0,0" Visibility="{Binding CanUseWorktree, Converter={StaticResource BoolToVisibility}}">
                 <CheckBox IsChecked="{Binding UseWorktree}" AutomationProperties.Name="Start in a new git worktree">

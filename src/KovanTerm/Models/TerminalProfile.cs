@@ -27,4 +27,9 @@ public sealed record TerminalProfile
     /// Windows Credential Manager, asked for in the terminal the first time (see <see cref="Services.EnvironmentLauncher"/>).
     /// </summary>
     public IReadOnlyDictionary<string, string>? Environment { get; init; }
+    /// <summary>
+    /// Where the New terminal dialog lists models from: <c>ollama</c> lists the local Ollama's. The picked model is
+    /// saved with the node and given to Claude Code for every model name it uses (see <see cref="Services.OllamaModels"/>).
+    /// </summary>
+    public string? ModelSource { get; init; }
 }

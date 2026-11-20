@@ -87,6 +87,8 @@ public partial class TerminalNodeViewModel : ObservableObject
     public string StartupCommandLine => Services.EnvironmentLauncher.Wrap(LaunchCommandLine ?? CommandLine, ExtraEnvironment, IsWsl);
     /// <summary>The profile's environment variables (<see cref="TerminalProfile.Environment"/>); not persisted.</summary>
     public IReadOnlyDictionary<string, string>? ExtraEnvironment { get; init; }
+    /// <summary>The model picked in the New terminal dialog (Ollama); saved, and set again on every start.</summary>
+    public string? Model { get; init; }
     /// <summary>For WSL nodes a Linux path (or <c>~</c>), passed via <c>wsl.exe --cd</c>.</summary>
     public string? WorkingDirectory { get; init; }
     public bool IsWsl { get; init; }
@@ -399,6 +401,7 @@ public partial class TerminalNodeViewModel : ObservableObject
         ClaudeAiTitle = _seenAiTitle,
         CommandLine = CommandLine,
         SessionId = SessionId,
+        Model = Model,
         Worktree = Worktree,
         Url = IsBrowser ? Url : null,
         Note = IsNote ? NoteText : null,
@@ -429,6 +432,7 @@ public partial class TerminalNodeViewModel : ObservableObject
         CommandLine = commandLine ?? s.CommandLine,
         LaunchCommandLine = launchCommandLine,
         SessionId = s.SessionId,
+        Model = s.Model,
         Worktree = s.Worktree,
         IsBrowser = s.Url != null,
         IsNote = s.Note != null,

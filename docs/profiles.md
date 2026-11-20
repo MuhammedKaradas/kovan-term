@@ -12,6 +12,8 @@ directory in the dialog opened by the "+ New terminal" button or by right-clicki
 | `pwsh` | PowerShell 7 | `pwsh.exe -NoLogo` |
 | `cmd` | cmd | `cmd.exe` |
 | `claude` | Claude Code | `claude` |
+| `claude-deepseek` | Claude Code (DeepSeek) | `claude` on DeepSeek's API; asks for your DeepSeek API key once |
+| `claude-ollama` | Claude Code (Ollama) | `claude` on the local Ollama, with a model picked in the dialog |
 | `codex` | Codex | `codex` |
 | `gemini` | Gemini CLI | `gemini` |
 | `cursor` | Cursor CLI | `cursor-agent` |
@@ -102,6 +104,7 @@ a new `id` is added to the list. Comments and trailing commas are allowed.
 | `wsl` | | `true` runs `executable` inside WSL; an empty `executable` opens the login shell |
 | `distro` | | WSL distro; the default distro if left out |
 | `persistent` | | WSL only: `true` ticks "Keep running when Kovan closes" by default (see below) |
+| `modelSource` | | `"ollama"`: the dialog lists the local Ollama's models to pick from |
 | `environment` | | Environment variables for this profile's terminals only; see [below](#environment-variables-and-api-keys) |
 
 If the file can't be read, the app starts with the built-in profiles only. Changes take effect after
@@ -122,7 +125,7 @@ provider's Anthropic-compatible API:
 }
 ```
 
-- `%NAME%` in a value is replaced with that variable from Kovan's environment (`"PATH": "C:	ools;%PATH%"`).
+- `%NAME%` in a value is replaced with that variable from Kovan's environment (`"PATH": "C:\\tools;%PATH%"`). An empty value removes the variable.
 - A value `secret:<key>` is an API key kept in **Windows Credential Manager** as `KovanTerm/<key>`, never in
   `profiles.json`. The first time a terminal needs it, the terminal asks for it (what you paste isn't shown) and
   saves it. Several profiles can share a key by using the same name. To change or remove it, open Credential
@@ -133,6 +136,21 @@ provider's Anthropic-compatible API:
 Such a terminal is started through `KovanLaunch.exe` (next to `KovanTerm.exe`): it sets the variables, reads the
 keys, then runs the program and waits for it. The variables aren't saved in the workspace, and keys don't appear
 on any command line.
+
+## Other model providers
+
+Claude Code can run on another provider's Anthropic-compatible API; Kovan's status, Allow/Deny, the agent mesh and
+resuming work the same, since it's still Claude Code. The Claude plan panel only shows your Claude account's usage.
+
+- **DeepSeek** (`claude-deepseek`): create an API key at [platform.deepseek.com](https://platform.deepseek.com)
+  (usage is billed by DeepSeek). The first terminal asks for it and keeps it in Credential Manager as
+  `KovanTerm/deepseek`. Models follow [DeepSeek's guide](https://api-docs.deepseek.com/quick_start/agent_integrations/claude_code).
+- **Ollama** (`claude-ollama`): install [Ollama](https://ollama.com) 0.14 or later and get a model
+  (`ollama pull qwen3-coder`). The New terminal dialog lists the installed models; the one picked is saved with the
+  node. Nothing leaves your computer with a local model. Small models struggle with agent work: pick a larger one
+  with a 64k+ context window if your machine can run it.
+
+To change a setting, add a profile with the same id to `profiles.json` (for example another `ANTHROPIC_BASE_URL`).
 
 ## When a workspace is opened
 

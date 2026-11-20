@@ -159,7 +159,10 @@ public partial class MainViewModel : ObservableObject
         var dialog = new NewTerminalViewModel(_dialogs, options, _recentDirectories, _lastProfileId)
         {
             SetupCommandFor = repo => setups.FirstOrDefault(kv => string.Equals(kv.Key, repo, StringComparison.OrdinalIgnoreCase)).Value,
+            ListModels = ListModels,
         };
+        // The first profile was selected before ListModels was set
+        _ = dialog.LoadModelsAsync();
         // The initial folder was set before SetupCommandFor; look its setup command up now
         if (dialog.RepoRoot is { } initialRepo) dialog.SetupCommand = dialog.SetupCommandFor(initialRepo) ?? "";
         if (!_dialogs.ShowNewTerminal(dialog) || dialog.SelectedProfile is not { IsAvailable: true } choice) return;
@@ -184,7 +187,8 @@ public partial class MainViewModel : ObservableObject
             RememberSetupCommand(dialog.RepoRoot!, dialog.SetupCommand.Trim());
         }
         var setup = worktree != null ? dialog.SetupCommand.Trim() : "";
-        var node = CreateNode(choice.Profile, choice.ResolvedPath!, directory, at, worktree, setup, persistent: dialog.KeepRunning);
+        var node = CreateNode(choice.Profile, choice.ResolvedPath!, directory, at, worktree, setup, persistent: dialog.KeepRunning,
+            title: dialog.ModelTitle, model: dialog.Model);
         if (choice.Profile.Wsl) StartDistroFirst(node, choice.Profile.Distro);
         else PinCursorChat(node, choice.Profile, choice.ResolvedPath!);
         AddNode(node);
@@ -1142,9 +1146,11 @@ public partial class MainViewModel : ObservableObject
     }
 
     private TerminalNodeViewModel CreateNode(TerminalProfile profile, string resolvedPath, string directory, Point location,
-        WorktreeInfo? worktree = null, string setup = "", string? existingSessionId = null, bool persistent = false, Guid? nodeId = null, string? title = null)
+        WorktreeInfo? worktree = null, string setup = "", string? existingSessionId = null, bool persistent = false, Guid? nodeId = null, string? title = null,
+        string? model = null)
     {
         var id = nodeId ?? Guid.NewGuid();
+        profile = OllamaModels.WithModel(profile, model);
         persistent &= profile.Wsl;
         // A saved conversation is resumed (ClaudeSessions finds its transcript); otherwise a new one gets an id now
         var sessionId = IsClaude(profile, resolvedPath) ? existingSessionId ?? Guid.NewGuid().ToString() : null;
@@ -1168,6 +1174,7 @@ public partial class MainViewModel : ObservableObject
             AgentExecutable = profile.Wsl ? profile.Executable : null,
             Distro = profile is { Wsl: true, Distro.Length: > 0 } ? profile.Distro : null,
             ExtraEnvironment = profile.Environment,
+            Model = profile.ModelSource != null && !string.IsNullOrWhiteSpace(model) ? model.Trim() : null,
             Color = profile.Color,
             WorkingDirectory = directory,
             Location = location,
@@ -1226,6 +1233,10 @@ public partial class MainViewModel : ObservableObject
             node.IsStarting = false;
         }
     }
+
+    /// <summary>Lists a model source's models for the New terminal dialog; replaced in tests.</summary>
+    internal Func<string, Task<IReadOnlyList<string>?>> ListModels { get; set; } =
+        source => source == OllamaModels.Source ? OllamaModels.ListAsync() : Task.FromResult<IReadOnlyList<string>?>(null);
 
     /// <summary>Makes a Cursor chat; replaced in tests.</summary>
     internal Func<string, string?, Task<string?>> CreateCursorChat { get; set; } = CursorChats.CreateAsync;
@@ -1355,8 +1366,9 @@ public partial class MainViewModel : ObservableObject
                 ? $"The worktree folder no longer exists:\n{dir}\n\nClose this node; the branch {s.Worktree.Branch} may still exist."
                 : $"The working folder no longer exists:\n{dir}\n\nClose this node and open a new one.");
 
-        if (_profiles.FirstOrDefault(p => p.Id == s.ProfileId) is { } profile)
+        if (_profiles.FirstOrDefault(p => p.Id == s.ProfileId) is { } savedProfile)
         {
+            var profile = OllamaModels.WithModel(savedProfile, s.Model);
             var state = s with { Wsl = profile.Wsl, Persistent = s.Persistent && profile.Wsl };
             if (Resolve(profile) is not { } path)
                 return TerminalNodeViewModel.FromState(state, startError: profile.Wsl ? WslNotFoundMessage(profile.Distro) : NotFoundMessage(profile.Executable));
