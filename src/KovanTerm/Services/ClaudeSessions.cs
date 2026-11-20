@@ -31,6 +31,20 @@ public sealed partial class ClaudeSessions
 
     public static bool ChoosesConversation(string arguments) => ConversationFlag().IsMatch(arguments);
 
+    /// <summary>Where Claude saved this conversation; <c>null</c> if it hasn't.</summary>
+    public string? TranscriptOf(string sessionId)
+    {
+        if (!Directory.Exists(_projectsDirectory) || !Guid.TryParse(sessionId, out _)) return null;
+        try
+        {
+            return Directory.EnumerateFiles(_projectsDirectory, sessionId + ".jsonl", SearchOption.AllDirectories).FirstOrDefault();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>Has Claude saved this conversation (in any project folder)?</summary>
     public bool Exists(string sessionId)
     {

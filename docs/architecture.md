@@ -198,6 +198,15 @@ on one line). The id is saved as the node's `SessionId` and every start adds `--
 signed in, an update notice) the node starts unpinned; a profile that picks its own chat is left alone. Cursor and
 Antigravity (`agy`) report no status, so their nodes show none, but they count as agents (Board, Send to agents).
 
+**Agents on demand** (#102): with **Start agents when Kovan opens** off (Settings; on by default), restored agent nodes
+(not shells, not WSL ones) don't start their program. Such a node is \`IsDormant\`: its body shows the conversation's
+last messages instead of a terminal (\`ConversationPreview\`, from the end of the transcript, without tool calls,
+results, reminders or slash commands). No terminal, process or pseudo-console exists until **Start** is pressed.
+- A message written in its box goes with Start.
+- The message is kept and sent once the agent is up: for Claude Code 1.5 s after its \`SessionStart\` hook, and for
+  agents that don't report starting, after 10 s.
+- The node resumes its conversation as usual.
+
 **Claude Code inside WSL:** a distro can't reach 127.0.0.1 on Windows with WSL 2's default NAT network, and
 listening on the WSL adapter would mean a firewall prompt. So `ClaudeHooks.PrepareWslArguments` writes *command*
 hooks that pipe the event to Windows' `curl.exe` (run through WSL interop, it connects from the Windows side) and an

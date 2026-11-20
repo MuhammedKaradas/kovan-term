@@ -62,6 +62,10 @@
                 <TextBlock Style="{StaticResource Hint}"
                            Text="Windows doesn't go to sleep on its own until no agent is working. The screen can still turn off, and closing a laptop's lid still does what your power settings say."/>
 
+                <CheckBox Content="Start agents when Kovan opens" IsChecked="{Binding StartAgentsOnOpen}"
+                          AutomationProperties.Name="Start agents when Kovan opens"/>
+                <TextBlock Style="{StaticResource Hint}"
+                           Text="Off: an agent waits, showing its last messages, until you press Start or send it a message. Fewer processes and no plan usage until you need it. Shells always start."/>
                 <CheckBox Content="Open web links in a preview next to the terminal" IsChecked="{Binding OpenWebLinksInPreview}"
                           AutomationProperties.Name="Open web links in a preview"/>
                 <TextBlock Style="{StaticResource Hint}"

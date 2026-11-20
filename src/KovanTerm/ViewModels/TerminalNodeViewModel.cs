@@ -96,6 +96,23 @@ public partial class TerminalNodeViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsStarting { get; set; }
 
+    /// <summary>
+    /// An agent that hasn't started yet (agents start on demand): the node shows its conversation, and no terminal
+    /// exists until it's started.
+    /// </summary>
+    [ObservableProperty]
+    public partial bool IsDormant { get; set; }
+
+    /// <summary>The last messages of the conversation, shown while the agent hasn't started.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasConversationPreview))]
+    public partial IReadOnlyList<Services.PreviewMessage> ConversationPreview { get; set; } = [];
+
+    public bool HasConversationPreview => ConversationPreview.Count > 0;
+
+    /// <summary>What was typed into a node that hadn't started: sent once its agent is up.</summary>
+    public string? PendingMessage { get; set; }
+
     public string? StartingText { get; set; }
     /// <summary>The git worktree this node's agent works in (created by Kovan); <c>null</c> for a normal folder.</summary>
     public WorktreeInfo? Worktree { get; init; }

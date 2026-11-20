@@ -274,6 +274,40 @@
             </Border>
         </DataTemplate>
 
+        <!-- Node body: an agent that hasn't started (agents on demand): its last messages, Start, or a message that starts it -->
+        <DataTemplate x:Key="DormantBody" DataType="{x:Type vm:TerminalNodeViewModel}">
+            <DockPanel Background="{DynamicResource TerminalBackgroundBrush}">
+                <DockPanel DockPanel.Dock="Bottom" Margin="10,6,10,10">
+                    <ui:Button DockPanel.Dock="Right" Content="Start" Appearance="Primary" Margin="8,0,0,0" Padding="14,4"
+                               AutomationProperties.Name="Start agent" ToolTip="Start it, and send the message if one is written"
+                               Click="DormantStart_Click"/>
+                    <ui:TextBox PlaceholderText="Message (starts the agent)" AutomationProperties.Name="Message to start the agent"
+                                KeyDown="DormantMessage_KeyDown"/>
+                </DockPanel>
+                <TextBlock DockPanel.Dock="Top" Margin="12,8,12,4" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                           Text="Not started. It resumes its conversation when you start it."/>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Loaded="DormantScroll_Loaded" Padding="12,0">
+                    <ItemsControl ItemsSource="{Binding ConversationPreview}" AutomationProperties.Name="Conversation">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border x:Name="Bubble" Margin="0,4" Padding="10,6" CornerRadius="6" HorizontalAlignment="Left" MaxWidth="560"
+                                        Background="{DynamicResource ControlFillColorDefaultBrush}">
+                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="12"
+                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding FromUser}" Value="True">
+                                        <Setter TargetName="Bubble" Property="HorizontalAlignment" Value="Right"/>
+                                        <Setter TargetName="Bubble" Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
+        </DataTemplate>
+
         <DataTemplate x:Key="ErrorBody" DataType="{x:Type vm:TerminalNodeViewModel}">
             <Border Background="{DynamicResource TerminalBackgroundBrush}" Padding="16">
                 <StackPanel VerticalAlignment="Center">
@@ -433,6 +467,9 @@
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding IsStarting}" Value="True">
                                         <Setter Property="ContentTemplate" Value="{StaticResource StartingBody}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsDormant}" Value="True">
+                                        <Setter Property="ContentTemplate" Value="{StaticResource DormantBody}"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>

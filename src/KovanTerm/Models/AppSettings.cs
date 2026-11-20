@@ -28,6 +28,11 @@ public sealed record AppSettings
     public string DictationModel { get; init; } = "base";
     /// <summary>Language spoken when dictating: a code such as <c>tr</c> or <c>en</c>, or <c>auto</c> to detect it.</summary>
     public string DictationLanguage { get; init; } = "auto";
+    /// <summary>
+    /// Agents start when Kovan opens; off, an agent node waits (showing its conversation) until it's started or sent a
+    /// message. Plain shells always start.
+    /// </summary>
+    public bool StartAgentsOnOpen { get; init; } = true;
     /// <summary>Ctrl+click on a web link in a terminal opens it in a web preview next to it, not in the default browser.</summary>
     public bool OpenWebLinksInPreview { get; init; }
     /// <summary>A small light on the screen's edge while Kovan is in the background: agents working and waiting.</summary>

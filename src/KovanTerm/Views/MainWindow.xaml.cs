@@ -431,6 +431,26 @@ public partial class MainWindow : FluentWindow
 
     private void Statistics_Click(object sender, RoutedEventArgs e) => StatisticsWindow.Show(this);
 
+    // Enter in a waiting agent's message box: start it and send the message once it's up
+    private void DormantMessage_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || sender is not System.Windows.Controls.TextBox { DataContext: TerminalNodeViewModel node } box) return;
+        _vm.SendToDormant(node, box.Text);
+        e.Handled = true;
+    }
+
+    // Start: with the message box filled, it's sent too
+    private void DormantStart_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: TerminalNodeViewModel node, Parent: System.Windows.Controls.DockPanel bar }) return;
+        var text = bar.Children.OfType<System.Windows.Controls.TextBox>().FirstOrDefault()?.Text ?? "";
+        if (text.Trim().Length > 0) _vm.SendToDormant(node, text);
+        else _vm.StartNodeCommand.Execute(node);
+    }
+
+    // The latest messages are at the bottom
+    private void DormantScroll_Loaded(object sender, RoutedEventArgs e) => (sender as System.Windows.Controls.ScrollViewer)?.ScrollToEnd();
+
     private void Terminal_DragOver(object sender, DragEventArgs e)
     {
         e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) || e.Data.GetDataPresent(DataFormats.UnicodeText)
