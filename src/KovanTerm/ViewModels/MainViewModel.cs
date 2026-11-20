@@ -154,8 +154,9 @@ public partial class MainViewModel : ObservableObject
     public MainViewModel(WorkspaceStore store, ProfileStore profiles, CommandResolver resolver, WslLauncher wsl,
         IDialogService dialogs, SettingsStore settings,
         AgentHookServer? hookServer = null, ClaudeSessions? sessions = null, ClaudeUsage? usage = null,
-        DictationViewModel? dictation = null, PullRequests? pullRequests = null)
+        DictationViewModel? dictation = null, PullRequests? pullRequests = null, AntigravityConversations? antigravity = null)
     {
+        AntigravityConversations = antigravity ?? new AntigravityConversations();
         InitPullRequests(pullRequests);
         Dictation = dictation;
         if (dictation != null) dictation.TextReady += (node, text) => TerminalInputRequested?.Invoke((TerminalNodeViewModel)node, text);
@@ -1030,6 +1031,25 @@ public partial class MainViewModel : ObservableObject
         foreach (var r in reports) StatusLog($"{node.Title} osc {r.State} {r.Kind} {r.Id}");
         UpdateStatus(node, () => { foreach (var r in reports) node.ApplyProgramStatus(r); });
         if (reports.Any(r => r.State is "done" or "idle")) ScheduleChangesRefresh(node);
+        if (reports.Any(r => r.State is "done" or "working")) PinAntigravityConversation(node);
+    }
+
+    private AntigravityConversations AntigravityConversations { get; }
+
+    /// <summary>
+    /// An Antigravity node's conversation: its folder's latest one, read after a turn, so the next start resumes it.
+    /// Not when another Antigravity node works in the same folder: the latest could be either one's.
+    /// </summary>
+    private void PinAntigravityConversation(TerminalNodeViewModel node)
+    {
+        if (node.AgentKind != "antigravity" || node.IsWsl || node.WorkingDirectory is not { } folder) return;
+        if (Nodes.Any(n => n != node && n.AgentKind == "antigravity" && !n.IsWsl
+            && string.Equals(n.WorkingDirectory, folder, StringComparison.OrdinalIgnoreCase)))
+            return;
+        if (AntigravityConversations.Latest(folder) is not { } id || id == node.SessionId) return;
+        node.SessionId = id;
+        StatusLog($"{node.Title} antigravity conversation {id}");
+        ScheduleSave();
     }
 
     // ---- Screen rules ----
@@ -1281,6 +1301,7 @@ public partial class MainViewModel : ObservableObject
         // Codex reaches the same agent mesh through a config override
         else if (agent == "codex" && _hooks != null) extra.Add(_hooks.CodexMcpArguments(nodeId));
         else if (agent == "qwen" && sessionId != null) extra.Add(_qwenSessions.Arguments(sessionId, arguments));
+        else if (agent == "antigravity" && sessionId != null) extra.Add(AntigravityConversations.Arguments(sessionId, arguments));
         else if (agent == "cursor" && sessionId != null) extra.Add(CursorChats.Arguments(sessionId, arguments));
         else return null;
         var all = string.Join(' ', extra.Where(a => a.Length > 0));
