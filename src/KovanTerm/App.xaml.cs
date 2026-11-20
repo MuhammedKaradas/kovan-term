@@ -24,6 +24,8 @@ public partial class App : Application
 
     private static void LogCrash(string source, Exception? ex)
     {
+        // Only for crashes that end the app: unobserved tasks are kept in the log
+        if (source != "UnobservedTask") CrashReports.Queue(source, ex);
         try
         {
             Directory.CreateDirectory(AppPaths.DataDirectory);

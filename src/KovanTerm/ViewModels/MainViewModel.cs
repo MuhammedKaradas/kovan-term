@@ -75,6 +75,30 @@ public partial class MainViewModel : ObservableObject
     /// <summary>App-wide preferences, read when needed (the file may have been edited by hand).</summary>
     public Models.AppSettings Settings => _settings.Load();
 
+    // ---- Crash reports ----
+
+    /// <summary>
+    /// Asks once whether to send crash reports (only builds with an address ask), then sends what earlier crashes
+    /// queued. Closing the question without an answer asks again next time.
+    /// </summary>
+    public async Task CrashReportsOnStartAsync()
+    {
+        if (CrashReports.Endpoint == null) return;
+        if (Settings.SendCrashReports == null)
+        {
+            var choice = await _dialogs.ChooseAsync("Send crash reports?",
+                "If Kovan Term crashes, it can send a report so the crash can be fixed: the app and Windows versions, the "
+                + "error and where in Kovan's code it happened, and a random id for this install. File paths, user and "
+                + "computer names are removed first; nothing from your terminals, files or prompts is ever sent.\n\n"
+                + "You can change this in Settings → Privacy.",
+                "Send crash reports", "Don't send");
+            if (choice == null) return;
+            SaveSettings(s => CrashReports.With(s, choice == 0));
+        }
+        CrashReports.Apply(Settings);
+        await CrashReports.SendQueuedAsync();
+    }
+
     // ---- Updates ----
 
     /// <summary>A newer published release; the top bar shows a button for it.</summary>

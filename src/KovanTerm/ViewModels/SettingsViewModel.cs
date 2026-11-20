@@ -33,6 +33,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         OpenWebLinksInPreview = s.OpenWebLinksInPreview;
         StartAgentsOnOpen = s.StartAgentsOnOpen;
         CheckForUpdates = s.CheckForUpdates;
+        SendCrashReports = s.SendCrashReports == true;
         DictationModel = SpeechModel.Find(s.DictationModel).Name;
         // A language typed into the file by hand is kept, and shown
         if (Languages.All(l => l.Value != s.DictationLanguage))
@@ -70,6 +71,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] public partial bool OpenWebLinksInPreview { get; set; }
     [ObservableProperty] public partial bool StartAgentsOnOpen { get; set; }
     [ObservableProperty] public partial bool CheckForUpdates { get; set; }
+    [ObservableProperty] public partial bool SendCrashReports { get; set; }
+
+    /// <summary>Only builds with a report address show the Privacy section.</summary>
+    public bool CanSendCrashReports => CrashReports.Endpoint != null;
 
     /// <summary>The running version, for the About section.</summary>
     public string Version => $"Kovan Term {UpdateCheck.CurrentVersion}";
@@ -96,6 +101,14 @@ public sealed partial class SettingsViewModel : ObservableObject
     partial void OnOpenWebLinksInPreviewChanged(bool value) => Save();
     partial void OnStartAgentsOnOpenChanged(bool value) => Save();
     partial void OnCheckForUpdatesChanged(bool value) => Save();
+
+    partial void OnSendCrashReportsChanged(bool value)
+    {
+        if (_loading) return;
+        _store.Save(CrashReports.With(_store.Load(), value));
+        CrashReports.Apply(_store.Load());
+        Saved?.Invoke();
+    }
     partial void OnDictationModelChanged(string value) => Save();
     partial void OnDictationLanguageChanged(string value) => Save();
 
