@@ -23,7 +23,7 @@ about 3.5× less than an xterm.js-in-WebView2 equivalent
 
 - Infinite canvas you can pan and zoom
 - Real terminals as draggable, resizable nodes on the canvas
-- Profiles: PowerShell, cmd, Claude Code, Codex, Gemini CLI, Cursor CLI, Antigravity, plus your own ([docs/profiles.md](docs/profiles.md))
+- Profiles: PowerShell, cmd, Claude Code, Codex, Gemini CLI, Cursor CLI, Antigravity, OpenCode, Qwen Code, plus your own ([docs/profiles.md](docs/profiles.md))
 - WSL: a shell, Claude Code, Codex and Gemini CLI for each installed distro, started in a Linux directory
 - Pick a working directory; right-click the canvas for "New terminal here"
 - Send one prompt to several agents at once, e.g. to compare Claude Code, Codex and Gemini CLI on the same task

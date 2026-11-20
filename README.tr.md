@@ -23,7 +23,7 @@ Terminal'in GPU hızlandırmalı terminal bileşeniyle, düşük kaynak tüketim
 
 - Kaydırılıp yakınlaştırılabilen sonsuz tuval
 - Tuval üzerinde sürüklenip boyutlandırılabilen gerçek terminaller
-- Profiller: PowerShell, cmd, Claude Code, Codex, Gemini CLI, Cursor CLI, Antigravity + kendi profillerin ([docs/profiles.md](docs/profiles.md))
+- Profiller: PowerShell, cmd, Claude Code, Codex, Gemini CLI, Cursor CLI, Antigravity, OpenCode, Qwen Code + kendi profillerin ([docs/profiles.md](docs/profiles.md))
 - Çalışma dizini seçimi, tuvalde sağ tıkla "Burada yeni terminal"
 - Tek bir istemi birden çok ajana aynı anda gönder; ör. aynı görevde Claude Code, Codex ve Gemini CLI'ı karşılaştır
 - Başka bir uygulamadayken bir ajan seni beklediğinde ya da işini bitirdiğinde Windows bildirimi; tıklayınca ona gider

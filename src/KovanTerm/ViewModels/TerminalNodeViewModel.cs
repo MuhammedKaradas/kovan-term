@@ -256,9 +256,10 @@ public partial class TerminalNodeViewModel : ObservableObject
 
     /// <summary>
     /// What Allow types into the terminal: the "Yes" row's key. Claude Code: <c>1</c>; Codex: <c>y</c>;
-    /// Gemini CLI: Enter (its first row, "Allow once", is highlighted). Deny is Escape for all.
+    /// Gemini CLI and OpenCode: Enter (their first choice, "Allow once", is highlighted); Qwen Code: <c>1</c>.
+    /// Deny is Escape for all.
     /// </summary>
-    public string AllowKey => _allowKey ?? AgentKind switch { "codex" => "y", "gemini" => "\r", _ => "1" };
+    public string AllowKey => _allowKey ?? AgentKind switch { "codex" => "y", "gemini" or "opencode" => "\r", _ => "1" };
     private string? _allowKey;
 
     /// <summary>Updates the status from the program's own OSC 7501 report.</summary>
