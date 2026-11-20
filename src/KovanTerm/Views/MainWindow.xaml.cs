@@ -55,7 +55,14 @@ public partial class MainWindow : FluentWindow
         theme.IsDarkChanged += _canvas.SetDarkTheme;
         Loaded += (_, _) => theme.Apply(_vm.Theme);
         // Once the window is up (the question is a dialog over it)
+        // Before anything can crash: a crash report needs the user's earlier answer
+        CrashReports.Apply(_vm.Settings);
         ContentRendered += async (_, _) => await _vm.CheckOrphanSessionsAsync();
+        ContentRendered += async (_, _) =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(3));
+            await _vm.CrashReportsOnStartAsync();
+        };
         // A while after opening, so starting up isn't slowed by it
         ContentRendered += async (_, _) =>
         {

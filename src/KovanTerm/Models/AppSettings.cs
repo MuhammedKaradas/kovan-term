@@ -44,4 +44,8 @@ public sealed record AppSettings
     public double StatusLightTop { get; init; } = 0.4;
     /// <summary>Windows doesn't go to sleep on its own while an agent is working.</summary>
     public bool KeepAwakeWhileWorking { get; init; } = true;
+    /// <summary>Send crash reports (<see cref="Services.CrashReports"/>); <c>null</c> until the user is asked.</summary>
+    public bool? SendCrashReports { get; init; }
+    /// <summary>A random id made when the user agrees to reports, so reports from one install can be told apart.</summary>
+    public string? InstallId { get; init; }
 }

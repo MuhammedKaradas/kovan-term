@@ -61,6 +61,9 @@ Terminal'in GPU hızlandırmalı terminal bileşeniyle, düşük kaynak tüketim
 Kovan açılırken GitHub'a daha yeni bir sürüm olup olmadığını sorar, varsa bir düğme gösterir; senin yerine hiçbir
 şey indirmez ya da kurmaz. Ayarlar → About bölümünden kapatılabilir.
 
+Sürüm derlemeleri bir kez de çökme raporu gönderilip gönderilmeyeceğini sorar; sen onaylamadıkça kapalıdır. Raporda
+yalnızca hata ve sürüm bilgileri vardır, yollar ve adlar silinir: tüm alanlar [docs/crash-reports.md](docs/crash-reports.md)'de (İngilizce).
+
 ## Kaynaktan çalıştırma
 
 [.NET 10 SDK](https://dotnet.microsoft.com/download) gerekir.

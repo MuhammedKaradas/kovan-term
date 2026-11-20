@@ -14,6 +14,7 @@
         <KeyBinding Key="Escape" Command="{x:Static ApplicationCommands.Close}"/>
     </ui:FluentWindow.InputBindings>
     <ui:FluentWindow.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
         <!-- A choice is read out by its label, not its record -->
         <Style x:Key="ChoiceItem" TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
             <Setter Property="AutomationProperties.Name" Value="{Binding Label}"/>
@@ -99,6 +100,13 @@
                 </DockPanel>
                 <TextBlock Style="{StaticResource Hint}" Margin="140,4,0,8"
                            Text="Setting one language makes dictation faster and more accurate in it; voice commands in another language are then misheard."/>
+
+                <StackPanel Visibility="{Binding CanSendCrashReports, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="Privacy" Style="{StaticResource Section}"/>
+                    <CheckBox Content="Send crash reports" IsChecked="{Binding SendCrashReports}" AutomationProperties.Name="Send crash reports"/>
+                    <TextBlock Style="{StaticResource Hint}"
+                               Text="When Kovan crashes: the app and Windows versions, the error and where in Kovan's code it happened, and a random id for this install. File paths, user and computer names are removed; nothing from your terminals, files or prompts is sent. Reports wait in your data folder until they can be sent."/>
+                </StackPanel>
 
                 <TextBlock Text="About" Style="{StaticResource Section}"/>
                 <TextBlock Text="{Binding Version}" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,0,0,8"/>

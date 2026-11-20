@@ -62,6 +62,9 @@ you, choose "More info → Run anyway".
 When it opens, Kovan asks GitHub whether a newer release exists and shows a button if one does; nothing is
 downloaded or installed for you. Turn it off in Settings → About.
 
+Release builds also ask once whether to send crash reports; they're off unless you agree. A report has the error
+and versions only, with paths and names removed: [docs/crash-reports.md](docs/crash-reports.md) lists every field.
+
 ## Run from source
 
 Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
