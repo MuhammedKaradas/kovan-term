@@ -1179,7 +1179,7 @@ public partial class MainViewModel : ObservableObject
         profile = OllamaModels.WithModel(profile, model);
         persistent &= profile.Wsl;
         // A saved conversation is resumed (ClaudeSessions finds its transcript); otherwise a new one gets an id now
-        var sessionId = IsClaude(profile, resolvedPath) ? existingSessionId ?? Guid.NewGuid().ToString() : null;
+        var sessionId = PinsConversation(profile, resolvedPath) ? existingSessionId ?? Guid.NewGuid().ToString() : null;
         var commandLine = BuildCommandLine(profile, resolvedPath, directory, persistent ? id : null);
         var launch = profile.Wsl
             ? WslLaunchCommandLine(id, profile, resolvedPath, directory, sessionId, persistent)
@@ -1227,6 +1227,7 @@ public partial class MainViewModel : ObservableObject
         }
         // Codex reaches the same agent mesh through a config override
         else if (agent == "codex" && _hooks != null) extra.Add(_hooks.CodexMcpArguments(nodeId));
+        else if (agent == "qwen" && sessionId != null) extra.Add(_qwenSessions.Arguments(sessionId, arguments));
         else if (agent == "cursor" && sessionId != null) extra.Add(CursorChats.Arguments(sessionId, arguments));
         else return null;
         var all = string.Join(' ', extra.Where(a => a.Length > 0));
@@ -1285,6 +1286,12 @@ public partial class MainViewModel : ObservableObject
     /// <param name="persistentNode">A persistent WSL node: its program runs in this node's tmux session.</param>
     private static bool IsClaude(TerminalProfile profile, string resolvedPath) =>
         profile.Wsl ? ScreenRules.AgentOfExecutable(profile.Executable) == "claude" : ClaudeHooks.IsClaude(resolvedPath);
+
+    /// <summary>Agents whose conversation gets the node's id up front and is resumed with it: Claude Code, and Qwen Code on Windows.</summary>
+    private static bool PinsConversation(TerminalProfile profile, string resolvedPath) =>
+        IsClaude(profile, resolvedPath) || (!profile.Wsl && ScreenRules.AgentOfExecutable(resolvedPath) == "qwen");
+
+    private readonly QwenSessions _qwenSessions = new();
 
     /// <summary>
     /// Claude Code in WSL: its conversation and the hook/MCP settings that reach Kovan from the distro
@@ -1399,7 +1406,7 @@ public partial class MainViewModel : ObservableObject
             if (Resolve(profile) is not { } path)
                 return TerminalNodeViewModel.FromState(state, startError: profile.Wsl ? WslNotFoundMessage(profile.Distro) : NotFoundMessage(profile.Executable));
             // Nodes saved before sessions were tracked get a fresh conversation, as they did before
-            if (IsClaude(profile, path) && state.SessionId == null) state = state with { SessionId = Guid.NewGuid().ToString() };
+            if (PinsConversation(profile, path) && state.SessionId == null) state = state with { SessionId = Guid.NewGuid().ToString() };
             var restored = TerminalNodeViewModel.FromState(state, BuildCommandLine(profile, path, s.WorkingDirectory, state.Persistent ? s.Id : null),
                 launchCommandLine: profile.Wsl
                     ? WslLaunchCommandLine(s.Id, profile, path, s.WorkingDirectory, state.SessionId, state.Persistent)

@@ -17,6 +17,8 @@ directory in the dialog opened by the "+ New terminal" button or by right-clicki
 | `codex` | Codex | `codex` |
 | `gemini` | Gemini CLI | `gemini` |
 | `cursor` | Cursor CLI | `cursor-agent` |
+| `opencode` | OpenCode | `opencode`; its status shows from OpenCode 2 on (it reports it with OSC 7501) |
+| `qwen` | Qwen Code | `qwen`; shows its status and keeps its conversation, like Claude Code |
 | `antigravity` | Antigravity | `agy` |
 
 Executables are resolved through `PATH` and `PATHEXT`. Profiles whose program isn't found are shown

@@ -153,6 +153,8 @@ public sealed partial class ScreenRules
             "claude" or "codex" or "gemini" => name,
             "cursor-agent" => "cursor",
             "agy" => "antigravity",
+            "qwen" => "qwen",
+            "opencode" => "opencode",
             _ => null,
         };
     }

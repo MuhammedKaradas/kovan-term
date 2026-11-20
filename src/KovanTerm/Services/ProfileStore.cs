@@ -66,6 +66,9 @@ public sealed class ProfileStore
         new() { Id = "codex", Name = "Codex", Executable = "codex", Color = "#10A37F" },
         new() { Id = "gemini", Name = "Gemini CLI", Executable = "gemini", Color = "#4285F4" },
         new() { Id = "cursor", Name = "Cursor CLI", Executable = "cursor-agent", Color = "#8A8A8A" },
+        // Both report their status over OSC 7501 (OpenCode from version 2 on); Qwen Code also resumes its conversation
+        new() { Id = "opencode", Name = "OpenCode", Executable = "opencode", Color = "#FAB283" },
+        new() { Id = "qwen", Name = "Qwen Code", Executable = "qwen", Color = "#615CED" },
         new() { Id = "antigravity", Name = "Antigravity", Executable = "agy", Color = "#3B82F6" },
     ];
 
