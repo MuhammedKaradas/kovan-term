@@ -2,7 +2,7 @@
 
 [English](README.md) · **Türkçe**
 
-AI kodlama ajanlarını (Claude Code, Codex, Gemini CLI…) **sonsuz bir tuval** üzerinde, her biri
+AI kodlama ajanlarını (Claude Code, Codex, Antigravity…) **sonsuz bir tuval** üzerinde, her biri
 kendi **gerçek terminalinde**, yan yana çalıştıran hafif bir Windows uygulaması.
 
 > ⚠️ Erken geliştirme aşamasında (v0.1). Yol haritası: [docs/roadmap.md](docs/roadmap.md) (İngilizce)
@@ -23,9 +23,9 @@ Terminal'in GPU hızlandırmalı terminal bileşeniyle, düşük kaynak tüketim
 
 - Kaydırılıp yakınlaştırılabilen sonsuz tuval
 - Tuval üzerinde sürüklenip boyutlandırılabilen gerçek terminaller
-- Profiller: PowerShell, cmd, Claude Code, Codex, Gemini CLI, Cursor CLI, Antigravity, OpenCode, Qwen Code + kendi profillerin ([docs/profiles.md](docs/profiles.md))
+- Profiller: PowerShell, cmd, Claude Code (DeepSeek ya da yerel Ollama ile de), Codex, Antigravity, Cursor CLI, OpenCode, Qwen Code, Gemini CLI + kendi profillerin ([docs/profiles.md](docs/profiles.md))
 - Çalışma dizini seçimi, tuvalde sağ tıkla "Burada yeni terminal"
-- Tek bir istemi birden çok ajana aynı anda gönder; ör. aynı görevde Claude Code, Codex ve Gemini CLI'ı karşılaştır
+- Tek bir istemi birden çok ajana aynı anda gönder; ör. aynı görevde Claude Code, Codex ve Antigravity'yi karşılaştır
 - Başka bir uygulamadayken bir ajan seni beklediğinde ya da işini bitirdiğinde Windows bildirimi; tıklayınca ona gider
 - Dosyaları ya da ekran görüntülerini terminale sürükle, yolları ajana yazılsın
 - İstatistikler: Claude Code ve Codex oturumlarından gün, proje ve modele göre süre ve token

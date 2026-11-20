@@ -2,7 +2,7 @@
 
 **English** · [Türkçe](README.tr.md)
 
-A lightweight Windows app that runs AI coding agents (Claude Code, Codex, Gemini CLI…) side by side on
+A lightweight Windows app that runs AI coding agents (Claude Code, Codex, Antigravity…) side by side on
 an **infinite canvas**, each in its own **real terminal**.
 
 > ⚠️ Early development (v0.1). Roadmap: [docs/roadmap.md](docs/roadmap.md)
@@ -23,10 +23,10 @@ about 3.5× less than an xterm.js-in-WebView2 equivalent
 
 - Infinite canvas you can pan and zoom
 - Real terminals as draggable, resizable nodes on the canvas
-- Profiles: PowerShell, cmd, Claude Code, Codex, Gemini CLI, Cursor CLI, Antigravity, OpenCode, Qwen Code, plus your own ([docs/profiles.md](docs/profiles.md))
-- WSL: a shell, Claude Code, Codex and Gemini CLI for each installed distro, started in a Linux directory
+- Profiles: PowerShell, cmd, Claude Code (also on DeepSeek or a local Ollama), Codex, Antigravity, Cursor CLI, OpenCode, Qwen Code, Gemini CLI, plus your own ([docs/profiles.md](docs/profiles.md))
+- WSL: a shell, Claude Code, Codex and Antigravity for each installed distro, started in a Linux directory
 - Pick a working directory; right-click the canvas for "New terminal here"
-- Send one prompt to several agents at once, e.g. to compare Claude Code, Codex and Gemini CLI on the same task
+- Send one prompt to several agents at once, e.g. to compare Claude Code, Codex and Antigravity on the same task
 - Windows notifications when an agent needs you or finishes while you're in another app; click to go to it
 - Drop files or screenshots on a terminal to give their paths to the agent
 - Statistics: time and tokens by day, project and model, from Claude Code's and Codex's own session files

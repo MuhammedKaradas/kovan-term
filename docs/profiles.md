@@ -15,11 +15,11 @@ directory in the dialog opened by the "+ New terminal" button or by right-clicki
 | `claude-deepseek` | Claude Code (DeepSeek) | `claude` on DeepSeek's API; asks for your DeepSeek API key once |
 | `claude-ollama` | Claude Code (Ollama) | `claude` on the local Ollama, with a model picked in the dialog |
 | `codex` | Codex | `codex` |
-| `gemini` | Gemini CLI | `gemini` |
 | `cursor` | Cursor CLI | `cursor-agent` |
 | `opencode` | OpenCode | `opencode`; its status shows from OpenCode 2 on (it reports it with OSC 7501) |
 | `qwen` | Qwen Code | `qwen`; shows its status and keeps its conversation, like Claude Code |
-| `antigravity` | Antigravity | `agy` |
+| `antigravity` | Antigravity | `agy`, with its status reports turned on (`AGY_CLI_OSC7501=on`) |
+| `gemini` | Gemini CLI (retired) | `gemini`; Google retired it for personal and free accounts in June 2026, Antigravity replaces it |
 
 Executables are resolved through `PATH` and `PATHEXT`. Profiles whose program isn't found are shown
 dimmed and can't be selected. `.cmd`/`.bat` files (which is how npm installs CLIs) are started through
@@ -35,7 +35,8 @@ profiles are added:
 | `wsl-<distro>` | `<distro> (WSL)` | the distro's login shell |
 | `claude-wsl-<distro>` | `Claude Code (<distro>)` | `claude` inside the distro |
 | `codex-wsl-<distro>` | `Codex (<distro>)` | `codex` inside the distro |
-| `gemini-wsl-<distro>` | `Gemini CLI (<distro>)` | `gemini` inside the distro |
+| `antigravity-wsl-<distro>` | `Antigravity (<distro>)` | `agy` inside the distro |
+| `gemini-wsl-<distro>` | `Gemini CLI (<distro>, retired)` | `gemini` inside the distro |
 
 Kovan can't tell whether an agent is installed in a distro without starting it, so all four are listed. If the
 program isn't on the distro's login shell PATH, the terminal says so and stays open at the shell.

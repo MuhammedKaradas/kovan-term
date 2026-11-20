@@ -13,7 +13,7 @@ public partial class MainWindow
 
     private void InitNotifications()
     {
-        _vm.AttentionNeeded += node => Notify(n => n.Waiting(node));
+        _vm.AttentionNeeded += NotifyWaitingSoon;
         _vm.TurnFinished += node => Notify(n => n.Finished(node));
         // Back in Kovan: everything pending has been seen, and the icon goes with its notifications
         Activated += (_, _) =>
@@ -86,6 +86,18 @@ public partial class MainWindow
     {
         var keepAwake = _vm.WorkingCount > 0 && _vm.Settings.KeepAwakeWhileWorking;
         if (_sleep.Set(keepAwake)) MainViewModel.StatusLog($"keep awake: {keepAwake}");
+    }
+
+    /// <summary>
+    /// How long an agent waits before it's announced: some report "waiting" for a moment on their own (Antigravity
+    /// checks its sign-in on every start), and a prompt answered within this time needs no notification.
+    /// </summary>
+    private static readonly TimeSpan WaitingGrace = TimeSpan.FromSeconds(3);
+
+    private async void NotifyWaitingSoon(TerminalNodeViewModel node)
+    {
+        await Task.Delay(WaitingGrace);
+        if (node.Status == Models.NodeStatus.Waiting && _vm.Nodes.Contains(node)) Notify(n => n.Waiting(node));
     }
 
     /// <summary>Records what happened, if Kovan is in the background, and shows everything still pending.</summary>
