@@ -261,6 +261,60 @@ public partial class MainViewModel : ObservableObject
         StatusLog($"{node.Title} dropped {(files is { Count: > 0 } ? $"{files.Count} file(s)" : "text")}: {paste}");
     }
 
+    // ---- Agents on demand (#102) ----
+
+    /// <summary>A Claude message typed before its agent ran waits for its session to start, plus a moment for the prompt.</summary>
+    private static readonly TimeSpan PendingAfterSessionStart = TimeSpan.FromSeconds(1.5);
+    /// <summary>Agents that don't report starting get the message this long after their terminal starts.</summary>
+    private static readonly TimeSpan PendingFallback = TimeSpan.FromSeconds(10);
+
+    private void MakeDormant(TerminalNodeViewModel node)
+    {
+        node.IsDormant = true;
+        if (node.AgentKind != "claude" || node.SessionId is not { } id) return;
+        Task.Run(() => _sessions.TranscriptOf(id) is { } path ? ConversationPreview.Read(path) : [])
+            .ContinueWith(t => { if (Nodes.Contains(node)) node.ConversationPreview = t.Result; }, TaskScheduler.FromCurrentSynchronizationContext());
+    }
+
+    /// <summary>Starts an agent that was waiting: its terminal is created and resumes the conversation.</summary>
+    [RelayCommand]
+    private void StartNode(TerminalNodeViewModel? node)
+    {
+        if (node is not { IsDormant: true }) return;
+        node.IsDormant = false;
+        node.ConversationPreview = [];
+        CurrentNode = node;
+        StatusLog($"{node.Title} started on demand");
+        if (node.PendingMessage == null) return;
+        // Claude says when its session is up (OnAgentEvent); others get the message after a while
+        var message = node.PendingMessage;
+        _ = SendPendingLaterAsync(node, message, node.AgentKind == "claude" ? PendingFallback * 2 : PendingFallback);
+    }
+
+    /// <summary>Types a message into an agent that hadn't started: starts it, and sends the message once it's up.</summary>
+    public void SendToDormant(TerminalNodeViewModel node, string text)
+    {
+        text = text.Trim();
+        if (!node.IsDormant || text.Length == 0) return;
+        node.PendingMessage = text;
+        StartNode(node);
+    }
+
+    private async Task SendPendingLaterAsync(TerminalNodeViewModel node, string message, TimeSpan delay)
+    {
+        await Task.Delay(delay);
+        SendPending(node, message);
+    }
+
+    private void SendPending(TerminalNodeViewModel node, string message)
+    {
+        // Once only: whichever comes first, the session starting or the fallback
+        if (node.PendingMessage != message || !Nodes.Contains(node)) return;
+        node.PendingMessage = null;
+        TerminalInputRequested?.Invoke(node, ChangesViewModel.BracketedPaste(message) + "\r");
+        StatusLog($"{node.Title} sent the message typed before it started");
+    }
+
     private string? DistroOf(TerminalNodeViewModel node) =>
         _profiles.FirstOrDefault(p => p.Id == node.ProfileId)?.Distro is { Length: > 0 } d ? d : null;
 
@@ -786,6 +840,8 @@ public partial class MainViewModel : ObservableObject
     {
         if (Nodes.FirstOrDefault(n => n.Id == nodeId) is not { } node) return;
         StatusLog($"{node.Title} hook {e.Name} {e.ToolName}");
+        if (e.Name == "SessionStart" && node.PendingMessage is { } pending)
+            _ = Task.Delay(PendingAfterSessionStart).ContinueWith(_ => SendPending(node, pending), TaskScheduler.FromCurrentSynchronizationContext());
         UpdateStatus(node, () => node.ApplyAgentEvent(e));
         // A reply was just written to the transcript
         if (e.Name is "Stop" or "PostToolUse" or "PostToolUseFailure" or "SessionStart" && node.ReadableTranscriptPath != null)
@@ -1260,10 +1316,14 @@ public partial class MainViewModel : ObservableObject
             });
         ActiveWorkspace = Workspaces.FirstOrDefault(w => w.Id == state.ActiveWorkspaceId) ?? Workspaces[0];
 
+        var startAgents = _settings.Load().StartAgentsOnOpen;
         foreach (var s in state.Nodes)
         {
             var node = RestoreNode(s);
             if (Workspaces.All(w => w.Id != node.WorkspaceId)) node.WorkspaceId = Workspaces[0].Id;
+            // Agents on demand: the node waits, showing its conversation (not a WSL one: its distro may hold a session)
+            if (!startAgents && node.IsTerminal && !node.IsWsl && !node.HasStartError && !string.IsNullOrEmpty(node.AgentKind))
+                MakeDormant(node);
             if (node.IsWsl && !node.HasStartError)
                 StartDistroFirst(node, _profiles.FirstOrDefault(p => p.Id == s.ProfileId)?.Distro);
             Nodes.Add(node);
