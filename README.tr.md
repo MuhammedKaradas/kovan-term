@@ -62,7 +62,9 @@ dotnet run --project src/KovanTerm -c Release
 - [Klavye kısayolları](docs/shortcuts.md)
 - [Yol haritası](docs/roadmap.md)
 - [Mimari karar kayıtları](docs/decisions/)
-- [Katkı kuralları](CONTRIBUTING.md)
+- [Katkı kuralları](CONTRIBUTING.md): derleme, test ve değişiklik gönderme
+- [Davranış kuralları](CODE_OF_CONDUCT.md)
+- [Güvenlik politikası](SECURITY.md): açıkları gizli bildirin
 
 ## Teşekkürler
 
