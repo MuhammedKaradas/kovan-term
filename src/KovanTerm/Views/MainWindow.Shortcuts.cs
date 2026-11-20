@@ -9,7 +9,40 @@ namespace KovanTerm.Views;
 /// <summary>Keyboard shortcuts and navigation between terminals (see <see cref="Shortcuts"/>, <c>docs/shortcuts.md</c>).</summary>
 public partial class MainWindow
 {
-    private const int WM_KEYDOWN = 0x0100, WM_SYSKEYDOWN = 0x0104;
+    private const int WM_KEYDOWN = 0x0100, WM_SYSKEYDOWN = 0x0104, WM_LBUTTONDOWN = 0x0201, WM_LBUTTONUP = 0x0202, MK_CONTROL = 0x0008;
+    /// <summary>The Ctrl+click whose press was taken from the terminal: its release is taken too.</summary>
+    private bool _takingLinkClick;
+
+    /// <summary>
+    /// With web links set to open in a preview, a Ctrl+click in a terminal is taken before the terminal sees it (it
+    /// would open the default browser), the link under it is read from the terminal's text, and a web link opens in a
+    /// preview next to the terminal. Other links (file, mailto) go to the system, as the terminal would send them.
+    /// </summary>
+    private bool OnTerminalClick(MSG msg)
+    {
+        if (msg.message == WM_LBUTTONUP)
+        {
+            if (!_takingLinkClick) return false;
+            _takingLinkClick = false;
+            return true;
+        }
+        if (((long)msg.wParam & MK_CONTROL) == 0 || _canvas.NodeOfWindow(msg.hwnd) is not TerminalNodeViewModel node) return false;
+        if (!_vm.Settings.OpenWebLinksInPreview) return false;
+        _takingLinkClick = true;
+        var lParam = (long)msg.lParam;
+        var point = new Native.POINT { X = (short)(lParam & 0xFFFF), Y = (short)((lParam >> 16) & 0xFFFF) };
+        Native.ClientToScreen(msg.hwnd, ref point);
+        var hwnd = msg.hwnd;
+        Task.Run(() => TerminalLinkReader.LinkAt(hwnd, new Point(point.X, point.Y))).ContinueWith(t =>
+        {
+            if (t.Result is not { } link) return;
+            if (Services.TerminalLinks.IsWeb(link)) _vm.OpenLinkInPreview(node, link);
+            else
+                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(link) { UseShellExecute = true }); }
+                catch (System.ComponentModel.Win32Exception) { }
+        }, TaskScheduler.FromCurrentSynchronizationContext());
+        return true;
+    }
     /// <summary>How much of the viewport a terminal fills when zooming to it.</summary>
     private const double ZoomToNodeFill = 0.9;
 
@@ -42,7 +75,13 @@ public partial class MainWindow
     // The terminal HWND lives on the UI thread, so the key message is caught here, before the terminal sees it.
     private void OnThreadPreprocessMessage(ref MSG msg, ref bool handled)
     {
-        if (handled || (msg.message != WM_KEYDOWN && msg.message != WM_SYSKEYDOWN)) return;
+        if (handled) return;
+        if (msg.message is WM_LBUTTONDOWN or WM_LBUTTONUP)
+        {
+            handled = OnTerminalClick(msg);
+            return;
+        }
+        if (msg.message != WM_KEYDOWN && msg.message != WM_SYSKEYDOWN) return;
         // Only the main window and its terminals; don't interfere with an open dialog
         if (_hwnd == IntPtr.Zero || (msg.hwnd != _hwnd && !Native.IsChild(_hwnd, msg.hwnd))) return;
         var key = KeyInterop.KeyFromVirtualKey((int)msg.wParam);
