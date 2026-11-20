@@ -1167,6 +1167,7 @@ public partial class MainViewModel : ObservableObject
             IsPersistent = persistent,
             AgentExecutable = profile.Wsl ? profile.Executable : null,
             Distro = profile is { Wsl: true, Distro.Length: > 0 } ? profile.Distro : null,
+            ExtraEnvironment = profile.Environment,
             Color = profile.Color,
             WorkingDirectory = directory,
             Location = location,
