@@ -227,7 +227,8 @@ public partial class MainViewModel : ObservableObject
     {
         var options = _profiles.Select(p => new ProfileOptionViewModel(p, Resolve(p))).ToList();
         var setups = _settings.Load().WorktreeSetupCommands;
-        var dialog = new NewTerminalViewModel(_dialogs, options, _recentDirectories, _lastProfileId)
+        // Until a profile has been used, an installed agent rather than the first profile (a shell)
+        var dialog = new NewTerminalViewModel(_dialogs, options, _recentDirectories, _lastProfileId ?? InstalledAgents().FirstOrDefault()?.Id)
         {
             SetupCommandFor = repo => setups.FirstOrDefault(kv => string.Equals(kv.Key, repo, StringComparison.OrdinalIgnoreCase)).Value,
             ListModels = ListModels,
@@ -1504,18 +1505,57 @@ public partial class MainViewModel : ObservableObject
         _wsl.WslPath == null ? "WSL isn't installed.\nInstall it with 'wsl --install', then close this node and open it again."
         : $"WSL distro '{distro}' not found.\nCheck 'wsl --list', then close this node and open it again.";
 
+    /// <summary>The agents a first start looks for, in this order; the first one installed is suggested.</summary>
+    public static IReadOnlyList<string> AgentPreference { get; } = ["claude", "codex", "antigravity", "qwen", "opencode", "cursor"];
+
+    /// <summary>Installed agents' profiles, in <see cref="AgentPreference"/> order.</summary>
+    private List<TerminalProfile> InstalledAgents() =>
+        AgentPreference.Select(id => _profiles.FirstOrDefault(p => p.Id == id))
+            .OfType<TerminalProfile>()
+            .Where(p => _resolver.Resolve(p.Executable) != null)
+            .ToList();
+
+    /// <summary>
+    /// The first start: a PowerShell, and a note on how to start an agent. An agent isn't started here: in the home
+    /// folder Claude Code asks whether to trust it on every start, and agents work in a project's folder anyway. The New
+    /// terminal dialog suggests the first installed agent.
+    /// </summary>
     private void AddDefaultNodes()
     {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var i = 0;
-        foreach (var id in new[] { "powershell", "claude", "cmd" })
+        var agents = InstalledAgents();
+        _lastProfileId = agents.FirstOrDefault()?.Id;
+        if (_profiles.FirstOrDefault(p => p.Id == "powershell") is { } shell && _resolver.Resolve(shell.Executable) is { } path)
+            AddNode(CreateNode(shell, path, home, new Point(40, 40)));
+        AddNode(new TerminalNodeViewModel
         {
-            var profile = _profiles.First(p => p.Id == id);
-            if (_resolver.Resolve(profile.Executable) is not { } path) continue;
-            // Lay out in a 2-column grid
-            AddNode(CreateNode(profile, path, home, new Point(40 + (i % 2) * 600, 40 + (i / 2) * 400)));
-            i++;
-        }
+            IsNote = true,
+            Title = "Welcome",
+            CommandLine = "",
+            Color = "#E8B339",
+            NoteText = WelcomeNote(agents.Select(a => a.Name).ToList()),
+            Location = new Point(640, 40),
+            Width = 460,
+            Height = 400,
+        });
+    }
+
+    /// <summary>The first start's note: how to open an agent, naming the ones found.</summary>
+    public static string WelcomeNote(IReadOnlyList<string> agents)
+    {
+        var found = agents.Count switch
+        {
+            0 => "No coding agent was found on this computer. Install one (Claude Code, Codex, Antigravity, Qwen Code, "
+                + "OpenCode or Cursor CLI), then restart Kovan; see docs/profiles.md for each one's install command.",
+            1 => $"Found: **{agents[0]}**.",
+            _ => $"Found: **{string.Join("**, **", agents)}**.",
+        };
+        return "# Welcome to Kovan Term\n\n"
+            + found + "\n\n"
+            + "- **+ New terminal** (Ctrl+Shift+T): pick an agent and your **project's folder**. Each agent runs in its own terminal on this canvas.\n"
+            + "- Right-click the canvas for *New terminal here*, a note or a web preview.\n"
+            + "- When an agent needs you, its node turns yellow with **Allow / Deny**.\n\n"
+            + "Close this note when you're done with it.";
     }
 
     private void RememberDirectory(string directory)

@@ -237,7 +237,7 @@ public partial class TerminalNodeViewModel : ObservableObject
 
     private AgentStatus _agent = AgentStatus.Idle;
 
-    /// <summary>Which agent runs in the node (<c>claude</c>, <c>codex</c>, <c>gemini</c>), from its command line; <c>null</c> otherwise.</summary>
+    /// <summary>Which agent runs in the node (<c>claude</c>, <c>codex</c>, <c>gemini</c>), from its command line; empty otherwise.</summary>
     public string? AgentKind => _agentKind ??=
         (AgentExecutable != null ? ScreenRules.AgentOfExecutable(AgentExecutable) : ScreenRules.AgentOf(CommandLine)) ?? "";
 
