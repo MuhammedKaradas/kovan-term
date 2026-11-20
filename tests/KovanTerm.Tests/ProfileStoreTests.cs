@@ -41,9 +41,9 @@ public sealed class ProfileStoreTests : IDisposable
         var profiles = new ProfileStore(FilePath).Load(["Debian"]);
 
         var wsl = profiles.Skip(ProfileStore.Defaults.Count).ToList();
-        Assert.Equal(["wsl-Debian", "claude-wsl-Debian", "codex-wsl-Debian", "gemini-wsl-Debian"], wsl.Select(p => p.Id));
+        Assert.Equal(["wsl-Debian", "claude-wsl-Debian", "codex-wsl-Debian", "antigravity-wsl-Debian", "gemini-wsl-Debian"], wsl.Select(p => p.Id));
         Assert.All(wsl, p => Assert.True(p.Wsl && p.Distro == "Debian"));
-        Assert.Equal(["", "claude", "codex", "gemini"], wsl.Select(p => p.Executable));
+        Assert.Equal(["", "claude", "codex", "agy", "gemini"], wsl.Select(p => p.Executable));
     }
 
     [Fact]
@@ -77,5 +77,18 @@ public sealed class ProfileStoreTests : IDisposable
         // Claude Code maps unset Opus names to DeepSeek's pricier Pro model: every model it might ask for is set
         foreach (var name in new[] { "ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL", "CLAUDE_CODE_SUBAGENT_MODEL" })
             Assert.StartsWith("deepseek-flash", p.Environment[name]);
+    }
+
+    [Fact]
+    public void Antigravity_reports_its_status_and_comes_before_the_retired_Gemini_CLI()
+    {
+        var ids = ProfileStore.Defaults.Select(p => p.Id).ToList();
+        var agy = ProfileStore.Defaults.Single(p => p.Id == "antigravity");
+
+        Assert.Equal("on", agy.Environment!["AGY_CLI_OSC7501"]);
+        Assert.True(ids.IndexOf("antigravity") < ids.IndexOf("gemini"));
+        Assert.Contains("retired", ProfileStore.Defaults.Single(p => p.Id == "gemini").Name);
+        Assert.Equal("on", ProfileStore.WslDefaults(["Debian"]).Single(p => p.Id == "antigravity-wsl-Debian").Environment!["AGY_CLI_OSC7501"]);
+        Assert.Equal("y", new KovanTerm.ViewModels.TerminalNodeViewModel { Title = "a", CommandLine = "agy" }.AllowKey);
     }
 }

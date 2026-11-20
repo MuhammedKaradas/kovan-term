@@ -55,6 +55,13 @@ public sealed class ProfileStore
         },
     };
 
+    /// <summary>
+    /// Antigravity reports its status over OSC 7501 only when the terminal answers its probe, which Kovan's doesn't;
+    /// this turns it on regardless.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, string> AntigravityEnvironment =
+        new Dictionary<string, string> { ["AGY_CLI_OSC7501"] = "on" };
+
     public static IReadOnlyList<TerminalProfile> Defaults { get; } =
     [
         new() { Id = "powershell", Name = "PowerShell", Executable = "powershell.exe", Arguments = "-NoLogo" },
@@ -64,12 +71,17 @@ public sealed class ProfileStore
         DeepSeek,
         Ollama,
         new() { Id = "codex", Name = "Codex", Executable = "codex", Color = "#10A37F" },
-        new() { Id = "gemini", Name = "Gemini CLI", Executable = "gemini", Color = "#4285F4" },
         new() { Id = "cursor", Name = "Cursor CLI", Executable = "cursor-agent", Color = "#8A8A8A" },
         // Both report their status over OSC 7501 (OpenCode from version 2 on); Qwen Code also resumes its conversation
         new() { Id = "opencode", Name = "OpenCode", Executable = "opencode", Color = "#FAB283" },
         new() { Id = "qwen", Name = "Qwen Code", Executable = "qwen", Color = "#615CED" },
-        new() { Id = "antigravity", Name = "Antigravity", Executable = "agy", Color = "#3B82F6" },
+        new()
+        {
+            Id = "antigravity", Name = "Antigravity", Executable = "agy", Color = "#3B82F6",
+            Environment = AntigravityEnvironment,
+        },
+        // Retired by Google for personal and free accounts in June 2026 (Antigravity replaces it); kept for API-key setups
+        new() { Id = "gemini", Name = "Gemini CLI (retired)", Executable = "gemini", Color = "#4285F4" },
     ];
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -86,14 +98,16 @@ public sealed class ProfileStore
         FilePath = filePath ?? Path.Combine(AppPaths.DataDirectory, "profiles.json");
     }
 
-    /// <summary>A shell, Claude Code, Codex and Gemini CLI for each installed WSL distro.</summary>
+    /// <summary>A shell, Claude Code, Codex, Antigravity and Gemini CLI for each installed WSL distro.</summary>
     public static IEnumerable<TerminalProfile> WslDefaults(IEnumerable<string> distros) =>
         distros.SelectMany(d => new TerminalProfile[]
         {
             new() { Id = $"wsl-{d}", Name = $"{d} (WSL)", Executable = "", Wsl = true, Distro = d, Color = "#E95420" },
             new() { Id = $"claude-wsl-{d}", Name = $"Claude Code ({d})", Executable = "claude", Wsl = true, Distro = d, Color = "#D97757" },
             new() { Id = $"codex-wsl-{d}", Name = $"Codex ({d})", Executable = "codex", Wsl = true, Distro = d, Color = "#10A37F" },
-            new() { Id = $"gemini-wsl-{d}", Name = $"Gemini CLI ({d})", Executable = "gemini", Wsl = true, Distro = d, Color = "#4285F4" },
+            new() { Id = $"antigravity-wsl-{d}", Name = $"Antigravity ({d})", Executable = "agy", Wsl = true, Distro = d, Color = "#3B82F6",
+                Environment = AntigravityEnvironment },
+            new() { Id = $"gemini-wsl-{d}", Name = $"Gemini CLI ({d}, retired)", Executable = "gemini", Wsl = true, Distro = d, Color = "#4285F4" },
         });
 
     /// <summary>Profiles; only the defaults if the user file can't be read (the app still starts).</summary>
