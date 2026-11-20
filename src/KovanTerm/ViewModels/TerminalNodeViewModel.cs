@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using KovanTerm.Models;
@@ -220,7 +220,7 @@ public partial class TerminalNodeViewModel : ObservableObject
     [ObservableProperty]
     public partial NodeStatus Status { get; set; }
 
-    /// <summary>Short status text for the header, e.g. "Needs you Â· Bash"; <c>null</c> when there's nothing to say.</summary>
+    /// <summary>Short status text for the header, e.g. "Needs you · Bash"; <c>null</c> when there's nothing to say.</summary>
     [ObservableProperty]
     public partial string? StatusText { get; set; }
 
@@ -314,7 +314,7 @@ public partial class TerminalNodeViewModel : ObservableObject
     {
         var list = types.ToList();
         if (list.Count == 0) return null;
-        var names = string.Join(", ", list.GroupBy(t => t).Select(g => g.Count() > 1 ? $"{g.Key} Ã—{g.Count()}" : g.Key));
+        var names = string.Join(", ", list.GroupBy(t => t).Select(g => g.Count() > 1 ? $"{g.Key} ×{g.Count()}" : g.Key));
         return list.Count == 1 ? $"1 subagent: {names}" : $"{list.Count} subagents: {names}";
     }
 
