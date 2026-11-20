@@ -49,6 +49,8 @@ public sealed record NodeState
     public required string CommandLine { get; init; }
     /// <summary>The agent's conversation id (Claude Code), resumed on the next launch.</summary>
     public string? SessionId { get; init; }
+    /// <summary>The model picked for the node (profiles with a <see cref="TerminalProfile.ModelSource"/>).</summary>
+    public string? Model { get; init; }
     /// <summary>The git worktree Kovan created for this node, if any.</summary>
     public WorktreeInfo? Worktree { get; init; }
     /// <summary>A web preview node's address; <c>null</c> for a terminal.</summary>

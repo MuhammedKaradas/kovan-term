@@ -35,6 +35,26 @@ public sealed class ProfileStore
         },
     };
 
+    /// <summary>
+    /// Claude Code on the local Ollama's Anthropic-compatible API: nothing leaves the computer, no account or key
+    /// (the token is required but ignored). The model is picked in the New terminal dialog from the installed ones.
+    /// </summary>
+    public static TerminalProfile Ollama { get; } = new()
+    {
+        Id = "claude-ollama",
+        Name = "Claude Code (Ollama)",
+        Executable = "claude",
+        Color = "#9CA3AF",
+        ModelSource = OllamaModels.Source,
+        Environment = new Dictionary<string, string>
+        {
+            ["ANTHROPIC_BASE_URL"] = OllamaModels.DefaultAddress,
+            ["ANTHROPIC_AUTH_TOKEN"] = "ollama",
+            // A key set for the real API would be sent instead of the token
+            ["ANTHROPIC_API_KEY"] = "",
+        },
+    };
+
     public static IReadOnlyList<TerminalProfile> Defaults { get; } =
     [
         new() { Id = "powershell", Name = "PowerShell", Executable = "powershell.exe", Arguments = "-NoLogo" },
@@ -42,6 +62,7 @@ public sealed class ProfileStore
         new() { Id = "cmd", Name = "cmd", Executable = "cmd.exe" },
         new() { Id = "claude", Name = "Claude Code", Executable = "claude", Color = "#D97757" },
         DeepSeek,
+        Ollama,
         new() { Id = "codex", Name = "Codex", Executable = "codex", Color = "#10A37F" },
         new() { Id = "gemini", Name = "Gemini CLI", Executable = "gemini", Color = "#4285F4" },
         new() { Id = "cursor", Name = "Cursor CLI", Executable = "cursor-agent", Color = "#8A8A8A" },
