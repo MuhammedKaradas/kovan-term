@@ -23,6 +23,11 @@
     </ItemGroup>
   </Target>
 
+  <!-- The launcher for terminals whose profile sets environment variables, built next to KovanTerm.exe -->
+  <ItemGroup>
+    <ProjectReference Include="..\KovanLaunch\KovanLaunch.csproj" />
+  </ItemGroup>
+
   <ItemGroup>
     <EmbeddedResource Include="Resources\screen-rules.json" LogicalName="KovanTerm.Resources.screen-rules.json" />
   </ItemGroup>

@@ -22,4 +22,9 @@ public sealed record TerminalProfile
     /// it again on the next start. The default of the "Keep running" option in the New terminal dialog.
     /// </summary>
     public bool Persistent { get; init; }
+    /// <summary>
+    /// Environment variables for this profile's terminals only. A value <c>secret:&lt;key&gt;</c> is an API key kept in
+    /// Windows Credential Manager, asked for in the terminal the first time (see <see cref="Services.EnvironmentLauncher"/>).
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? Environment { get; init; }
 }

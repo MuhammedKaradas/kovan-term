@@ -102,9 +102,37 @@ a new `id` is added to the list. Comments and trailing commas are allowed.
 | `wsl` | | `true` runs `executable` inside WSL; an empty `executable` opens the login shell |
 | `distro` | | WSL distro; the default distro if left out |
 | `persistent` | | WSL only: `true` ticks "Keep running when Kovan closes" by default (see below) |
+| `environment` | | Environment variables for this profile's terminals only; see [below](#environment-variables-and-api-keys) |
 
 If the file can't be read, the app starts with the built-in profiles only. Changes take effect after
 restarting the app.
+
+## Environment variables and API keys
+
+`environment` sets variables for the profile's terminals only, for example to point Claude Code at another
+provider's Anthropic-compatible API:
+
+```jsonc
+{
+  "id": "claude-other", "name": "Claude Code (other provider)", "executable": "claude", "color": "#D97757",
+  "environment": {
+    "ANTHROPIC_BASE_URL": "https://api.example.com/anthropic",
+    "ANTHROPIC_AUTH_TOKEN": "secret:example"
+  }
+}
+```
+
+- `%NAME%` in a value is replaced with that variable from Kovan's environment (`"PATH": "C:	ools;%PATH%"`).
+- A value `secret:<key>` is an API key kept in **Windows Credential Manager** as `KovanTerm/<key>`, never in
+  `profiles.json`. The first time a terminal needs it, the terminal asks for it (what you paste isn't shown) and
+  saves it. Several profiles can share a key by using the same name. To change or remove it, open Credential
+  Manager > Windows Credentials.
+- In WSL the variables are passed into the distro (through `WSLENV`). A "Keep running" session that was already
+  running keeps the variables it was started with.
+
+Such a terminal is started through `KovanLaunch.exe` (next to `KovanTerm.exe`): it sets the variables, reads the
+keys, then runs the program and waits for it. The variables aren't saved in the workspace, and keys don't appear
+on any command line.
 
 ## When a workspace is opened
 

@@ -80,7 +80,13 @@ public partial class TerminalNodeViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(StartupCommandLine))]
     public partial string? LaunchCommandLine { get; set; }
-    public string StartupCommandLine => LaunchCommandLine ?? CommandLine;
+    /// <summary>
+    /// What the terminal is started with: <see cref="LaunchCommandLine"/> (or the saved command), run through the
+    /// launcher that sets <see cref="ExtraEnvironment"/> when the profile has any.
+    /// </summary>
+    public string StartupCommandLine => Services.EnvironmentLauncher.Wrap(LaunchCommandLine ?? CommandLine, ExtraEnvironment, IsWsl);
+    /// <summary>The profile's environment variables (<see cref="TerminalProfile.Environment"/>); not persisted.</summary>
+    public IReadOnlyDictionary<string, string>? ExtraEnvironment { get; init; }
     /// <summary>For WSL nodes a Linux path (or <c>~</c>), passed via <c>wsl.exe --cd</c>.</summary>
     public string? WorkingDirectory { get; init; }
     public bool IsWsl { get; init; }
@@ -412,6 +418,7 @@ public partial class TerminalNodeViewModel : ObservableObject
     {
         AgentExecutable = profile is { Wsl: true } ? profile.Executable : null,
         Distro = profile is { Wsl: true, Distro.Length: > 0 } ? profile.Distro : null,
+        ExtraEnvironment = profile?.Environment,
         Id = s.Id,
         WorkspaceId = s.WorkspaceId ?? Guid.Empty,
         ProfileId = s.ProfileId,
