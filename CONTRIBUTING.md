@@ -1,5 +1,34 @@
 # Contributing
 
+Thanks for helping. Everyone taking part follows the [code of conduct](CODE_OF_CONDUCT.md); security problems go
+through the [security policy](SECURITY.md), not public issues.
+
+## Getting started
+
+You need Windows 10 or 11 and the [.NET 10 SDK](https://dotnet.microsoft.com/download).
+
+```bash
+git clone https://github.com/MuhammedKaradas/kovan-term.git
+cd kovan-term
+dotnet build
+dotnet test
+dotnet run --project src/KovanTerm
+```
+
+While developing, set `KOVAN_DATA_DIR` to a folder of your own, so your real workspace (`%APPDATA%\KovanTerm`) stays
+untouched:
+
+```powershell
+$env:KOVAN_DATA_DIR = "$env:TEMP\kovan-dev"; dotnet run --project src/KovanTerm
+```
+
+[docs/architecture.md](docs/architecture.md) explains how the app is put together; read its "Terminal layer"
+section before changing anything on the canvas. [CLAUDE.md](CLAUDE.md) lists the environment variables used for
+testing (`KOVAN_PERF_SELFTEST`, `KOVAN_STATUS_LOG`…).
+
+Looking for something to do? Issues labeled `good first issue` are a start; for anything bigger, comment on the issue
+first so the approach can be agreed before the work.
+
 ## Branches
 
 - `main` must always build and run.
@@ -9,6 +38,9 @@
   - `perf/…`, `docs/…`, `chore/…` for the matching kinds of work
 - Branches are merged into `main` through a PR with **squash merge**. The PR title follows the commit
   convention below.
+- There's no separate development branch: `main` is what the next release is cut from. Releases are tags
+  (`v0.2.0`). A `release/0.2` branch is created only when a fix has to ship for an older version while `main` has
+  moved on; the fix goes to `main` first and is cherry-picked there.
 
 ## Commit messages
 
@@ -86,6 +118,11 @@ Closes #5
 - Fill in the PR template; for changes that affect smoothness, include before/after numbers from
   `KOVAN_PERF_SELFTEST` (see [CLAUDE.md](CLAUDE.md)).
 - `dotnet build -c Release` must have no warnings and `dotnet test` must pass.
+- CI checks every PR: the build and tests, and a secret scan (gitleaks) over its commits. A token or key that was
+  committed must be revoked, not just removed in a later commit.
+- Dependabot opens weekly PRs for outdated packages and actions. Updates of the terminal control are tested by hand
+  before merging (snapshot mode, process termination); see
+  [decision record 0002](docs/decisions/0002-terminal-dependency-risk.md).
 
 ## Releasing
 

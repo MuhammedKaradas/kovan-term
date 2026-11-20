@@ -63,7 +63,9 @@ dotnet run --project src/KovanTerm -c Release
 - [Keyboard shortcuts](docs/shortcuts.md)
 - [Roadmap](docs/roadmap.md)
 - [Architecture decision records](docs/decisions/)
-- [Contributing](CONTRIBUTING.md)
+- [Contributing](CONTRIBUTING.md): how to build, test and send a change
+- [Code of conduct](CODE_OF_CONDUCT.md)
+- [Security policy](SECURITY.md): report vulnerabilities privately
 
 ## Acknowledgements
 

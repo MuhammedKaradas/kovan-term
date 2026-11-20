@@ -1,0 +1,22 @@
+# Weekly pull requests for outdated packages and actions. Package updates are tested by hand before merging
+# (decision record 0002): the terminal control's in particular.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: build
+    groups:
+      # Test-only packages move together
+      tests:
+        patterns: ["xunit*", "Microsoft.NET.Test.Sdk", "coverlet*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci

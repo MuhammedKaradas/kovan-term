@@ -8,4 +8,5 @@ Closes #
 
 - [ ] `dotnet build -c Release` builds without warnings and `dotnet test` passes
 - [ ] Panning/zooming smoothness checked (if the terminal or canvas changed); `KOVAN_PERF_SELFTEST` numbers included for performance changes
-- [ ] Docs updated if needed
+- [ ] Docs updated if needed (README, docs/, CLAUDE.md for new test variables)
+- [ ] No secrets, personal paths or real user data in code, tests or screenshots
