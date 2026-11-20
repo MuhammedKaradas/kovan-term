@@ -59,6 +59,9 @@ Download `KovanTerm-<version>-win-x64.zip` from the
 `KovanTerm.exe`. No .NET installation needed. The executable isn't signed yet, so if SmartScreen warns
 you, choose "More info → Run anyway".
 
+When it opens, Kovan asks GitHub whether a newer release exists and shows a button if one does; nothing is
+downloaded or installed for you. Turn it off in Settings → About.
+
 ## Run from source
 
 Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).

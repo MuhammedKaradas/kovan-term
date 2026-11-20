@@ -554,6 +554,10 @@
                     <ui:SymbolIcon Symbol="PanelRight24"/>
                 </ui:Button.Icon>
             </ui:Button>
+            <ui:Button DockPanel.Dock="Right" Appearance="Secondary" Command="{Binding OpenUpdateCommand}" Margin="8,0,0,0"
+                       Content="{Binding UpdateText}" ToolTip="Open the release page to download it"
+                       AutomationProperties.Name="New version available"
+                       Visibility="{Binding HasUpdate, Converter={StaticResource BoolToVisibility}}"/>
             <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Margin="8,0,0,0" Click="Settings_Click"
                        ToolTip="Settings (Ctrl+,)" AutomationProperties.Name="Settings">
                 <ui:Button.Icon>

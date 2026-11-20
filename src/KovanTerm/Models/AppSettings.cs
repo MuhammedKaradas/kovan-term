@@ -33,6 +33,8 @@ public sealed record AppSettings
     /// message. Plain shells always start.
     /// </summary>
     public bool StartAgentsOnOpen { get; init; } = true;
+    /// <summary>Ask GitHub for a newer release when Kovan opens; it's only shown, nothing is downloaded.</summary>
+    public bool CheckForUpdates { get; init; } = true;
     /// <summary>Ctrl+click on a web link in a terminal opens it in a web preview next to it, not in the default browser.</summary>
     public bool OpenWebLinksInPreview { get; init; }
     /// <summary>A small light on the screen's edge while Kovan is in the background: agents working and waiting.</summary>
