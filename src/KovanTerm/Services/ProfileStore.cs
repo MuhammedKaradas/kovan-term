@@ -11,12 +11,37 @@ namespace KovanTerm.Services;
 /// </summary>
 public sealed class ProfileStore
 {
+    /// <summary>
+    /// Claude Code on DeepSeek's Anthropic-compatible API, as DeepSeek's guide sets it up: still Claude Code, so status,
+    /// Allow/Deny, the agent mesh and resuming work as usual. The API key is asked for the first time and kept in
+    /// Credential Manager. Claude model names would be mapped too (Opus to the pricier Pro model), so every one is set.
+    /// </summary>
+    public static TerminalProfile DeepSeek { get; } = new()
+    {
+        Id = "claude-deepseek",
+        Name = "Claude Code (DeepSeek)",
+        Executable = "claude",
+        Color = "#4D6BFE",
+        Environment = new Dictionary<string, string>
+        {
+            ["ANTHROPIC_BASE_URL"] = "https://api.deepseek.com/anthropic",
+            ["ANTHROPIC_AUTH_TOKEN"] = EnvironmentLauncher.SecretPrefix + "deepseek",
+            ["ANTHROPIC_MODEL"] = "deepseek-flash[1m]",
+            ["ANTHROPIC_DEFAULT_OPUS_MODEL"] = "deepseek-flash[1m]",
+            ["ANTHROPIC_DEFAULT_SONNET_MODEL"] = "deepseek-flash[1m]",
+            ["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = "deepseek-flash",
+            ["CLAUDE_CODE_SUBAGENT_MODEL"] = "deepseek-flash",
+            ["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] = "786432",
+        },
+    };
+
     public static IReadOnlyList<TerminalProfile> Defaults { get; } =
     [
         new() { Id = "powershell", Name = "PowerShell", Executable = "powershell.exe", Arguments = "-NoLogo" },
         new() { Id = "pwsh", Name = "PowerShell 7", Executable = "pwsh.exe", Arguments = "-NoLogo" },
         new() { Id = "cmd", Name = "cmd", Executable = "cmd.exe" },
         new() { Id = "claude", Name = "Claude Code", Executable = "claude", Color = "#D97757" },
+        DeepSeek,
         new() { Id = "codex", Name = "Codex", Executable = "codex", Color = "#10A37F" },
         new() { Id = "gemini", Name = "Gemini CLI", Executable = "gemini", Color = "#4285F4" },
         new() { Id = "cursor", Name = "Cursor CLI", Executable = "cursor-agent", Color = "#8A8A8A" },

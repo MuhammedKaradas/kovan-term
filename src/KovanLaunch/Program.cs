@@ -105,6 +105,33 @@ namespace KovanLaunch
         [DllImport("kernel32.dll")] private static extern bool CloseHandle(nint handle);
     }
 
+    /// <summary>The clipboard's text, read with the Win32 API (no UI framework in this program).</summary>
+    internal static class Clipboard
+    {
+        private const uint UnicodeText = 13;
+
+        public static string? Text()
+        {
+            // Another program may hold it for a moment
+            for (var i = 0; i < 10 && !OpenClipboard(0); i++) Thread.Sleep(20);
+            try
+            {
+                var handle = GetClipboardData(UnicodeText);
+                if (handle == 0) return null;
+                var p = GlobalLock(handle);
+                try { return p == 0 ? null : Marshal.PtrToStringUni(p); }
+                finally { GlobalUnlock(handle); }
+            }
+            finally { CloseClipboard(); }
+        }
+
+        [DllImport("user32.dll", SetLastError = true)] private static extern bool OpenClipboard(nint owner);
+        [DllImport("user32.dll")] private static extern bool CloseClipboard();
+        [DllImport("user32.dll")] private static extern nint GetClipboardData(uint format);
+        [DllImport("kernel32.dll")] private static extern nint GlobalLock(nint memory);
+        [DllImport("kernel32.dll")] private static extern bool GlobalUnlock(nint memory);
+    }
+
     /// <summary>API keys in Windows Credential Manager, as generic credentials named <c>KovanTerm/&lt;key&gt;</c>.</summary>
     internal static class Secrets
     {
@@ -125,14 +152,28 @@ namespace KovanLaunch
         public static string? Ask(string key, string variable)
         {
             Console.WriteLine($"Kovan: this profile needs the key \"{key}\" (for {variable}), and none is saved yet.");
-            Console.Write("Paste it and press Enter (it isn't shown): ");
+            Console.Write("Paste it (Ctrl+V) and press Enter: ");
             var text = new StringBuilder();
             while (true)
             {
                 var k = Console.ReadKey(intercept: true);
                 if (k.Key == ConsoleKey.Enter) break;
-                if (k.Key == ConsoleKey.Backspace) { if (text.Length > 0) text.Length--; }
-                else if (!char.IsControl(k.KeyChar)) text.Append(k.KeyChar);
+                if (k.Key == ConsoleKey.Backspace)
+                {
+                    if (text.Length == 0) continue;
+                    text.Length--;
+                    Console.Write("\b \b");
+                    continue;
+                }
+                // The terminal passes Ctrl+V on to the program (agents read the clipboard themselves): read it here too
+                var typed = k.KeyChar == '\u0016' || (k.Key == ConsoleKey.V && k.Modifiers.HasFlag(ConsoleModifiers.Control))
+                    ? Clipboard.Text() ?? ""
+                    : k.KeyChar.ToString();
+                foreach (var c in typed.Where(c => !char.IsControl(c)))
+                {
+                    text.Append(c);
+                    Console.Write('*');
+                }
             }
             Console.WriteLine();
             var value = text.ToString().Trim();
