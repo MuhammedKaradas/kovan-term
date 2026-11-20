@@ -39,6 +39,7 @@ jobs:
           dotnet publish src/KovanTerm -c Release -r win-x64 --self-contained
           -p:Version=${{ steps.version.outputs.version }} -o dist/${{ steps.version.outputs.file }}
           -p:KovanCrashReportEndpoint=${{ vars.CRASH_REPORT_ENDPOINT }}
+          -p:KovanUsageEndpoint=${{ vars.USAGE_STATS_ENDPOINT }}
 
       - name: Zip and SHA256
         shell: pwsh

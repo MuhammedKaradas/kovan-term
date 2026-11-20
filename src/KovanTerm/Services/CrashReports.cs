@@ -25,14 +25,7 @@ public static partial class CrashReports
     private const int MaxStackLength = 16_000;
 
     /// <summary>Where reports go; <c>null</c> in builds without one (source builds), which never ask or send.</summary>
-    public static string? Endpoint { get; } = ReadEndpoint();
-
-    private static string? ReadEndpoint()
-    {
-        var value = typeof(CrashReports).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
-            .FirstOrDefault(a => a.Key == "CrashReportEndpoint")?.Value;
-        return Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps ? uri.AbsoluteUri : null;
-    }
+    public static string? Endpoint { get; } = BuildSettings.Endpoint("CrashReportEndpoint");
 
     public static string QueueDirectory => Path.Combine(AppPaths.DataDirectory, "crash-reports");
 
@@ -186,19 +179,12 @@ public static partial class CrashReports
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
-    private static readonly Lazy<HttpClient> SharedHttp = new(() =>
-    {
-        var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
-        http.DefaultRequestHeaders.UserAgent.ParseAdd($"KovanTerm/{UpdateCheck.CurrentVersion}");
-        return http;
-    });
-
     /// <summary>Sends what's queued, if the user agreed; on a background thread, failures ignored.</summary>
     public static Task SendQueuedAsync() =>
         !Enabled || Endpoint is not { } endpoint ? Task.CompletedTask
         : Task.Run(async () =>
         {
-            try { await SendQueuedAsync(SharedHttp.Value, endpoint, QueueDirectory, DateTimeOffset.UtcNow); }
+            try { await SendQueuedAsync(BuildSettings.Http, endpoint, QueueDirectory, DateTimeOffset.UtcNow); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or HttpRequestException) { }
         });
 }

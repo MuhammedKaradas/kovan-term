@@ -62,8 +62,10 @@ you, choose "More info → Run anyway".
 When it opens, Kovan asks GitHub whether a newer release exists and shows a button if one does; nothing is
 downloaded or installed for you. Turn it off in Settings → About.
 
-Release builds also ask once whether to send crash reports; they're off unless you agree. A report has the error
-and versions only, with paths and names removed: [docs/crash-reports.md](docs/crash-reports.md) lists every field.
+Release builds also ask once whether to send crash reports and usage statistics; both are off unless you agree. A
+crash report has the error and versions only, with paths and names removed
+([docs/crash-reports.md](docs/crash-reports.md) lists every field). Usage statistics are daily counts from a fixed
+list of events such as "a Codex node was opened" ([docs/usage-stats.md](docs/usage-stats.md) lists them all).
 
 ## Run from source
 

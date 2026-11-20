@@ -61,8 +61,10 @@ Terminal'in GPU hızlandırmalı terminal bileşeniyle, düşük kaynak tüketim
 Kovan açılırken GitHub'a daha yeni bir sürüm olup olmadığını sorar, varsa bir düğme gösterir; senin yerine hiçbir
 şey indirmez ya da kurmaz. Ayarlar → About bölümünden kapatılabilir.
 
-Sürüm derlemeleri bir kez de çökme raporu gönderilip gönderilmeyeceğini sorar; sen onaylamadıkça kapalıdır. Raporda
-yalnızca hata ve sürüm bilgileri vardır, yollar ve adlar silinir: tüm alanlar [docs/crash-reports.md](docs/crash-reports.md)'de (İngilizce).
+Sürüm derlemeleri bir kez de çökme raporu ve kullanım istatistiği gönderilip gönderilmeyeceğini sorar; sen
+onaylamadıkça ikisi de kapalıdır. Çökme raporunda yalnızca hata ve sürüm bilgileri vardır, yollar ve adlar silinir
+(tüm alanlar [docs/crash-reports.md](docs/crash-reports.md)'de). Kullanım istatistiği ise sabit bir olay listesinden
+günlük sayılardır, ör. "bir Codex düğümü açıldı" (hepsi [docs/usage-stats.md](docs/usage-stats.md)'de). Belgeler İngilizce.
 
 ## Kaynaktan çalıştırma
 

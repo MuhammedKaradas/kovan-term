@@ -106,6 +106,7 @@ public sealed partial class DictationViewModel(
             ShowBriefly("Select a terminal to dictate into first.");
             return;
         }
+        UsageStats.Count(forCommand ? "feature.voice" : "feature.dictation");
         var model = SpeechModel.Find(settings.Load().DictationModel);
         if (!models.IsDownloaded(model))
         {

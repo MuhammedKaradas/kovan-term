@@ -87,6 +87,7 @@ public partial class BoardViewModel(MeshBoard board) : ObservableObject
     {
         board.CreateTask(NewTaskTitle, null);
         NewTaskTitle = "";
+        Services.UsageStats.Count("feature.board");
     }
 
     private bool CanAddTask() => !string.IsNullOrWhiteSpace(NewTaskTitle);

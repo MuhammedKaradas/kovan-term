@@ -54,14 +54,15 @@ public partial class MainWindow : FluentWindow
         var theme = new ThemeService(this);
         theme.IsDarkChanged += _canvas.SetDarkTheme;
         Loaded += (_, _) => theme.Apply(_vm.Theme);
-        // Once the window is up (the question is a dialog over it)
-        // Before anything can crash: a crash report needs the user's earlier answer
+        // Before anything can crash or be counted: both need the user's earlier answer
         CrashReports.Apply(_vm.Settings);
+        UsageStats.Apply(_vm.Settings);
         ContentRendered += async (_, _) => await _vm.CheckOrphanSessionsAsync();
+        // Once the window is up: the question is a dialog over it
         ContentRendered += async (_, _) =>
         {
             await Task.Delay(TimeSpan.FromSeconds(3));
-            await _vm.CrashReportsOnStartAsync();
+            await _vm.PrivacyOnStartAsync();
         };
         // A while after opening, so starting up isn't slowed by it
         ContentRendered += async (_, _) =>
@@ -442,7 +443,11 @@ public partial class MainWindow : FluentWindow
             new DialogService(this), new SettingsStore(), MainViewModel.StatusLog);
     }
 
-    private void Statistics_Click(object sender, RoutedEventArgs e) => StatisticsWindow.Show(this);
+    private void Statistics_Click(object sender, RoutedEventArgs e)
+    {
+        UsageStats.Count("feature.statistics");
+        StatisticsWindow.Show(this);
+    }
 
     // Enter in a waiting agent's message box: start it and send the message once it's up
     private void DormantMessage_KeyDown(object sender, KeyEventArgs e)
