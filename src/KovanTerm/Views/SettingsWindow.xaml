@@ -99,6 +99,15 @@
                 </DockPanel>
                 <TextBlock Style="{StaticResource Hint}" Margin="140,4,0,8"
                            Text="Setting one language makes dictation faster and more accurate in it; voice commands in another language are then misheard."/>
+
+                <TextBlock Text="About" Style="{StaticResource Section}"/>
+                <TextBlock Text="{Binding Version}" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,0,0,8"/>
+                <CheckBox Content="Tell me when a new version is out" IsChecked="{Binding CheckForUpdates}"
+                          AutomationProperties.Name="Check for updates"/>
+                <TextBlock Style="{StaticResource Hint}">
+                    <Run Text="When Kovan opens, it asks GitHub for the latest release; nothing is downloaded or installed for you."/>
+                    <Hyperlink NavigateUri="{Binding ReleasesPage}" RequestNavigate="Releases_RequestNavigate">All releases</Hyperlink>
+                </TextBlock>
             </StackPanel>
         </ScrollViewer>
     </DockPanel>

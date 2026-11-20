@@ -32,6 +32,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         StatusLight = s.StatusLight;
         OpenWebLinksInPreview = s.OpenWebLinksInPreview;
         StartAgentsOnOpen = s.StartAgentsOnOpen;
+        CheckForUpdates = s.CheckForUpdates;
         DictationModel = SpeechModel.Find(s.DictationModel).Name;
         // A language typed into the file by hand is kept, and shown
         if (Languages.All(l => l.Value != s.DictationLanguage))
@@ -68,6 +69,11 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] public partial bool StatusLight { get; set; }
     [ObservableProperty] public partial bool OpenWebLinksInPreview { get; set; }
     [ObservableProperty] public partial bool StartAgentsOnOpen { get; set; }
+    [ObservableProperty] public partial bool CheckForUpdates { get; set; }
+
+    /// <summary>The running version, for the About section.</summary>
+    public string Version => $"Kovan Term {UpdateCheck.CurrentVersion}";
+    public string ReleasesPage => UpdateCheck.ReleasesPage;
     [ObservableProperty] public partial string DictationModel { get; set; } = SpeechModel.DefaultName;
     [ObservableProperty] public partial string DictationLanguage { get; set; } = "auto";
 
@@ -89,6 +95,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     partial void OnStatusLightChanged(bool value) => Save();
     partial void OnOpenWebLinksInPreviewChanged(bool value) => Save();
     partial void OnStartAgentsOnOpenChanged(bool value) => Save();
+    partial void OnCheckForUpdatesChanged(bool value) => Save();
     partial void OnDictationModelChanged(string value) => Save();
     partial void OnDictationLanguageChanged(string value) => Save();
 
@@ -106,6 +113,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             StatusLight = StatusLight,
             OpenWebLinksInPreview = OpenWebLinksInPreview,
             StartAgentsOnOpen = StartAgentsOnOpen,
+            CheckForUpdates = CheckForUpdates,
             DictationModel = DictationModel,
             DictationLanguage = DictationLanguage,
         });

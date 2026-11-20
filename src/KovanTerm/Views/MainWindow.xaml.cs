@@ -56,6 +56,12 @@ public partial class MainWindow : FluentWindow
         Loaded += (_, _) => theme.Apply(_vm.Theme);
         // Once the window is up (the question is a dialog over it)
         ContentRendered += async (_, _) => await _vm.CheckOrphanSessionsAsync();
+        // A while after opening, so starting up isn't slowed by it
+        ContentRendered += async (_, _) =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(10));
+            await _vm.CheckForUpdateAsync();
+        };
         _vm.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(MainViewModel.Theme)) theme.Apply(_vm.Theme);

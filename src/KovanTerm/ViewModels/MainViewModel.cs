@@ -75,6 +75,32 @@ public partial class MainViewModel : ObservableObject
     /// <summary>App-wide preferences, read when needed (the file may have been edited by hand).</summary>
     public Models.AppSettings Settings => _settings.Load();
 
+    // ---- Updates ----
+
+    /// <summary>A newer published release; the top bar shows a button for it.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(UpdateText), nameof(HasUpdate))]
+    public partial AvailableUpdate? Update { get; private set; }
+
+    public bool HasUpdate => Update != null;
+    public string? UpdateText => Update is { } u ? $"Kovan Term {u.Version} is out" : null;
+
+    /// <summary>Asks for a newer release unless it's turned off; replaced in tests.</summary>
+    internal Func<Task<AvailableUpdate?>> FindUpdate { get; set; } = () => UpdateCheck.CheckAsync();
+
+    public async Task CheckForUpdateAsync()
+    {
+        if (!Settings.CheckForUpdates) return;
+        Update = await FindUpdate();
+        if (Update != null) StatusLog($"update available: {Update.Version}");
+    }
+
+    [RelayCommand]
+    private void OpenUpdate()
+    {
+        if (Update is { } u) _dialogs.OpenInBrowser(u.Url);
+    }
+
     /// <summary>Changes and saves app-wide preferences (read first, so nothing else is lost).</summary>
     public void SaveSettings(Func<Models.AppSettings, Models.AppSettings> change) => _settings.Save(change(_settings.Load()));
 

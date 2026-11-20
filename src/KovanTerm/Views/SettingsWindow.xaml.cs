@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Navigation;
 using KovanTerm.ViewModels;
 using Wpf.Ui.Controls;
 
@@ -29,6 +30,12 @@ public partial class SettingsWindow : FluentWindow
         }
         _open = new SettingsWindow(create()) { Owner = owner };
         _open.Show();
+    }
+
+    private void Releases_RequestNavigate(object sender, RequestNavigateEventArgs e)
+    {
+        if (e.Uri.Scheme == Uri.UriSchemeHttps) Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+        e.Handled = true;
     }
 
     // In the default editor for .json files, or Notepad if there's none
