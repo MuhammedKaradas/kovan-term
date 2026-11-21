@@ -154,7 +154,8 @@ public partial class MainViewModel : ObservableObject
     public MainViewModel(WorkspaceStore store, ProfileStore profiles, CommandResolver resolver, WslLauncher wsl,
         IDialogService dialogs, SettingsStore settings,
         AgentHookServer? hookServer = null, ClaudeSessions? sessions = null, ClaudeUsage? usage = null,
-        DictationViewModel? dictation = null, PullRequests? pullRequests = null, AntigravityConversations? antigravity = null)
+        DictationViewModel? dictation = null, PullRequests? pullRequests = null, AntigravityConversations? antigravity = null,
+        CodexUsage? codexUsage = null)
     {
         AntigravityConversations = antigravity ?? new AntigravityConversations();
         InitPullRequests(pullRequests);
@@ -162,7 +163,8 @@ public partial class MainViewModel : ObservableObject
         if (dictation != null) dictation.TextReady += (node, text) => TerminalInputRequested?.Invoke((TerminalNodeViewModel)node, text);
         _sessions = sessions ?? new ClaudeSessions();
         _usageLimits = usage;
-        if (usage != null)
+        _codexUsage = codexUsage;
+        if (usage != null || codexUsage != null)
         {
             _usageTimer.Tick += (_, _) => _ = RefreshUsageAsync(force: true);
             _usageTimer.Start();
@@ -631,21 +633,49 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<UsageRow> UsageRows { get; } = new();
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAnyUsage))]
     public partial bool HasUsage { get; private set; }
+
+    private readonly CodexUsage? _codexUsage;
+
+    /// <summary>The Codex plan's limits, from its session files; empty (and hidden) when Codex hasn't recorded any.</summary>
+    public ObservableCollection<UsageRow> CodexUsageRows { get; } = new();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAnyUsage))]
+    public partial bool HasCodexUsage { get; private set; }
+
+    /// <summary>"Codex plan" or "Codex · plus".</summary>
+    [ObservableProperty]
+    public partial string CodexUsageTitle { get; private set; } = "Codex plan";
+
+    /// <summary>The panel shows when either plan is known.</summary>
+    public bool HasAnyUsage => HasUsage || HasCodexUsage;
 
     /// <summary>Reads the limits again, at most once a minute (an agent finishing a turn asks for it).</summary>
     private async Task RefreshUsageAsync(bool force = false)
     {
-        if (_usageLimits == null || _limitsReading || (!force && DateTime.UtcNow - _usageReadAt < TimeSpan.FromMinutes(1))) return;
+        if (_limitsReading || (!force && DateTime.UtcNow - _usageReadAt < TimeSpan.FromMinutes(1))) return;
         _limitsReading = true;
         _usageReadAt = DateTime.UtcNow;
         try
         {
-            var limits = await _usageLimits.ReadAsync();
             var now = DateTimeOffset.Now;
-            UsageRows.Clear();
-            foreach (var l in limits) UsageRows.Add(new UsageRow(l, now));
-            HasUsage = UsageRows.Count > 0;
+            if (_usageLimits != null)
+            {
+                var limits = await _usageLimits.ReadAsync();
+                UsageRows.Clear();
+                foreach (var l in limits) UsageRows.Add(new UsageRow(l, now));
+                HasUsage = UsageRows.Count > 0;
+            }
+            if (_codexUsage != null)
+            {
+                var (codex, plan) = await Task.Run(() => _codexUsage.Read(now));
+                CodexUsageRows.Clear();
+                foreach (var l in codex) CodexUsageRows.Add(new UsageRow(l, now));
+                HasCodexUsage = CodexUsageRows.Count > 0;
+                CodexUsageTitle = plan is { Length: > 0 } ? $"Codex · {plan}" : "Codex plan";
+            }
         }
         finally
         {
@@ -1031,6 +1061,8 @@ public partial class MainViewModel : ObservableObject
         if (!Nodes.Contains(node)) return;
         foreach (var r in reports) StatusLog($"{node.Title} osc {r.State} {r.Kind} {r.Id}");
         UpdateStatus(node, () => { foreach (var r in reports) node.ApplyProgramStatus(r); });
+        // Codex has just recorded its limits with the response
+        if (node.AgentKind == "codex" && reports.Any(r => r.State == "done")) _ = RefreshUsageAsync();
         if (reports.Any(r => r.State is "done" or "idle")) ScheduleChangesRefresh(node);
         if (reports.Any(r => r.State is "done" or "working")) PinAntigravityConversation(node);
     }

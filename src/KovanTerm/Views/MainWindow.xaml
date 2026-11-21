@@ -1082,49 +1082,56 @@
                                Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                 </DockPanel>
 
-                <!-- Claude plan limits; hidden when unknown (not logged in, endpoint changed) -->
+                <!-- Plan limits: Claude's (asked from Anthropic) and Codex's (from its session files); each hidden when unknown -->
                 <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                        Padding="12,8,12,10" Visibility="{Binding HasUsage, Converter={StaticResource BoolToVisibility}}">
-                    <StackPanel>
-                        <TextBlock Text="Claude plan" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"
-                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
-                        <ItemsControl ItemsSource="{Binding UsageRows}" AutomationProperties.Name="Claude plan usage" Grid.IsSharedSizeScope="True">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type vm:UsageRow}">
-                                    <Grid Margin="0,3" ToolTip="{Binding ResetsAtText, StringFormat=Resets {0}}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" SharedSizeGroup="UsageLabel"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Text="{Binding Label}" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
-                                        <StackPanel Grid.Column="1">
-                                            <!-- A plain bar: no animation, nothing redrawn while the canvas moves -->
-                                            <Grid Height="4">
-                                                <Rectangle Fill="{DynamicResource ControlStrokeColorDefaultBrush}" RadiusX="2" RadiusY="2"/>
-                                                <Rectangle RadiusX="2" RadiusY="2" RenderTransformOrigin="0,0.5">
-                                                    <Rectangle.RenderTransform>
-                                                        <ScaleTransform ScaleX="{Binding Percent, Converter={StaticResource PercentToFraction}}"/>
-                                                    </Rectangle.RenderTransform>
-                                                    <Rectangle.Style>
-                                                        <Style TargetType="Rectangle">
-                                                            <Setter Property="Fill" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsHigh}" Value="True">
-                                                                    <Setter Property="Fill" Value="{DynamicResource SystemFillColorCautionBrush}"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </Rectangle.Style>
-                                                </Rectangle>
-                                            </Grid>
-                                            <TextBlock Text="{Binding Text}" FontSize="11" Margin="0,2,0,0"
-                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
-                                        </StackPanel>
+                        Padding="12,8,12,10" Visibility="{Binding HasAnyUsage, Converter={StaticResource BoolToVisibility}}">
+                    <Border.Resources>
+                        <DataTemplate DataType="{x:Type vm:UsageRow}">
+                            <Grid Margin="0,3" ToolTip="{Binding ResetsAtText, StringFormat=Resets {0}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="UsageLabel"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding Label}" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                <StackPanel Grid.Column="1">
+                                    <!-- A plain bar: no animation, nothing redrawn while the canvas moves -->
+                                    <Grid Height="4">
+                                        <Rectangle Fill="{DynamicResource ControlStrokeColorDefaultBrush}" RadiusX="2" RadiusY="2"/>
+                                        <Rectangle RadiusX="2" RadiusY="2" RenderTransformOrigin="0,0.5">
+                                            <Rectangle.RenderTransform>
+                                                <ScaleTransform ScaleX="{Binding Percent, Converter={StaticResource PercentToFraction}}"/>
+                                            </Rectangle.RenderTransform>
+                                            <Rectangle.Style>
+                                                <Style TargetType="Rectangle">
+                                                    <Setter Property="Fill" Value="{DynamicResource AccentFillColorDefaultBrush}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsHigh}" Value="True">
+                                                            <Setter Property="Fill" Value="{DynamicResource SystemFillColorCautionBrush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Rectangle.Style>
+                                        </Rectangle>
                                     </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                                    <TextBlock Text="{Binding Text}" FontSize="11" Margin="0,2,0,0"
+                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </Border.Resources>
+                    <StackPanel Grid.IsSharedSizeScope="True">
+                        <StackPanel Visibility="{Binding HasUsage, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="Claude plan" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"
+                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                            <ItemsControl ItemsSource="{Binding UsageRows}" AutomationProperties.Name="Claude plan usage"/>
+                        </StackPanel>
+                        <StackPanel Visibility="{Binding HasCodexUsage, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="{Binding CodexUsageTitle}" FontSize="11" FontWeight="SemiBold" Margin="0,6,0,4"
+                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                       ToolTip="From Codex's latest response; a window shows 0 % once its reset time has passed"/>
+                            <ItemsControl ItemsSource="{Binding CodexUsageRows}" AutomationProperties.Name="Codex plan usage"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
                 <!-- An ItemsControl, not a ListBox: rows aren't "selected", a click goes to the node -->
