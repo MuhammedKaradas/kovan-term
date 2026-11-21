@@ -1,3 +1,5 @@
+<img src="docs/images/logo.png" alt="" width="96" align="right">
+
 # Kovan Term
 
 **English** · [Türkçe](README.tr.md)

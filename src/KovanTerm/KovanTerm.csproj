@@ -11,6 +11,8 @@
     <Version>0.1.0</Version>
     <!-- Our own symbols are embedded in the dll: crash reports keep line numbers without shipping a separate .pdb -->
     <DebugType>embedded</DebugType>
+    <!-- Drawn by tools/draw-logo.py; the exe, taskbar and notification icon -->
+    <ApplicationIcon>Resources\kovan.ico</ApplicationIcon>
     <!--
       Crash reports and usage statistics are sent only by builds given an address (the release workflow sets them);
       empty: never asked or sent
@@ -40,6 +42,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="Resources\kovan-64.png" />
     <EmbeddedResource Include="Resources\screen-rules.json" LogicalName="KovanTerm.Resources.screen-rules.json" />
   </ItemGroup>
 
