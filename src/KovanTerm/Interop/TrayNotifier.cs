@@ -41,6 +41,18 @@ public sealed class TrayNotifier : IDisposable
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] private static extern bool Shell_NotifyIconW(int message, ref NOTIFYICONDATAW data);
     [DllImport("user32.dll")] private static extern IntPtr LoadIcon(IntPtr instance, IntPtr name);
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern uint ExtractIconExW(string file, int index, IntPtr[]? large, IntPtr[]? small, uint count);
+
+    /// <summary>The app's own small icon (from KovanTerm.exe); Windows' generic one if it can't be read. Kept for the process's life.</summary>
+    private static readonly IntPtr AppIcon = LoadAppIcon();
+
+    private static IntPtr LoadAppIcon()
+    {
+        var small = new IntPtr[1];
+        if (Environment.ProcessPath is { } exe && ExtractIconExW(exe, 0, null, small, 1) > 0 && small[0] != IntPtr.Zero) return small[0];
+        return LoadIcon(IntPtr.Zero, new IntPtr(IDI_APPLICATION));
+    }
 
     private readonly HwndSource _window;
     private bool _added;
@@ -62,7 +74,7 @@ public sealed class TrayNotifier : IDisposable
         uID = 1,
         uFlags = flags,
         uCallbackMessage = CallbackMessage,
-        hIcon = LoadIcon(IntPtr.Zero, new IntPtr(IDI_APPLICATION)),
+        hIcon = AppIcon,
         szTip = "Kovan Term",
         szInfo = "",
         szInfoTitle = "",
