@@ -219,6 +219,25 @@ public partial class MainWindow : FluentWindow
             rename.Click += (_, _) => node.IsRenaming = true;
             menu.Items.Add(rename);
         }
+        if (node.IsTerminal)
+        {
+            var find = new System.Windows.Controls.MenuItem
+            {
+                Header = "Find…",
+                InputGestureText = "Ctrl+Shift+H",
+                Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = Wpf.Ui.Controls.SymbolRegular.Search24 },
+            };
+            find.Click += (_, _) => OpenFind(node);
+            menu.Items.Add(find);
+            var clear = new System.Windows.Controls.MenuItem
+            {
+                Header = "Clear scrollback",
+                InputGestureText = "Ctrl+Shift+L",
+                Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = Wpf.Ui.Controls.SymbolRegular.Eraser24 },
+            };
+            clear.Click += (_, _) => ClearScrollback(node);
+            menu.Items.Add(clear);
+        }
         var move = new System.Windows.Controls.MenuItem
         {
             Header = node.IsGroup ? "Move group to workspace" : "Move to workspace",

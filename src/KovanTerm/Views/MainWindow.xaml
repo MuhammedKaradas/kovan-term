@@ -356,6 +356,28 @@
                                     <ui:SymbolIcon Symbol="Dismiss16"/>
                                 </ui:Button.Icon>
                             </ui:Button>
+                            <!-- Find in the terminal (Ctrl+Shift+H): in the header, since nothing can be drawn over the terminal.
+                                 Enter: older match, Shift+Enter: newer, Esc: close -->
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="0,0,6,0" VerticalAlignment="Center"
+                                        Visibility="{Binding IsFinding, Converter={StaticResource BoolToVisibility}}">
+                                <TextBox Text="{Binding FindText, UpdateSourceTrigger=PropertyChanged}" Width="160" Padding="4,1" FontSize="12"
+                                         VerticalAlignment="Center" AutomationProperties.Name="Find in terminal"
+                                         IsVisibleChanged="FindBox_IsVisibleChanged" KeyDown="FindBox_KeyDown" TextChanged="FindBox_TextChanged"/>
+                                <TextBlock Text="{Binding FindStatus}" FontSize="11" Margin="6,0,2,0" VerticalAlignment="Center" MinWidth="40"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                                <ui:Button Appearance="Transparent" Width="24" Height="24" Padding="0" ToolTip="Older match (Enter)"
+                                           AutomationProperties.Name="Older match" Click="FindOlder_Click">
+                                    <ui:Button.Icon><ui:SymbolIcon Symbol="ArrowUp16"/></ui:Button.Icon>
+                                </ui:Button>
+                                <ui:Button Appearance="Transparent" Width="24" Height="24" Padding="0" ToolTip="Newer match (Shift+Enter)"
+                                           AutomationProperties.Name="Newer match" Click="FindNewer_Click">
+                                    <ui:Button.Icon><ui:SymbolIcon Symbol="ArrowDown16"/></ui:Button.Icon>
+                                </ui:Button>
+                                <ui:Button Appearance="Transparent" Width="24" Height="24" Padding="0" ToolTip="Close (Esc)"
+                                           AutomationProperties.Name="Close find" Click="FindClose_Click">
+                                    <ui:Button.Icon><ui:SymbolIcon Symbol="Dismiss12"/></ui:Button.Icon>
+                                </ui:Button>
+                            </StackPanel>
                             <!-- The terminal printed a local web address (a dev server): preview it next to the terminal -->
                             <ui:Button DockPanel.Dock="Right" Appearance="Secondary" Height="24" Padding="8,0" FontSize="12" Margin="0,0,6,0"
                                        Content="Preview" ToolTip="{Binding PreviewUrl}" AutomationProperties.Name="Preview"

@@ -31,6 +31,9 @@ public interface ITerminalSurface
     /// <summary>Sends text to the program as if the user had typed it.</summary>
     void Write(string text);
 
+    /// <summary>Clears the scrollback (lines above the screen); the screen itself is left to the program (#141).</summary>
+    void ClearScrollback();
+
     void SetAppearance(TerminalColorScheme colors, string fontFamily, int fontSize);
 
     /// <summary>Gives the terminal keyboard focus; <c>false</c> if it can't take it yet.</summary>

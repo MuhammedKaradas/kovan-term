@@ -30,6 +30,8 @@ names, paths, prompts, terminal text and agents' conversations can't end up here
 | `feature.worktree` | A node was started in a new git worktree |
 | `feature.broadcast` | A prompt was sent to several agents |
 | `feature.recent` | A conversation was reopened from Recent |
+| `feature.find` | Text was searched for in a terminal |
+| `feature.clear` | A terminal's scrollback was cleared |
 | `feature.outside` | Showing sessions started outside Kovan was turned on |
 | `feature.outside.open` | A session started outside Kovan was opened in Kovan |
 | `feature.allow` | Allow or Deny was pressed in Kovan |

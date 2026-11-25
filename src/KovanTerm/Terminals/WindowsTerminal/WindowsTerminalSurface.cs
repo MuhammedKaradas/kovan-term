@@ -43,6 +43,9 @@ public sealed class WindowsTerminalSurface : ITerminalSurface
 
     public void Write(string text) => _control.ConPTYTerm?.WriteToTerm(text);
 
+    // "Erase saved lines" straight to the display, not to the program: a TUI on screen (an agent) isn't disturbed
+    public void ClearScrollback() => _control.ConPTYTerm?.WriteToUITerminal("\x1b[3J");
+
     public void SetAppearance(TerminalColorScheme colors, string fontFamily, int fontSize) =>
         _control.Terminal?.SetTheme(ThemeFor(colors), fontFamily, (short)fontSize);
 

@@ -200,6 +200,15 @@ public sealed class TerminalCanvasController
         return null;
     }
 
+    /// <summary>The node's terminal window; <c>null</c> if it has none (yet).</summary>
+    public IntPtr? WindowOf(object node) =>
+        _byNode.TryGetValue(node, out var entry) && entry.Terminal != null ? TerminalSnapshot.FindHwnd(entry.Host) : null;
+
+    public void ClearScrollback(object node)
+    {
+        if (_byNode.TryGetValue(node, out var entry)) entry.Terminal?.ClearScrollback();
+    }
+
     /// <summary>Types text into the node's terminal as if the user had (works while it sleeps too).</summary>
     public void SendInput(object node, string text)
     {

@@ -21,6 +21,8 @@ public enum ShortcutAction
     Broadcast,
     Dictate,
     VoiceCommand,
+    Find,
+    ClearScrollback,
 }
 
 /// <summary>
@@ -50,6 +52,9 @@ public static class Shortcuts
         (Key.S, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.Broadcast, "Send a prompt to several agents"),
         (Key.Space, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.Dictate, "Dictate into the current terminal (press again to stop)"),
         (Key.K, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.VoiceCommand, "Voice command: say what to do (press again to stop)"),
+        // Not Ctrl+F (forward a character in bash, a page in less and vim) or Ctrl+Shift+F (fit all)
+        (Key.H, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.Find, "Find in the current terminal"),
+        (Key.L, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.ClearScrollback, "Clear the current terminal's scrollback"),
     ];
 
     public static ShortcutAction? Match(Key key, ModifierKeys modifiers)
