@@ -351,6 +351,14 @@ public partial class TerminalNodeViewModel : ObservableObject
         ? Path.GetFileName(Path.TrimEndingDirectorySeparator(Path.GetFullPath(dir))) is { Length: > 0 } name ? name : dir
         : "(no folder)";
 
+    /// <summary>
+    /// The project a terminal works in, for its color (<see cref="Views.ProjectColors"/>): the repository of a worktree,
+    /// else the working folder; <c>null</c> for notes, groups, previews and terminals without a folder.
+    /// </summary>
+    public string? ProjectKey => IsTerminal && (Worktree?.RepoRoot ?? WorkingDirectory) is { Length: > 0 } dir
+        ? Path.TrimEndingDirectorySeparator(Path.GetFullPath(dir)).ToLowerInvariant()
+        : null;
+
     /// <summary>Panel order within a group: waiting first, then working, then the rest.</summary>
     public int StatusOrder => Status switch
     {

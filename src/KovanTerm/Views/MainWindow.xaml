@@ -19,6 +19,7 @@
         WindowCornerPreference="Round">
     <ui:FluentWindow.Resources>
         <conv:NodeStatusToBrushConverter x:Key="StatusToBrush"/>
+        <local:ProjectKeyToBrushConverter x:Key="ProjectBrush"/>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
         <conv:PercentToFractionConverter x:Key="PercentToFraction"/>
 
@@ -337,7 +338,9 @@
                 </Border.Style>
                 <DockPanel>
                     <!-- Header: drag from here -->
+                    <!-- The bottom edge is the project's color: agents on one project are easy to spot (transparent without a folder) -->
                     <Border DockPanel.Dock="Top" Background="{DynamicResource SolidBackgroundFillColorTertiaryBrush}"
+                            BorderThickness="0,0,0,3" BorderBrush="{Binding ProjectKey, Converter={StaticResource ProjectBrush}}"
                             CornerRadius="8,8,0,0" Padding="10,0,4,0" Height="32"
                             MouseLeftButtonDown="NodeHeader_MouseLeftButtonDown" ToolTip="Double-click: zoom to this terminal"
                             ContextMenuOpening="NodeMenu_ContextMenuOpening">
@@ -1142,8 +1145,13 @@
                         <GroupStyle>
                             <GroupStyle.HeaderTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding Name}" Margin="8,10,8,2" FontSize="11" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                    <DockPanel Margin="8,10,8,2">
+                                        <!-- The project's color, as on its nodes' title bars -->
+                                        <Rectangle Width="8" Height="8" RadiusX="2" RadiusY="2" Margin="0,0,6,0" VerticalAlignment="Center"
+                                                   Fill="{Binding Items[0].ProjectKey, Converter={StaticResource ProjectBrush}}"/>
+                                        <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                    </DockPanel>
                                 </DataTemplate>
                             </GroupStyle.HeaderTemplate>
                         </GroupStyle>

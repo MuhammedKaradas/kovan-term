@@ -215,6 +215,8 @@ public partial class MainViewModel : ObservableObject
         Nodes.CollectionChanged += OnNodesChanged;
         foreach (var node in Nodes)
             node.PropertyChanged += OnNodePropertyChanged;
+        ProjectColorMap.Current = new ProjectColorMap(Views.ProjectColors.Palette.Count, _settings.Load().ProjectColors);
+        AssignProjectColors(Nodes);
         UpdateAgentCounts();
 
         _saveTimer.Tick += (_, _) => SaveNow();
@@ -1616,11 +1618,30 @@ public partial class MainViewModel : ObservableObject
     private void OnNodesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (e.NewItems != null)
+        {
+            // Before the canvas draws the node: its title bar shows the color
+            AssignProjectColors(e.NewItems.Cast<TerminalNodeViewModel>());
             foreach (TerminalNodeViewModel n in e.NewItems) n.PropertyChanged += OnNodePropertyChanged;
+        }
         if (e.OldItems != null)
             foreach (TerminalNodeViewModel n in e.OldItems) n.PropertyChanged -= OnNodePropertyChanged;
         UpdateAgentCounts();
         ScheduleSave();
+    }
+
+    private void AssignProjectColors(IEnumerable<TerminalNodeViewModel> nodes)
+    {
+        var added = false;
+        foreach (var key in nodes.Select(n => n.ProjectKey).OfType<string>())
+        {
+            ProjectColorMap.Current.Assign(key, out var isNew);
+            added |= isNew;
+        }
+        if (added)
+            _settings.Save(_settings.Load() with
+            {
+                ProjectColors = new Dictionary<string, int>(ProjectColorMap.Current.Colors, StringComparer.OrdinalIgnoreCase),
+            });
     }
 
     private void OnNodePropertyChanged(object? sender, PropertyChangedEventArgs e)
