@@ -82,6 +82,24 @@
                           AutomationProperties.Name="Status light"/>
                 <TextBlock Style="{StaticResource Hint}"
                            Text="While Kovan is in the background, a small light shows how many agents work (green) and wait for you (yellow). Click it to go to the waiting one; drag it along the edge; right-click to move it to the other edge."/>
+                <CheckBox Content="Show Claude Code sessions started outside Kovan" IsChecked="{Binding ShowOutsideSessions}" Margin="0,8,0,0"
+                          AutomationProperties.Name="Show sessions outside Kovan"
+                          Visibility="{Binding CanShowOutsideSessions, Converter={StaticResource BoolToVisibility}}"/>
+                <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap"
+                           Visibility="{Binding CanShowOutsideSessions, Converter={StaticResource BoolToVisibility}}"
+                           Text="Sessions in VS Code, Windows Terminal and other places appear under &quot;Elsewhere&quot; in the Agents panel, and you're notified when one needs you. Kovan adds one hook to ~/.claude/settings.json for this, and takes it out when you turn this off. With Kovan closed, the hook does nothing."/>
+                <TextBlock Text="{Binding OutsideSessionsError}" TextWrapping="Wrap" Margin="0,4,0,0" FontSize="12"
+                           Foreground="{DynamicResource SystemFillColorCriticalBrush}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding OutsideSessionsError}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
 
                 <TextBlock Text="Voice" Style="{StaticResource Section}"/>
                 <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,8"

@@ -41,6 +41,8 @@ public static class UsageStats
         ["feature.worktree"] = "A node was started in a new git worktree",
         ["feature.broadcast"] = "A prompt was sent to several agents",
         ["feature.recent"] = "A conversation was reopened from Recent",
+        ["feature.outside"] = "Showing sessions started outside Kovan was turned on",
+        ["feature.outside.open"] = "A session started outside Kovan was opened in Kovan",
         ["feature.allow"] = "Allow or Deny was pressed in Kovan",
         ["feature.dictation"] = "Dictation was used",
         ["feature.voice"] = "A voice command was used",

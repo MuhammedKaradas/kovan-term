@@ -39,6 +39,11 @@ public sealed record AppSettings
     public bool OpenWebLinksInPreview { get; init; }
     /// <summary>A small light on the screen's edge while Kovan is in the background: agents working and waiting.</summary>
     public bool StatusLight { get; init; }
+    /// <summary>
+    /// Claude Code sessions started outside Kovan show in the Agents panel: Kovan keeps one hook in
+    /// <c>~/.claude/settings.json</c> while this is on (<see cref="Services.OutsideHook"/>).
+    /// </summary>
+    public bool ShowOutsideSessions { get; init; }
     /// <summary>The status light's edge (right or left) and height on it, 0 (top) to 1 (bottom).</summary>
     public bool StatusLightRightEdge { get; init; } = true;
     public double StatusLightTop { get; init; } = 0.4;

@@ -91,6 +91,7 @@ public partial class MainWindow : FluentWindow
         Closed += (_, _) =>
         {
             _vm.SaveNow();
+            _vm.StopOutsideSessions();
             _canvas.TerminateAll();
             _hookServer.Dispose();
         };

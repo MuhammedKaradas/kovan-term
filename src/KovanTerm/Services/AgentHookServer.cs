@@ -38,6 +38,15 @@ public sealed class AgentHookServer : IDisposable
     public event Action<Guid, AgentEvent>? EventReceived;
 
     /// <summary>
+    /// A hook event from a Claude Code session started outside Kovan (<see cref="OutsideHook"/>), on a thread-pool
+    /// thread. Sessions Kovan started report here too; those are told apart by their session id.
+    /// </summary>
+    public event Action<AgentEvent>? OutsideEventReceived;
+
+    public const string OutsidePath = "/outside";
+    public string OutsideUrl => $"http://127.0.0.1:{Port}{OutsidePath}";
+
+    /// <summary>
     /// Optional JSON to answer a hook with (e.g. <c>additionalContext</c> for <c>UserPromptSubmit</c>); called on a
     /// thread-pool thread, so it must be thread-safe. <c>null</c>: an empty answer, the agent carries on as usual.
     /// </summary>
@@ -85,6 +94,7 @@ public sealed class AgentHookServer : IDisposable
                     : McpHandler?.Invoke(mcpNode, Encoding.UTF8.GetString(r.Body)) is { } json ? JsonResponse(json)
                     : AcceptedResponse,
                 { } r when !TokenMatches(r.Token) => ForbiddenResponse,
+                { Method: "POST", Path: OutsidePath } r when ParseEvent(r.Body) is { } e => RaiseOutside(e),
                 { Method: "POST" } r when ParsePath(r.Path) is { } nodeId && ParseEvent(r.Body) is { } e => Raise(nodeId, e),
                 _ => BadRequestResponse,
             };
@@ -100,6 +110,12 @@ public sealed class AgentHookServer : IDisposable
     {
         EventReceived?.Invoke(nodeId, e);
         return HookResponse?.Invoke(nodeId, e) is { } json ? JsonResponse(json) : OkResponse;
+    }
+
+    private byte[] RaiseOutside(AgentEvent e)
+    {
+        OutsideEventReceived?.Invoke(e);
+        return OkResponse;
     }
 
     private static byte[] JsonResponse(string json)
@@ -177,7 +193,7 @@ public sealed class AgentHookServer : IDisposable
             var root = doc.RootElement;
             if (root.ValueKind != JsonValueKind.Object || Str(root, "hook_event_name") is not { } name) return null;
             return new AgentEvent(name, Str(root, "session_id"), Str(root, "tool_name"), Str(root, "notification_type"),
-                Str(root, "transcript_path"), Str(root, "agent_id"), Str(root, "agent_type"));
+                Str(root, "transcript_path"), Str(root, "agent_id"), Str(root, "agent_type"), Str(root, "cwd"));
         }
         catch (JsonException)
         {
