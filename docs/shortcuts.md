@@ -22,6 +22,8 @@ use, most of them use `Ctrl+Shift` (e.g. `Ctrl+T` transposes characters in bash/
 | `Ctrl+Shift+S` | Send one prompt to several agents (the selected nodes, or this workspace's agents) |
 | `Ctrl+Shift+Space` | Dictate into the current terminal; press again to stop and type what was said |
 | `Ctrl+Shift+K` | Voice command ("go to the waiting agent", "Claude'a söyle testleri çalıştır"); press again to carry it out |
+| `Ctrl+Shift+H` | Find in the current terminal: Enter goes to the older match, Shift+Enter to the newer one, Esc closes |
+| `Ctrl+Shift+L` | Clear the current terminal's scrollback (the screen stays) |
 
 **Mouse:**
 

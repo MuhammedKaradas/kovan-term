@@ -148,6 +148,12 @@ public partial class MainWindow
             case ShortcutAction.VoiceCommand:
                 ToggleVoiceCommand();
                 break;
+            case ShortcutAction.Find:
+                OpenFind(_currentNode);
+                break;
+            case ShortcutAction.ClearScrollback:
+                ClearScrollback(_currentNode);
+                break;
         }
     }
 

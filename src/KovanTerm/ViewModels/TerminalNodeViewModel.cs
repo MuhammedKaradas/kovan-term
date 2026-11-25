@@ -41,6 +41,17 @@ public partial class TerminalNodeViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsRenaming { get; set; }
 
+    /// <summary>The header shows the find box (#141).</summary>
+    [ObservableProperty]
+    public partial bool IsFinding { get; set; }
+
+    [ObservableProperty]
+    public partial string FindText { get; set; } = "";
+
+    /// <summary>"2 of 5", "No results"; <c>null</c> before a search.</summary>
+    [ObservableProperty]
+    public partial string? FindStatus { get; set; }
+
     private string? _seenCustomTitle, _seenAiTitle;
 
     /// <summary>

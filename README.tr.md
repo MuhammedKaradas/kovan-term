@@ -36,6 +36,7 @@ Terminal'in GPU hızlandırmalı terminal bileşeniyle, düşük kaynak tüketim
 - Çalışma alanı otomatik kaydedilir ve açılışta geri gelir
 - Dikte: konuşarak terminale yaz; ses bilgisayarında Whisper ile yazıya çevrilir (`Ctrl+Shift+Space`)
 - Türkçe ve İngilizce sesli komutlar: "bekleyen ajana git", "Claude'a söyle testleri çalıştır" (`Ctrl+Shift+K`)
+- Terminalde arama (`Ctrl+Shift+H`) ve geçmişi temizleme (`Ctrl+Shift+L`)
 - Klavye kısayolları: terminaller arası geçiş, tümünü sığdır, yakınlaş ([docs/shortcuts.md](docs/shortcuts.md))
 - "Fotoğraf modu" ile akıcı kaydırma ve zoom; ekran dışındaki terminaller uyur
 - Windows 11 görünümü (Mica, Fluent kontroller); açık, koyu ya da Windows'a uyan tema; Dracula, Nord, Tokyo Night, Catppuccin gibi terminal renk şemaları
