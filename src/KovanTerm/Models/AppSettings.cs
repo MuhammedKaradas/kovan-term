@@ -44,6 +44,10 @@ public sealed record AppSettings
     public bool OpenWebLinksInPreview { get; init; }
     /// <summary>A small light on the screen's edge while Kovan is in the background: agents working and waiting.</summary>
     public bool StatusLight { get; init; }
+    /// <summary>Claude Code starts without permission prompts in every folder (<see cref="Services.PermissionBypass"/>).</summary>
+    public bool SkipPermissionsEverywhere { get; init; }
+    /// <summary>Folders where Claude Code starts without permission prompts (ticked in the New terminal dialog).</summary>
+    public List<string> SkipPermissionsFolders { get; init; } = [];
     /// <summary>
     /// Claude Code sessions started outside Kovan show in the Agents panel: Kovan keeps one hook in
     /// <c>~/.claude/settings.json</c> while this is on (<see cref="Services.OutsideHook"/>).

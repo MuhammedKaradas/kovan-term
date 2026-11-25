@@ -42,6 +42,7 @@ public static class UsageStats
         ["feature.broadcast"] = "A prompt was sent to several agents",
         ["feature.recent"] = "A conversation was reopened from Recent",
         ["feature.find"] = "Text was searched for in a terminal",
+        ["feature.bypass"] = "A folder was set to start Claude Code without permission prompts",
         ["feature.clear"] = "A terminal's scrollback was cleared",
         ["feature.outside"] = "Showing sessions started outside Kovan was turned on",
         ["feature.outside.open"] = "A session started outside Kovan was opened in Kovan",

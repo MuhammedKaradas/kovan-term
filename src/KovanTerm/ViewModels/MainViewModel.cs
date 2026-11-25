@@ -236,17 +236,21 @@ public partial class MainViewModel : ObservableObject
         var dialog = new NewTerminalViewModel(_dialogs, options, _recentDirectories, _lastProfileId ?? InstalledAgents().FirstOrDefault()?.Id)
         {
             SetupCommandFor = repo => setups.FirstOrDefault(kv => string.Equals(kv.Key, repo, StringComparison.OrdinalIgnoreCase)).Value,
+            SkipPermissionsFor = folder => PermissionBypass.AppliesTo(false, _settings.Load().SkipPermissionsFolders, folder),
+            SkipPermissionsEverywhere = _settings.Load().SkipPermissionsEverywhere,
             ListModels = ListModels,
         };
         // The first profile was selected before ListModels was set
         _ = dialog.LoadModelsAsync();
         // The initial folder was set before SetupCommandFor; look its setup command up now
         if (dialog.RepoRoot is { } initialRepo) dialog.SetupCommand = dialog.SetupCommandFor(initialRepo) ?? "";
+        dialog.LookUpSkipPermissions();
         if (!_dialogs.ShowNewTerminal(dialog) || dialog.SelectedProfile is not { IsAvailable: true } choice) return;
         var at = location ?? ViewportCenterForNewNode();
 
         var directory = NormalizeDirectory(dialog.WorkingDirectory.Trim());
         RememberDirectory(directory);
+        if (dialog.ShowsSkipPermissions && !dialog.SkipPermissionsEverywhere) RememberSkipPermissions(directory, dialog.SkipPermissions);
         _lastProfileId = choice.Profile.Id;
 
         WorktreeInfo? worktree = null;
@@ -865,6 +869,16 @@ public partial class MainViewModel : ObservableObject
         return null;
     }
 
+    /// <summary>The New terminal box: this folder starts Claude Code without permission prompts from now on, or not.</summary>
+    private void RememberSkipPermissions(string folder, bool on)
+    {
+        var settings = _settings.Load();
+        // Unticked for a subfolder of a trusted folder: only an exact entry can be taken out
+        if (on == PermissionBypass.AppliesTo(false, settings.SkipPermissionsFolders, folder)) return;
+        _settings.Save(settings with { SkipPermissionsFolders = PermissionBypass.With(settings.SkipPermissionsFolders, folder, on) });
+        if (on) UsageStats.Count("feature.bypass");
+    }
+
     private void RememberSetupCommand(string repoRoot, string command)
     {
         var settings = _settings.Load();
@@ -1297,8 +1311,8 @@ public partial class MainViewModel : ObservableObject
         var sessionId = PinsConversation(profile, resolvedPath) ? existingSessionId ?? Guid.NewGuid().ToString() : null;
         var commandLine = BuildCommandLine(profile, resolvedPath, directory, persistent ? id : null);
         var launch = profile.Wsl
-            ? WslLaunchCommandLine(id, profile, resolvedPath, directory, sessionId, persistent)
-            : LaunchCommandLine(id, resolvedPath, profile.Arguments, sessionId);
+            ? WslLaunchCommandLine(id, profile, resolvedPath, directory, sessionId, persistent, worktree?.RepoRoot)
+            : LaunchCommandLine(id, resolvedPath, profile.Arguments, sessionId, directory, worktree?.RepoRoot);
         // A new worktree's setup runs once, before the agent's first start; later launches run the agent directly
         if (worktree != null && setup.Length > 0) launch = GitWorktrees.WithSetup(launch ?? commandLine, setup, worktree.RepoRoot);
         return new()
@@ -1326,13 +1340,15 @@ public partial class MainViewModel : ObservableObject
     /// For Claude Code: the command line with the node's conversation (<see cref="ClaudeSessions"/>) and this run's
     /// hook settings; otherwise <c>null</c> (run the saved command).
     /// </summary>
-    private string? LaunchCommandLine(Guid nodeId, string resolvedPath, string arguments, string? sessionId)
+    private string? LaunchCommandLine(Guid nodeId, string resolvedPath, string arguments, string? sessionId,
+        string? directory = null, string? repoRoot = null)
     {
         var extra = new List<string> { arguments };
         // A resolved path, not a command line: it may contain spaces ("C:\Program Files\nodejs\claude.cmd")
         var agent = ScreenRules.AgentOfExecutable(resolvedPath);
         if (agent == "claude")
         {
+            if (SkipsPermissions(arguments, directory, repoRoot)) extra.Add(PermissionBypass.Arguments);
             if (sessionId != null) extra.Add(_sessions.Arguments(sessionId, arguments));
             if (_hooks != null)
             {
@@ -1369,7 +1385,7 @@ public partial class MainViewModel : ObservableObject
             if (chat != null)
             {
                 node.SessionId = chat;
-                node.LaunchCommandLine = LaunchCommandLine(node.Id, resolvedPath, profile.Arguments, chat);
+                node.LaunchCommandLine = LaunchCommandLine(node.Id, resolvedPath, profile.Arguments, chat, node.WorkingDirectory, node.Worktree?.RepoRoot);
                 ScheduleSave();
             }
             StatusLog($"{node.Title} cursor chat {chat ?? "(none: starting unpinned)"}");
@@ -1413,11 +1429,21 @@ public partial class MainViewModel : ObservableObject
     /// Claude Code in WSL: its conversation and the hook/MCP settings that reach Kovan from the distro
     /// (<see cref="ClaudeHooks.PrepareWslArguments"/>); <c>null</c> for anything else (run the saved command).
     /// </summary>
-    private string? WslLaunchCommandLine(Guid nodeId, TerminalProfile profile, string wslPath, string? directory, string? sessionId, bool persistent)
+    /// <summary>Does Claude Code start here without permission prompts (and the profile doesn't decide that itself)?</summary>
+    private bool SkipsPermissions(string arguments, string? directory, string? repoRoot)
+    {
+        var settings = _settings.Load();
+        return !PermissionBypass.NamesPermissionMode(arguments)
+               && PermissionBypass.AppliesTo(settings.SkipPermissionsEverywhere, settings.SkipPermissionsFolders, directory, repoRoot);
+    }
+
+    private string? WslLaunchCommandLine(Guid nodeId, TerminalProfile profile, string wslPath, string? directory, string? sessionId, bool persistent,
+        string? repoRoot = null)
     {
         var agent = ScreenRules.AgentOfExecutable(profile.Executable);
         if (agent is not ("claude" or "codex")) return null;
         var extra = new List<string> { profile.Arguments };
+        if (agent == "claude" && SkipsPermissions(profile.Arguments, directory, repoRoot)) extra.Add(PermissionBypass.Arguments);
         if (agent == "codex")
         {
             // Codex reaches the agent mesh through a stdio bridge; its status comes from OSC 7501 like on Windows
@@ -1526,8 +1552,8 @@ public partial class MainViewModel : ObservableObject
             if (PinsConversation(profile, path) && state.SessionId == null) state = state with { SessionId = Guid.NewGuid().ToString() };
             var restored = TerminalNodeViewModel.FromState(state, BuildCommandLine(profile, path, s.WorkingDirectory, state.Persistent ? s.Id : null),
                 launchCommandLine: profile.Wsl
-                    ? WslLaunchCommandLine(s.Id, profile, path, s.WorkingDirectory, state.SessionId, state.Persistent)
-                    : LaunchCommandLine(s.Id, path, profile.Arguments, state.SessionId),
+                    ? WslLaunchCommandLine(s.Id, profile, path, s.WorkingDirectory, state.SessionId, state.Persistent, s.Worktree?.RepoRoot)
+                    : LaunchCommandLine(s.Id, path, profile.Arguments, state.SessionId, s.WorkingDirectory, s.Worktree?.RepoRoot),
                 profile: profile);
             if (!profile.Wsl) PinCursorChat(restored, profile, path);
             return restored;

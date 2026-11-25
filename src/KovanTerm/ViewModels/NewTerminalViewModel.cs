@@ -144,8 +144,39 @@ public partial class NewTerminalViewModel : ObservableObject
 
     private bool _branchEdited;
 
-    partial void OnWorkingDirectoryChanged(string value) =>
+    partial void OnWorkingDirectoryChanged(string value)
+    {
         RepoRoot = Directory.Exists(value) ? GitWorktrees.FindRepoRoot(value) : null;
+        LookUpSkipPermissions();
+    }
+
+    /// <summary>Ticks the box as remembered for the folder (also called once the lookup is set: the first folder came before it).</summary>
+    public void LookUpSkipPermissions() =>
+        SkipPermissions = SkipPermissionsEverywhere || (SkipPermissionsFor?.Invoke(WorkingDirectory.Trim()) ?? false);
+
+    // ---- Permission prompts (Claude Code) ----
+
+    /// <summary>Is this folder trusted to skip prompts? Set by whoever creates the dialog.</summary>
+    public Func<string, bool>? SkipPermissionsFor { get; init; }
+
+    /// <summary>Settings has it on for every folder: the box shows ticked and can't be changed here.</summary>
+    public bool SkipPermissionsEverywhere
+    {
+        get;
+        init
+        {
+            field = value;
+            LookUpSkipPermissions();
+        }
+    }
+
+    /// <summary>Start Claude Code without permission prompts in this folder, now and later (#140).</summary>
+    [ObservableProperty]
+    public partial bool SkipPermissions { get; set; }
+
+    /// <summary>Only Claude Code profiles that don't set a permission mode of their own.</summary>
+    public bool ShowsSkipPermissions => SelectedProfile is { Profile: var p }
+        && ScreenRules.AgentOfExecutable(p.Executable) == "claude" && !PermissionBypass.NamesPermissionMode(p.Arguments);
 
     partial void OnBranchNameChanged(string value) => _branchEdited = true;
 
@@ -166,6 +197,7 @@ public partial class NewTerminalViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(IsWsl));
         OnPropertyChanged(nameof(PicksModel));
+        OnPropertyChanged(nameof(ShowsSkipPermissions));
         OnPropertyChanged(nameof(ValidationMessage));
         ConfirmCommand.NotifyCanExecuteChanged();
         _ = LoadModelsAsync();

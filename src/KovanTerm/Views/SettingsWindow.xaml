@@ -73,6 +73,11 @@
                 <TextBlock Style="{StaticResource Hint}"
                            Text="Windows doesn't go to sleep on its own until no agent is working. The screen can still turn off, and closing a laptop's lid still does what your power settings say."/>
 
+                <CheckBox Content="Start Claude Code without permission prompts in every folder" IsChecked="{Binding SkipPermissionsEverywhere}"
+                          AutomationProperties.Name="Skip permission prompts everywhere" Margin="0,8,0,0"/>
+                <TextBlock Style="{StaticResource Hint}"
+                           Text="Claude Code runs commands and edits files without asking (--permission-mode bypassPermissions). To trust only some folders, tick &quot;Skip permission prompts&quot; in the New terminal dialog instead. Applies to agents started from now on."/>
+
                 <CheckBox Content="Start agents when Kovan opens" IsChecked="{Binding StartAgentsOnOpen}"
                           AutomationProperties.Name="Start agents when Kovan opens"/>
                 <TextBlock Style="{StaticResource Hint}"

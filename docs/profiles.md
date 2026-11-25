@@ -155,6 +155,18 @@ resuming work the same, since it's still Claude Code. The Claude plan panel only
 
 To change a setting, add a profile with the same id to `profiles.json` (for example another `ANTHROPIC_BASE_URL`).
 
+## Claude Code without permission prompts
+
+Kovan can start Claude Code with `--permission-mode bypassPermissions`, so it runs commands and edits files without
+asking. Turn it on only for projects you trust:
+
+- **One folder:** tick **Skip permission prompts in this folder** in the New terminal dialog. It's remembered for
+  that folder, its subfolders and its worktrees.
+- **Every folder:** **Settings → Agents → Start Claude Code without permission prompts in every folder**.
+- A profile whose `arguments` already set `--permission-mode` or `--dangerously-skip-permissions` is left as it is.
+- A node started this way shows a yellow crossed shield in its header.
+- It applies to agents started afterwards, including nodes restored when Kovan opens.
+
 ## When a workspace is opened
 
 For nodes with a known profile, the command is rebuilt from the current profile, so the right path is

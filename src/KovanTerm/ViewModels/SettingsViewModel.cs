@@ -37,6 +37,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         NotifyWhenDone = s.NotifyWhenDone;
         KeepAwakeWhileWorking = s.KeepAwakeWhileWorking;
         StatusLight = s.StatusLight;
+        SkipPermissionsEverywhere = s.SkipPermissionsEverywhere;
         ShowOutsideSessions = s.ShowOutsideSessions;
         OpenWebLinksInPreview = s.OpenWebLinksInPreview;
         StartAgentsOnOpen = s.StartAgentsOnOpen;
@@ -82,6 +83,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] public partial bool NotifyWhenDone { get; set; }
     [ObservableProperty] public partial bool KeepAwakeWhileWorking { get; set; }
     [ObservableProperty] public partial bool StatusLight { get; set; }
+    [ObservableProperty] public partial bool SkipPermissionsEverywhere { get; set; }
     [ObservableProperty] public partial bool ShowOutsideSessions { get; set; }
     /// <summary>Why turning <see cref="ShowOutsideSessions"/> on or off didn't work; <c>null</c> when it did.</summary>
     [ObservableProperty] public partial string? OutsideSessionsError { get; private set; }
@@ -121,6 +123,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     partial void OnNotifyWhenDoneChanged(bool value) => Save();
     partial void OnKeepAwakeWhileWorkingChanged(bool value) => Save();
     partial void OnStatusLightChanged(bool value) => Save();
+    partial void OnSkipPermissionsEverywhereChanged(bool value) => Save();
 
     partial void OnShowOutsideSessionsChanged(bool value)
     {
@@ -170,6 +173,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             NotifyWhenDone = NotifyWhenDone,
             KeepAwakeWhileWorking = KeepAwakeWhileWorking,
             StatusLight = StatusLight,
+            SkipPermissionsEverywhere = SkipPermissionsEverywhere,
             OpenWebLinksInPreview = OpenWebLinksInPreview,
             StartAgentsOnOpen = StartAgentsOnOpen,
             CheckForUpdates = CheckForUpdates,

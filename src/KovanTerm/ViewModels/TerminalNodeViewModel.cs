@@ -89,8 +89,11 @@ public partial class TerminalNodeViewModel : ObservableObject
     /// Not persisted; the saved command stays reusable on the next run.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(StartupCommandLine))]
+    [NotifyPropertyChangedFor(nameof(StartupCommandLine), nameof(SkipsPermissions))]
     public partial string? LaunchCommandLine { get; set; }
+
+    /// <summary>Claude Code runs without permission prompts here (#140): the header shows a shield.</summary>
+    public bool SkipsPermissions => Services.PermissionBypass.IsOn(LaunchCommandLine ?? CommandLine);
     /// <summary>
     /// What the terminal is started with: <see cref="LaunchCommandLine"/> (or the saved command), run through the
     /// launcher that sets <see cref="ExtraEnvironment"/> when the profile has any.

@@ -57,6 +57,25 @@
                           Text="{Binding WorkingDirectory, UpdateSourceTrigger=PropertyChanged}"/>
             </DockPanel>
 
+            <!-- Claude Code: skip permission prompts in this folder, remembered (#140); fixed on when Settings has it for every folder -->
+            <CheckBox Margin="0,14,0,0" IsChecked="{Binding SkipPermissions}" AutomationProperties.Name="Skip permission prompts"
+                      Visibility="{Binding ShowsSkipPermissions, Converter={StaticResource BoolToVisibility}}">
+                <CheckBox.Style>
+                    <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SkipPermissionsEverywhere}" Value="True">
+                                <Setter Property="IsEnabled" Value="False"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </CheckBox.Style>
+                <StackPanel>
+                    <TextBlock Text="Skip permission prompts in this folder" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <TextBlock Text="Claude Code runs commands and edits files without asking. Remembered for this folder; only for projects you trust."
+                               FontSize="11" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+                </StackPanel>
+            </CheckBox>
+
             <!-- WSL: keep the program running in tmux after Kovan closes -->
             <CheckBox Margin="0,14,0,0" IsChecked="{Binding KeepRunning}" AutomationProperties.Name="Keep running when Kovan closes"
                       Visibility="{Binding IsWsl, Converter={StaticResource BoolToVisibility}}">

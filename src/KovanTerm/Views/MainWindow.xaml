@@ -356,6 +356,12 @@
                                     <ui:SymbolIcon Symbol="Dismiss16"/>
                                 </ui:Button.Icon>
                             </ui:Button>
+                            <!-- Started without permission prompts (#140) -->
+                            <ui:SymbolIcon DockPanel.Dock="Right" Symbol="ShieldDismiss16" FontSize="14" Margin="0,0,6,0" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                           ToolTip="Runs without permission prompts: Claude Code doesn't ask before commands and edits"
+                                           AutomationProperties.Name="Without permission prompts"
+                                           Visibility="{Binding SkipsPermissions, Converter={StaticResource BoolToVisibility}}"/>
                             <!-- Find in the terminal (Ctrl+Shift+H): in the header, since nothing can be drawn over the terminal.
                                  Enter: older match, Shift+Enter: newer, Esc: close -->
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="0,0,6,0" VerticalAlignment="Center"
