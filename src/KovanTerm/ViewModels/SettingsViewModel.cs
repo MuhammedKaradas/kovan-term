@@ -30,6 +30,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         var s = store.Load();
         _loading = true;
         Theme = s.Theme;
+        TerminalSchemeDark = Views.TerminalThemes.Find(s.TerminalSchemeDark, dark: true).Name;
+        TerminalSchemeLight = Views.TerminalThemes.Find(s.TerminalSchemeLight, dark: false).Name;
         TitlesFromClaude = s.TitlesFromClaude;
         NotifyWhenWaiting = s.NotifyWhenWaiting;
         NotifyWhenDone = s.NotifyWhenDone;
@@ -70,6 +72,11 @@ public sealed partial class SettingsViewModel : ObservableObject
     ];
 
     [ObservableProperty] public partial ThemePreference Theme { get; set; }
+    [ObservableProperty] public partial string TerminalSchemeDark { get; set; } = Views.TerminalThemes.DefaultDark;
+    [ObservableProperty] public partial string TerminalSchemeLight { get; set; } = Views.TerminalThemes.DefaultLight;
+
+    public IReadOnlyList<string> DarkSchemes { get; } = Views.TerminalThemes.DarkSchemes.Select(s => s.Name).ToList();
+    public IReadOnlyList<string> LightSchemes { get; } = Views.TerminalThemes.LightSchemes.Select(s => s.Name).ToList();
     [ObservableProperty] public partial bool TitlesFromClaude { get; set; }
     [ObservableProperty] public partial bool NotifyWhenWaiting { get; set; }
     [ObservableProperty] public partial bool NotifyWhenDone { get; set; }
@@ -107,6 +114,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         else Save();
     }
 
+    partial void OnTerminalSchemeDarkChanged(string value) => Save();
+    partial void OnTerminalSchemeLightChanged(string value) => Save();
     partial void OnTitlesFromClaudeChanged(bool value) => Save();
     partial void OnNotifyWhenWaitingChanged(bool value) => Save();
     partial void OnNotifyWhenDoneChanged(bool value) => Save();
@@ -154,6 +163,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         _store.Save(_store.Load() with
         {
             Theme = _applyTheme == null ? Theme : _store.Load().Theme,
+            TerminalSchemeDark = TerminalSchemeDark,
+            TerminalSchemeLight = TerminalSchemeLight,
             TitlesFromClaude = TitlesFromClaude,
             NotifyWhenWaiting = NotifyWhenWaiting,
             NotifyWhenDone = NotifyWhenDone,

@@ -12,6 +12,9 @@ public enum ThemePreference
 public sealed record AppSettings
 {
     public ThemePreference Theme { get; init; } = ThemePreference.System;
+    /// <summary>Terminal color schemes for the dark and the light theme, by name (<see cref="Views.TerminalThemes"/>).</summary>
+    public string TerminalSchemeDark { get; init; } = Views.TerminalThemes.DefaultDark;
+    public string TerminalSchemeLight { get; init; } = Views.TerminalThemes.DefaultLight;
     /// <summary>Is the Agents panel (left of the canvas) open?</summary>
     public bool ShowAgentsPanel { get; init; } = true;
     /// <summary>Is the Changes panel (right of the canvas) open?</summary>

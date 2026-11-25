@@ -56,6 +56,10 @@ public sealed class ThemeService
     private static bool SystemIsLight() => ApplicationThemeManager.GetSystemTheme() is
         SystemTheme.Light or SystemTheme.HCWhite or SystemTheme.Sunrise or SystemTheme.Flow;
 
+    /// <summary>The terminal color schemes changed: the brush behind terminals follows.</summary>
+    public void RefreshTerminalBackground() =>
+        Application.Current.Resources[TerminalBackgroundBrushKey] = new SolidColorBrush(TerminalThemes.BackgroundFor(IsDark));
+
     private void SetIsDark(bool dark)
     {
         Application.Current.Resources[TerminalBackgroundBrushKey] = new SolidColorBrush(TerminalThemes.BackgroundFor(dark));
