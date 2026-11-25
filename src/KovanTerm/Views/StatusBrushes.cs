@@ -9,8 +9,9 @@ namespace KovanTerm.Views;
 /// The status dots' brushes. Working and waiting dots "breathe": one shared brush per status has its opacity changed,
 /// so every dot of that status breathes in step and the cost doesn't grow with the number of nodes.
 /// <para>
-/// Every redraw of Kovan's window costs about 10 ms of CPU (measured: the same whatever changes), so breathing is
-/// rationed: a timer steps the opacity 8 times a second (a WPF animation redrew far more often even with a low
+/// A redraw isn't free: about 1.2 ms on WPF's render thread for one small change, more when the changes are spread
+/// over the canvas (WPF merges them into larger regions: ~2.8 ms for 5 dots on 10 nodes), plus UI-thread work (#150).
+/// Breathing every dot all day would cost several % of a core, so it's rationed: a timer steps the opacity 8 times a second (a WPF animation redrew far more often even with a low
 /// DesiredFrameRate), only while Kovan is the active window, and only for <see cref="BreathFor"/> after the counts
 /// last changed; then the dots stay still. Its job is to catch the eye when something changes, not to run all day.
 /// Off when Windows' animation effects are off.
