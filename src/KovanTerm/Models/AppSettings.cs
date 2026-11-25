@@ -18,6 +18,8 @@ public sealed record AppSettings
     public bool ShowChangesPanel { get; init; }
     /// <summary>Command run in a new worktree before the agent starts, per repository root (e.g. <c>npm install</c>).</summary>
     public Dictionary<string, string> WorktreeSetupCommands { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Each project folder's color, an index into the palette (<see cref="Services.ProjectColorMap"/>).</summary>
+    public Dictionary<string, int> ProjectColors { get; init; } = new(StringComparer.OrdinalIgnoreCase);
     /// <summary>Claude Code nodes take their conversation's title (its <c>/rename</c>, or the one Claude gives it).</summary>
     public bool TitlesFromClaude { get; init; } = true;
     /// <summary>Windows notification when an agent starts waiting for you while Kovan is in the background.</summary>
