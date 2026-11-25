@@ -21,6 +21,19 @@ public partial class MainViewModel
 
     public bool HasOutsideSessions => OutsideSessions.Count > 0;
 
+    /// <summary>Outside sessions working / waiting (their dots breathe like nodes').</summary>
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty]
+    public partial int OutsideWorkingCount { get; private set; }
+
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty]
+    public partial int OutsideWaitingCount { get; private set; }
+
+    private void UpdateOutsideCounts()
+    {
+        OutsideWorkingCount = OutsideSessions.Count(s => s.Status == NodeStatus.Working);
+        OutsideWaitingCount = OutsideSessions.Count(s => s.Status == NodeStatus.Waiting);
+    }
+
     /// <summary>An outside session started waiting for the user (the main window notifies).</summary>
     public event Action<OutsideSessionViewModel>? OutsideAttentionNeeded;
 
@@ -29,7 +42,11 @@ public partial class MainViewModel
         if (server == null) return;
         _outsideServer = server;
         _outsideHook = hook ?? new OutsideHook();
-        OutsideSessions.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasOutsideSessions));
+        OutsideSessions.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(HasOutsideSessions));
+            UpdateOutsideCounts();
+        };
         server.OutsideEventReceived += e => _dispatcher.BeginInvoke(() => OnOutsideEvent(e));
         if (!_settings.Load().ShowOutsideSessions) return;
         try
@@ -99,6 +116,7 @@ public partial class MainViewModel
         }
         StatusLog($"outside {session.Title} hook {e.Name} {e.ToolName}");
         if (session.Apply(e, now)) OutsideAttentionNeeded?.Invoke(session);
+        UpdateOutsideCounts();
     }
 
     /// <summary>A node took the conversation over (it was opened here): it's no longer "elsewhere".</summary>
