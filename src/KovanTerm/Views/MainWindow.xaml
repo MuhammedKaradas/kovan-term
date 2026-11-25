@@ -1136,6 +1136,7 @@
                 </Border>
                 <!-- An ItemsControl, not a ListBox: rows aren't "selected", a click goes to the node -->
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="4,0,4,8">
+                <StackPanel>
                 <ItemsControl x:Name="AgentsList" AutomationProperties.Name="Agents">
                     <ItemsControl.GroupStyle>
                         <GroupStyle>
@@ -1235,6 +1236,74 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                <!-- Claude Code sessions started outside Kovan (Settings → Notifications): status only, Kovan can't type into them -->
+                <StackPanel Visibility="{Binding HasOutsideSessions, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="Elsewhere" Margin="8,10,8,2" FontSize="11" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                               ToolTip="Claude Code sessions started outside Kovan (VS Code, Windows Terminal…)"/>
+                    <ItemsControl ItemsSource="{Binding OutsideSessions}" AutomationProperties.Name="Sessions outside Kovan">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:OutsideSessionViewModel}">
+                                <Border BorderThickness="2,0,0,0" Padding="8,6" Margin="0,1" CornerRadius="4"
+                                        AutomationProperties.Name="{Binding Title}" ToolTip="{Binding Folder}">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="BorderBrush" Value="Transparent"/>
+                                            <Setter Property="Background" Value="Transparent"/>
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}"/>
+                                                </Trigger>
+                                                <DataTrigger Binding="{Binding Status}" Value="{x:Static models:NodeStatus.Waiting}">
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCautionBrush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <Border.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Open in Kovan"
+                                                      Command="{Binding PlacementTarget.Tag.OpenOutsideSessionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding}"/>
+                                            <MenuItem Header="Hide"
+                                                      Command="{Binding PlacementTarget.Tag.DismissOutsideSessionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding}"/>
+                                        </ContextMenu>
+                                    </Border.ContextMenu>
+                                    <Border.Tag>
+                                        <Binding Path="DataContext" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                    </Border.Tag>
+                                    <StackPanel>
+                                        <DockPanel>
+                                            <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"
+                                                     Fill="{Binding Status, Converter={StaticResource StatusToBrush}}"/>
+                                            <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Height="22" Padding="6,0" FontSize="11"
+                                                       Content="Open" ToolTip="Open this conversation in Kovan, where it left off"
+                                                       AutomationProperties.Name="{Binding Title, StringFormat=Open {0} in Kovan}"
+                                                       Command="{Binding DataContext.OpenOutsideSessionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                       CommandParameter="{Binding}"/>
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding StatusText}" Margin="16,2,0,0" FontSize="12" TextTrimming="CharacterEllipsis"
+                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding StatusText}" Value="{x:Null}">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+                </StackPanel>
                 </ScrollViewer>
             </DockPanel>
         </Border>

@@ -155,7 +155,7 @@ public partial class MainViewModel : ObservableObject
         IDialogService dialogs, SettingsStore settings,
         AgentHookServer? hookServer = null, ClaudeSessions? sessions = null, ClaudeUsage? usage = null,
         DictationViewModel? dictation = null, PullRequests? pullRequests = null, AntigravityConversations? antigravity = null,
-        CodexUsage? codexUsage = null)
+        CodexUsage? codexUsage = null, OutsideHook? outsideHook = null)
     {
         AntigravityConversations = antigravity ?? new AntigravityConversations();
         InitPullRequests(pullRequests);
@@ -186,6 +186,7 @@ public partial class MainViewModel : ObservableObject
             ScheduleSave();
         });
         _settings = settings;
+        InitOutsideSessions(hookServer, outsideHook);
         Theme = settings.Load().Theme;
         ShowAgentsPanel = settings.Load().ShowAgentsPanel;
         ShowChangesPanel = settings.Load().ShowChangesPanel;
@@ -825,10 +826,7 @@ public partial class MainViewModel : ObservableObject
     private async Task OpenRecentConversation(Point? location)
     {
         var at = location ?? ViewportCenterForNewNode();
-        var claude = _profiles.Where(p => p.Id == "claude").Concat(_profiles)
-            .Select(p => (Profile: p, Path: _resolver.Resolve(p.Executable)))
-            .FirstOrDefault(x => x.Path != null && ClaudeHooks.IsClaude(x.Path));
-        if (claude.Path == null)
+        if (FindClaude() is not { } claude)
         {
             await _dialogs.ShowMessageAsync("Recent conversations", "Claude Code ('claude') wasn't found. Make sure it's installed and on PATH.");
             return;
@@ -855,6 +853,14 @@ public partial class MainViewModel : ObservableObject
         AddNode(node);
         UsageStats.Count("feature.recent");
         CurrentNode = node;
+    }
+
+    /// <summary>The Claude Code profile ("claude" first, else any profile that starts it) and its resolved path.</summary>
+    private (TerminalProfile Profile, string Path)? FindClaude()
+    {
+        foreach (var p in _profiles.Where(p => p.Id == "claude").Concat(_profiles))
+            if (_resolver.Resolve(p.Executable) is { } path && ClaudeHooks.IsClaude(path)) return (p, path);
+        return null;
     }
 
     private void RememberSetupCommand(string repoRoot, string command)
@@ -955,6 +961,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (Nodes.FirstOrDefault(n => n.Id == nodeId) is not { } node) return;
         StatusLog($"{node.Title} hook {e.Name} {e.ToolName}");
+        if (e.Name == "SessionStart") ForgetOutsideSession(e.SessionId);
         if (e.Name == "SessionStart" && node.PendingMessage is { } pending)
             _ = Task.Delay(PendingAfterSessionStart).ContinueWith(_ => SendPending(node, pending), TaskScheduler.FromCurrentSynchronizationContext());
         UpdateStatus(node, () => node.ApplyAgentEvent(e));

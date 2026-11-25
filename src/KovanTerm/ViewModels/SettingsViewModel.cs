@@ -16,12 +16,17 @@ public sealed partial class SettingsViewModel : ObservableObject
 {
     private readonly SettingsStore _store;
     private readonly Action<ThemePreference>? _applyTheme;
+    private readonly Func<bool, string?>? _applyOutsideSessions;
     private bool _loading;
 
-    public SettingsViewModel(SettingsStore store, Action<ThemePreference>? applyTheme = null)
+    /// <param name="applyOutsideSessions">
+    /// Adds or removes the hook for sessions outside Kovan and saves the setting; an error message if it couldn't.
+    /// </param>
+    public SettingsViewModel(SettingsStore store, Action<ThemePreference>? applyTheme = null, Func<bool, string?>? applyOutsideSessions = null)
     {
         _store = store;
         _applyTheme = applyTheme;
+        _applyOutsideSessions = applyOutsideSessions;
         var s = store.Load();
         _loading = true;
         Theme = s.Theme;
@@ -30,6 +35,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         NotifyWhenDone = s.NotifyWhenDone;
         KeepAwakeWhileWorking = s.KeepAwakeWhileWorking;
         StatusLight = s.StatusLight;
+        ShowOutsideSessions = s.ShowOutsideSessions;
         OpenWebLinksInPreview = s.OpenWebLinksInPreview;
         StartAgentsOnOpen = s.StartAgentsOnOpen;
         CheckForUpdates = s.CheckForUpdates;
@@ -69,6 +75,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] public partial bool NotifyWhenDone { get; set; }
     [ObservableProperty] public partial bool KeepAwakeWhileWorking { get; set; }
     [ObservableProperty] public partial bool StatusLight { get; set; }
+    [ObservableProperty] public partial bool ShowOutsideSessions { get; set; }
+    /// <summary>Why turning <see cref="ShowOutsideSessions"/> on or off didn't work; <c>null</c> when it did.</summary>
+    [ObservableProperty] public partial string? OutsideSessionsError { get; private set; }
+    public bool CanShowOutsideSessions => _applyOutsideSessions != null;
     [ObservableProperty] public partial bool OpenWebLinksInPreview { get; set; }
     [ObservableProperty] public partial bool StartAgentsOnOpen { get; set; }
     [ObservableProperty] public partial bool CheckForUpdates { get; set; }
@@ -102,6 +112,19 @@ public sealed partial class SettingsViewModel : ObservableObject
     partial void OnNotifyWhenDoneChanged(bool value) => Save();
     partial void OnKeepAwakeWhileWorkingChanged(bool value) => Save();
     partial void OnStatusLightChanged(bool value) => Save();
+
+    partial void OnShowOutsideSessionsChanged(bool value)
+    {
+        if (_loading || _applyOutsideSessions == null) return;
+        OutsideSessionsError = _applyOutsideSessions(value);
+        if (OutsideSessionsError != null)
+        {
+            _loading = true;
+            ShowOutsideSessions = !value;
+            _loading = false;
+        }
+        Saved?.Invoke();
+    }
     partial void OnOpenWebLinksInPreviewChanged(bool value) => Save();
     partial void OnStartAgentsOnOpenChanged(bool value) => Save();
     partial void OnCheckForUpdatesChanged(bool value) => Save();

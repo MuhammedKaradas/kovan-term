@@ -8,6 +8,7 @@ namespace KovanTerm.Models;
 /// <param name="TranscriptPath">The conversation's transcript file (<c>.jsonl</c>).</param>
 /// <param name="AgentId">For subagent events: the subagent's id.</param>
 /// <param name="AgentType">For subagent events: its type, e.g. <c>Explore</c>.</param>
+/// <param name="Cwd">The agent's working directory.</param>
 public sealed record AgentEvent(
     string Name,
     string? SessionId = null,
@@ -15,4 +16,5 @@ public sealed record AgentEvent(
     string? NotificationType = null,
     string? TranscriptPath = null,
     string? AgentId = null,
-    string? AgentType = null);
+    string? AgentType = null,
+    string? Cwd = null);

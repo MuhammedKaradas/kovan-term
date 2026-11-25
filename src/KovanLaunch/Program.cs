@@ -7,9 +7,22 @@
 // and saves it there, so API keys never appear in a file or on a command line. --wsl forwards the variables into WSL
 // (WSLENV). The program then runs in this console, and this one waits for it and returns its exit code.
 
+//
+//   KovanLaunch.exe --hook "<endpoint file>"
+//
+// A Claude Code hook for sessions started outside Kovan (Settings: show them in the Agents panel): sends the hook's
+// input (stdin) to Kovan, whose address and token are in the endpoint file while it runs. It never prints anything and
+// always succeeds, so the session behaves exactly as without it; with Kovan closed it returns at once.
+
 using System.Runtime.InteropServices;
 using System.Text;
 using KovanLaunch;
+
+if (args is ["--hook", var endpointFile])
+{
+    Hook.Send(endpointFile, Console.OpenStandardInput());
+    return 0;
+}
 
 string? run = null;
 var wsl = false;
@@ -59,6 +72,43 @@ return Child.Run(run);
 
 namespace KovanLaunch
 {
+    internal static class Hook
+    {
+        private const int TimeoutMs = 2000;
+        private const int MaxBody = 1024 * 1024;
+
+        public static void Send(string endpointFile, Stream input)
+        {
+            try
+            {
+                if (!File.Exists(endpointFile)) return;
+                var lines = File.ReadAllLines(endpointFile);
+                if (lines.Length < 2 || !Uri.TryCreate(lines[0], UriKind.Absolute, out var url) || !url.IsLoopback) return;
+                var body = ReadAll(input);
+                // A plain socket: starting the HTTP stack would cost more than the request itself
+                using var client = new System.Net.Sockets.TcpClient { SendTimeout = TimeoutMs, ReceiveTimeout = TimeoutMs };
+                if (!client.ConnectAsync(url.Host, url.Port).Wait(TimeoutMs)) return;
+                using var stream = client.GetStream();
+                var head = $"POST {url.PathAndQuery} HTTP/1.1\r\nHost: {url.Authority}\r\nX-Kovan-Token: {lines[1].Trim()}\r\n"
+                    + $"Content-Type: application/json\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n";
+                stream.Write(Encoding.ASCII.GetBytes(head));
+                stream.Write(body);
+                // Wait for the answer, so Kovan has the event before the session goes on
+                stream.ReadByte();
+            }
+            catch (Exception) { /* Kovan closed or busy: the session carries on */ }
+        }
+
+        private static byte[] ReadAll(Stream input)
+        {
+            using var buffer = new MemoryStream();
+            var chunk = new byte[8192];
+            int n;
+            while (buffer.Length < MaxBody && (n = input.Read(chunk)) > 0) buffer.Write(chunk, 0, n);
+            return buffer.ToArray();
+        }
+    }
+
     internal static class Child
     {
         /// <summary>Runs the command line in this console with this process's environment; its exit code.</summary>

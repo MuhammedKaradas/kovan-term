@@ -14,6 +14,7 @@ public partial class MainWindow
     private void InitNotifications()
     {
         _vm.AttentionNeeded += NotifyWaitingSoon;
+        _vm.OutsideAttentionNeeded += NotifyOutsideSoon;
         _vm.TurnFinished += node => Notify(n => n.Finished(node));
         // Back in Kovan: everything pending has been seen, and the icon goes with its notifications
         Activated += (_, _) =>
@@ -98,6 +99,25 @@ public partial class MainWindow
     {
         await Task.Delay(WaitingGrace);
         if (node.Status == Models.NodeStatus.Waiting && _vm.Nodes.Contains(node)) Notify(n => n.Waiting(node));
+    }
+
+    /// <summary>
+    /// A session outside Kovan needs the user. Its own notification: it has no node to go to, and the user answers it
+    /// in its own window; clicking it brings Kovan up, where it's under "Elsewhere".
+    /// </summary>
+    private async void NotifyOutsideSoon(OutsideSessionViewModel session)
+    {
+        await Task.Delay(WaitingGrace);
+        if (InFront || session.Status != Models.NodeStatus.Waiting || !_vm.OutsideSessions.Contains(session)) return;
+        if (!_vm.Settings.NotifyWhenWaiting) return;
+        if (_notifier == null)
+        {
+            _notifier = new TrayNotifier();
+            _notifier.Clicked += OnNoticeClicked;
+        }
+        _noticeTarget = null;
+        var shown = _notifier.Show($"{session.Title} needs you", $"{session.StatusText ?? "Needs you"}\n(Claude Code outside Kovan)", warning: true);
+        MainViewModel.StatusLog($"notification outside \"{session.Title}\" shown={shown}");
     }
 
     /// <summary>Records what happened, if Kovan is in the background, and shows everything still pending.</summary>

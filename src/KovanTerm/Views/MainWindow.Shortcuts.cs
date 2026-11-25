@@ -196,7 +196,7 @@ public partial class MainWindow
 
     private void ShowSettings() => SettingsWindow.Show(this, () =>
     {
-        var settings = new SettingsViewModel(new Services.SettingsStore(), theme => _vm.Theme = theme);
+        var settings = new SettingsViewModel(new Services.SettingsStore(), theme => _vm.Theme = theme, _vm.SetOutsideSessions);
         settings.Saved += UpdateStatusLight;
         return settings;
     });
