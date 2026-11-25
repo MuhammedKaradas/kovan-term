@@ -52,6 +52,16 @@
                     <ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding Theme}" MinWidth="200" HorizontalAlignment="Left"
                               AutomationProperties.Name="Theme"/>
                 </DockPanel>
+                <DockPanel Margin="0,8,0,0">
+                    <TextBlock Text="Terminal colors (dark)" VerticalAlignment="Center" Width="140" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <ComboBox ItemsSource="{Binding DarkSchemes}" SelectedItem="{Binding TerminalSchemeDark}" MinWidth="200" HorizontalAlignment="Left"
+                              AutomationProperties.Name="Terminal colors, dark theme"/>
+                </DockPanel>
+                <DockPanel Margin="0,8,0,0">
+                    <TextBlock Text="Terminal colors (light)" VerticalAlignment="Center" Width="140" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                    <ComboBox ItemsSource="{Binding LightSchemes}" SelectedItem="{Binding TerminalSchemeLight}" MinWidth="200" HorizontalAlignment="Left"
+                              AutomationProperties.Name="Terminal colors, light theme"/>
+                </DockPanel>
 
                 <TextBlock Text="Agents" Style="{StaticResource Section}"/>
                 <CheckBox Content="Name Claude Code terminals after their conversation" IsChecked="{Binding TitlesFromClaude}"

@@ -198,6 +198,7 @@ public partial class MainWindow
     {
         var settings = new SettingsViewModel(new Services.SettingsStore(), theme => _vm.Theme = theme, _vm.SetOutsideSessions);
         settings.Saved += UpdateStatusLight;
+        settings.Saved += ApplyTerminalSchemes;
         return settings;
     });
 

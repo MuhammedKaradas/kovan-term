@@ -607,6 +607,16 @@ public sealed class TerminalCanvasController
         }
     }
 
+    /// <summary>The color scheme in use changed (Settings): repaint every terminal, retake snapshots.</summary>
+    public void RefreshColors()
+    {
+        foreach (var entry in _byNode.Values)
+        {
+            if (entry.Terminal is { } term) SetFont(term, _appliedFontSize);
+            entry.Dirty = true;
+        }
+    }
+
     private void SetFont(ITerminalSurface term, int size) =>
         term.SetAppearance(TerminalThemes.For(_dark), FontFamilyName, size);
 }

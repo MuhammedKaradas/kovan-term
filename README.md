@@ -39,7 +39,7 @@ about 3.5× less than an xterm.js-in-WebView2 equivalent
 - Voice commands in Turkish and English: "go to the waiting agent", "tell Claude to run the tests" (`Ctrl+Shift+K`)
 - Keyboard shortcuts: switch between terminals, fit all, zoom to a terminal ([docs/shortcuts.md](docs/shortcuts.md))
 - Smooth panning and zooming with "snapshot mode"; off-screen terminals sleep
-- Windows 11 look (Mica, Fluent controls) with light, dark or follow-Windows themes
+- Windows 11 look (Mica, Fluent controls) with light, dark or follow-Windows themes, and terminal color schemes such as Dracula, Nord, Tokyo Night and Catppuccin
 
 ## Screenshots
 

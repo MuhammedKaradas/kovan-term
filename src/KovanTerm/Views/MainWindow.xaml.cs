@@ -51,7 +51,9 @@ public partial class MainWindow : FluentWindow
         InitNotifications();
 
         // Theme: WPF-UI resources + terminal colors; re-applied when the preference changes
+        TerminalThemes.Select(_vm.Settings.TerminalSchemeDark, _vm.Settings.TerminalSchemeLight);
         var theme = new ThemeService(this);
+        _theme = theme;
         theme.IsDarkChanged += _canvas.SetDarkTheme;
         Loaded += (_, _) => theme.Apply(_vm.Theme);
         // Before anything can crash or be counted: both need the user's earlier answer
@@ -98,6 +100,15 @@ public partial class MainWindow : FluentWindow
     }
 
     private readonly AgentHookServer _hookServer = new();
+    private ThemeService? _theme;
+
+    /// <summary>Settings were saved: the terminal color schemes may have changed.</summary>
+    private void ApplyTerminalSchemes()
+    {
+        if (!TerminalThemes.Select(_vm.Settings.TerminalSchemeDark, _vm.Settings.TerminalSchemeLight)) return;
+        _theme?.RefreshTerminalBackground();
+        _canvas.RefreshColors();
+    }
 
     /// <summary>
     /// Agents panel list: grouped by working folder; within a group, agents waiting for the user first, then working
