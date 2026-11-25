@@ -122,6 +122,21 @@ public sealed class PermissionBypassTests : IDisposable
         Assert.True(dialog.SkipPermissions);
     }
 
+    [Fact]
+    public void Agents_panel_puts_busy_projects_first()
+    {
+        var vm = Restore(new AppSettings(), "", Claude(Trusted), Claude(Other));
+        var (inTrusted, inOther) = (vm.Nodes[0], vm.Nodes[1]);
+        Assert.Equal(3, inOther.GroupOrder);
+
+        vm.OnProgramStatus(inOther, [new ProgramStatusReport("blocked", Kind: "permission")]);
+        Assert.Equal(0, inOther.GroupOrder);
+        Assert.Equal(3, inTrusted.GroupOrder);
+
+        vm.OnProgramStatus(inTrusted, [new ProgramStatusReport("working")]);
+        Assert.Equal(1, inTrusted.GroupOrder);
+    }
+
     private sealed class NoDialogs : IDialogService
     {
         public bool ShowNewTerminal(NewTerminalViewModel viewModel) => false;

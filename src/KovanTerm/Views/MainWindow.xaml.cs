@@ -84,7 +84,10 @@ public partial class MainWindow : FluentWindow
         InitShortcuts();
         _vm.GoToNodeRequested += GoToNode;
         _vm.WorkspaceSwitched += () => Dispatcher.BeginInvoke(_canvas.RefreshVisibility, System.Windows.Threading.DispatcherPriority.Loaded);
-        AgentsList.ItemsSource = CreateAgentsView(_vm.Nodes);
+        var agentsView = CreateAgentsView(_vm.Nodes);
+        AgentsList.ItemsSource = agentsView;
+        // Groups keep their place under live sorting: rebuild them when a project's order changes (rare)
+        _vm.AgentGroupsReordered += () => Dispatcher.BeginInvoke(agentsView.Refresh, System.Windows.Threading.DispatcherPriority.Background);
 
         // ViewportSize is read-only so it can't be bound; pass it to the ViewModel to center new nodes
         Editor.ViewportUpdated += (_, _) => _vm.ViewportSize = Editor.ViewportSize;
@@ -113,19 +116,21 @@ public partial class MainWindow : FluentWindow
     }
 
     /// <summary>
-    /// Agents panel list: grouped by working folder; within a group, agents waiting for the user first, then working
-    /// ones, re-sorted live as statuses change.
+    /// Agents panel list: grouped by working folder, folders with an agent waiting first, then ones at work; within a
+    /// group, agents waiting for the user first, then working ones, re-sorted live as statuses change.
     /// </summary>
     private static ListCollectionView CreateAgentsView(IList nodes)
     {
         var view = new ListCollectionView(nodes);
         view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(TerminalNodeViewModel.GroupName)));
+        view.SortDescriptions.Add(new SortDescription(nameof(TerminalNodeViewModel.GroupOrder), ListSortDirection.Ascending));
         view.SortDescriptions.Add(new SortDescription(nameof(TerminalNodeViewModel.GroupName), ListSortDirection.Ascending));
         view.SortDescriptions.Add(new SortDescription(nameof(TerminalNodeViewModel.StatusOrder), ListSortDirection.Ascending));
         view.SortDescriptions.Add(new SortDescription(nameof(TerminalNodeViewModel.Title), ListSortDirection.Ascending));
         // Notes aren't agents
         view.Filter = n => n is TerminalNodeViewModel { IsNote: false, IsGroup: false };
         view.LiveSortingProperties.Add(nameof(TerminalNodeViewModel.StatusOrder));
+        view.LiveSortingProperties.Add(nameof(TerminalNodeViewModel.GroupOrder));
         view.IsLiveSorting = true;
         return view;
     }

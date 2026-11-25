@@ -386,6 +386,13 @@ public partial class TerminalNodeViewModel : ObservableObject
     partial void OnStatusChanged(NodeStatus value) => OnPropertyChanged(nameof(StatusOrder));
 
     /// <summary>
+    /// Panel order of the node's folder group: its busiest node's <see cref="StatusOrder"/>, so projects with something
+    /// waiting come first, then those at work, then idle ones (set by <c>MainViewModel</c>).
+    /// </summary>
+    [ObservableProperty]
+    public partial int GroupOrder { get; set; } = 3;
+
+    /// <summary>
     /// The prompt was answered. Allowed: the agent carries on. Otherwise (or unknown, when the user answered in the
     /// terminal) it's idle: a refusal sends no event, and an approval is followed by PostToolUse, which sets Working.
     /// </summary>

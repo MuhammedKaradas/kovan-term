@@ -1181,11 +1181,26 @@ public partial class MainViewModel : ObservableObject
     public static string TaskPrompt(MeshTask task) =>
         $"Task #{task.Id} from the Kovan board: {task.Title}" + (task.Detail is { } d ? $"\n\n{d}" : "");
 
+    /// <summary>A folder group's place in the Agents panel changed (live sorting moves items, not groups).</summary>
+    public event Action? AgentGroupsReordered;
+
     private void UpdateAgentCounts()
     {
         WorkingCount = Nodes.Count(n => n.Status == NodeStatus.Working);
         TerminalCount = Nodes.Count(n => n.IsTerminal);
         WaitingCount = Nodes.Count(n => n.Status == NodeStatus.Waiting);
+        // Agents panel: projects with something waiting or at work first
+        var reordered = false;
+        foreach (var group in Nodes.Where(n => !n.IsNote && !n.IsGroup).GroupBy(n => n.GroupName))
+        {
+            var order = group.Min(n => n.StatusOrder);
+            foreach (var n in group.Where(n => n.GroupOrder != order))
+            {
+                n.GroupOrder = order;
+                reordered = true;
+            }
+        }
+        if (reordered) AgentGroupsReordered?.Invoke();
         foreach (var w in Workspaces)
         {
             w.WaitingCount = Nodes.Count(n => n.WorkspaceId == w.Id && n.Status == NodeStatus.Waiting);
