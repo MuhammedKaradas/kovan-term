@@ -1172,8 +1172,24 @@
                                         <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center"
                                                  Fill="{Binding Status, Converter={StaticResource StatusToBrush}}"/>
                                         <TextBlock DockPanel.Dock="Right" Text="{Binding ContextText}" FontSize="11" Margin="8,0,0,0"
-                                                   VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorTertiaryBrush}"
-                                                   ToolTip="Context the conversation uses (input of the latest reply)"/>
+                                                   VerticalAlignment="Center"
+                                                   ToolTip="Context the conversation uses (input of the latest reply); amber from 75 % of the model's window, red from 90 %">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ContextLevel}" Value="{x:Static vm:ContextLevel.High}">
+                                                            <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}"/>
+                                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding ContextLevel}" Value="{x:Static vm:ContextLevel.Full}">
+                                                            <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}"/>
+                                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
                                         <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
                                                    Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                                     </DockPanel>

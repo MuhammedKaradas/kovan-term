@@ -302,7 +302,32 @@ public partial class TerminalNodeViewModel : ObservableObject
     [ObservableProperty]
     public partial string? ContextText { get; private set; }
 
-    public void SetContextTokens(long? tokens) => ContextText = tokens is { } t ? $"ctx {TranscriptUsage.Format(t)}" : null;
+    /// <summary>How full the context window is: amber from 75 %, red from 90 % (Claude Code compacts near the end).</summary>
+    [ObservableProperty]
+    public partial ContextLevel ContextLevel { get; private set; }
+
+    public void SetContextTokens(long? tokens)
+    {
+        ContextText = tokens is { } t ? $"ctx {TranscriptUsage.Format(t)}" : null;
+        ContextLevel = tokens is { } n ? LevelOf(n, ContextWindow(n, LaunchCommandLine ?? CommandLine, Model)) : ContextLevel.Normal;
+    }
+
+    public const long StandardContextWindow = 200_000;
+    public const long LargeContextWindow = 1_000_000;
+
+    /// <summary>
+    /// The model's context window: 1M when the model asks for it (<c>[1m]</c>) or the context already went past the
+    /// standard 200k, which only a 1M model can do; 200k otherwise.
+    /// </summary>
+    public static long ContextWindow(long tokens, string? commandLine, string? model) =>
+        tokens > StandardContextWindow
+        || (commandLine?.Contains("[1m]", StringComparison.OrdinalIgnoreCase) ?? false)
+        || (model?.Contains("[1m]", StringComparison.OrdinalIgnoreCase) ?? false)
+            ? LargeContextWindow
+            : StandardContextWindow;
+
+    public static ContextLevel LevelOf(long tokens, long window) =>
+        tokens >= window * 0.9 ? ContextLevel.Full : tokens >= window * 0.75 ? ContextLevel.High : ContextLevel.Normal;
 
     private readonly Dictionary<string, string> _subagents = new();
 
@@ -451,3 +476,6 @@ public partial class TerminalNodeViewModel : ObservableObject
         Height = s.Height > 0 ? Math.Clamp(s.Height, MinHeight, s.Group ? MaxGroupSize : MaxSize) : DefaultHeight,
     };
 }
+
+/// <summary>How full an agent's context window is (<see cref="TerminalNodeViewModel.ContextLevel"/>).</summary>
+public enum ContextLevel { Normal, High, Full }

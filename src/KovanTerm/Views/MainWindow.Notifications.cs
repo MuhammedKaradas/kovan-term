@@ -35,12 +35,29 @@ public partial class MainWindow
         _vm.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is nameof(MainViewModel.WorkingCount) or nameof(MainViewModel.WaitingCount)) UpdateStatusLight();
+            if (e.PropertyName is nameof(MainViewModel.WorkingCount) or nameof(MainViewModel.WaitingCount)
+                or nameof(MainViewModel.OutsideWorkingCount) or nameof(MainViewModel.OutsideWaitingCount))
+                UpdateBreathing(changed: true);
+        };
+        // Windows' "Animation effects" may be turned off or on meanwhile
+        SystemParameters.StaticPropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SystemParameters.ClientAreaAnimation)) UpdateBreathing();
         };
         Activated += (_, _) => UpdateStatusLight();
         Deactivated += (_, _) => UpdateStatusLight();
+        // Breathing only shows (and costs) while Kovan is in front
+        Activated += (_, _) => UpdateBreathing();
+        Deactivated += (_, _) => UpdateBreathing();
         StateChanged += (_, _) => UpdateStatusLight();
         Closed += (_, _) => _statusLight?.Close();
     }
+
+    private void UpdateBreathing(bool changed = false) => StatusBrushes.Update(
+        anyWorking: _vm.WorkingCount + _vm.OutsideWorkingCount > 0,
+        anyWaiting: _vm.WaitingCount + _vm.OutsideWaitingCount > 0,
+        active: IsActive && WindowState != WindowState.Minimized,
+        changed);
 
     private StatusLightWindow? _statusLight;
 
