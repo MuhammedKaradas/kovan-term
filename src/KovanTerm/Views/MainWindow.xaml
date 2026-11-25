@@ -764,6 +764,13 @@
             </TextBlock>
 
             <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Width="30" Height="30" Padding="0" Margin="0,0,4,0" VerticalAlignment="Center"
+                       Click="Home_Click" AutomationProperties.Name="Home"
+                       ToolTip="Home: what needs you, what's at work, this week, limits, pull requests and tasks (Ctrl+Shift+J)">
+                <ui:Button.Icon>
+                    <ui:SymbolIcon Symbol="Home24"/>
+                </ui:Button.Icon>
+            </ui:Button>
+            <ui:Button DockPanel.Dock="Right" Appearance="Transparent" Width="30" Height="30" Padding="0" Margin="0,0,4,0" VerticalAlignment="Center"
                        Click="Tools_Click" AutomationProperties.Name="Tools"
                        ToolTip="Tools: the agents' MCP servers, plugins, skills, subagents, commands and hooks (Ctrl+Shift+U)">
                 <ui:Button.Icon>

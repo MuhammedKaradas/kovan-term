@@ -483,6 +483,20 @@ public partial class MainWindow : FluentWindow
 
     private void Tools_Click(object sender, RoutedEventArgs e) => ShowTools();
 
+    private void Home_Click(object sender, RoutedEventArgs e) => ShowHome();
+
+    /// <summary>What needs you and what's at work everywhere, the week's work, limits, pull requests and tasks.</summary>
+    private void ShowHome()
+    {
+        UsageStats.Count("feature.home");
+        HomeWindow.Show(this, _vm, node =>
+        {
+            if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+            Activate();
+            _vm.Show(node);
+        });
+    }
+
     /// <summary>The agents' MCP servers, plugins, skills…, for the user and the current terminal's project (#139).</summary>
     private void ShowTools()
     {

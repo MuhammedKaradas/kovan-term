@@ -157,6 +157,9 @@ public partial class MainWindow
             case ShortcutAction.Tools:
                 ShowTools();
                 break;
+            case ShortcutAction.Home:
+                ShowHome();
+                break;
         }
     }
 

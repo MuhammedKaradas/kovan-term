@@ -32,6 +32,7 @@ about 3.5× less than an xterm.js-in-WebView2 equivalent
 - Windows notifications when an agent needs you or finishes while you're in another app; click to go to it
 - Optionally, Claude Code sessions you started elsewhere (VS Code, Windows Terminal) in the Agents panel, with a notification when one needs you ([docs/outside-sessions.md](docs/outside-sessions.md))
 - Drop files or screenshots on a terminal to give their paths to the agent
+- Home: who needs you and who's at work on every workspace, today's and this week's work, plan limits, pull requests and open tasks on one screen (`Ctrl+Shift+J`)
 - Tools: the MCP servers, plugins, skills, subagents, commands and hooks Claude Code and Codex have set up, in one window (`Ctrl+Shift+U`)
 - Statistics: time and tokens by day, project and model, from Claude Code's and Codex's own session files
 - Several workspaces (e.g. one per project) as tabs; agents on hidden ones keep running and show when they wait

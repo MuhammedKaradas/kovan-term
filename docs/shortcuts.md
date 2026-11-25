@@ -24,6 +24,7 @@ use, most of them use `Ctrl+Shift` (e.g. `Ctrl+T` transposes characters in bash/
 | `Ctrl+Shift+K` | Voice command ("go to the waiting agent", "Claude'a söyle testleri çalıştır"); press again to carry it out |
 | `Ctrl+Shift+H` | Find in the current terminal: Enter goes to the older match, Shift+Enter to the newer one, Esc closes |
 | `Ctrl+Shift+L` | Clear the current terminal's scrollback (the screen stays) |
+| `Ctrl+Shift+J` | Home: who needs you and who's at work on every workspace, today's and this week's work, plan limits, pull requests and the Board's open tasks |
 | `Ctrl+Shift+U` | Tools: the MCP servers, plugins, skills, subagents, commands and hooks Claude Code and Codex have set up |
 
 **Mouse:**

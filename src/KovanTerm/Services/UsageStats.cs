@@ -43,6 +43,7 @@ public static class UsageStats
         ["feature.recent"] = "A conversation was reopened from Recent",
         ["feature.find"] = "Text was searched for in a terminal",
         ["feature.tools"] = "The Tools window was opened",
+        ["feature.home"] = "Home was opened",
         ["feature.conflicts"] = "A pull request's conflicts were sent to the agent",
         ["feature.viewed"] = "A changed file was marked as viewed",
         ["feature.bypass"] = "A folder was set to start Claude Code without permission prompts",

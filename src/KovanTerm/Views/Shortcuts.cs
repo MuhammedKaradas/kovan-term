@@ -24,6 +24,7 @@ public enum ShortcutAction
     Find,
     ClearScrollback,
     Tools,
+    Home,
 }
 
 /// <summary>
@@ -56,6 +57,7 @@ public static class Shortcuts
         // Not Ctrl+F (forward a character in bash, a page in less and vim) or Ctrl+Shift+F (fit all)
         (Key.H, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.Find, "Find in the current terminal"),
         (Key.L, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.ClearScrollback, "Clear the current terminal's scrollback"),
+        (Key.J, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.Home, "Home: what needs you and what's at work everywhere, this week, limits, pull requests and tasks"),
         (Key.U, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.Tools, "Tools: the agents' MCP servers, plugins, skills, subagents, commands and hooks"),
     ];
 
