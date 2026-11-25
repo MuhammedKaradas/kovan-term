@@ -154,6 +154,9 @@ public partial class MainWindow
             case ShortcutAction.ClearScrollback:
                 ClearScrollback(_currentNode);
                 break;
+            case ShortcutAction.Tools:
+                ShowTools();
+                break;
         }
     }
 

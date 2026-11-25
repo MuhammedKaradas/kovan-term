@@ -31,6 +31,7 @@ Terminal'in GPU hızlandırmalı terminal bileşeniyle, düşük kaynak tüketim
 - Başka bir uygulamadayken bir ajan seni beklediğinde ya da işini bitirdiğinde Windows bildirimi; tıklayınca ona gider
 - İstersen başka yerde (VS Code, Windows Terminal) başlattığın Claude Code oturumları da Ajanlar panelinde; biri seni beklediğinde bildirim ([docs/outside-sessions.md](docs/outside-sessions.md))
 - Dosyaları ya da ekran görüntülerini terminale sürükle, yolları ajana yazılsın
+- Araçlar: Claude Code ve Codex'te kurulu MCP sunucuları, plugin'ler, skill'ler, alt ajanlar, komutlar ve hook'lar tek pencerede (`Ctrl+Shift+U`)
 - İstatistikler: Claude Code ve Codex oturumlarından gün, proje ve modele göre süre ve token
 - Sekmeler halinde birden çok çalışma alanı (ör. proje başına bir tane); gizli olanlardaki ajanlar çalışmayı sürdürür, seni beklediklerinde sekmede görünür
 - Çalışma alanı otomatik kaydedilir ve açılışta geri gelir

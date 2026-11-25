@@ -474,6 +474,18 @@ public partial class MainWindow : FluentWindow
             new DialogService(this), new SettingsStore(), MainViewModel.StatusLog);
     }
 
+    private void Tools_Click(object sender, RoutedEventArgs e) => ShowTools();
+
+    /// <summary>The agents' MCP servers, plugins, skills…, for the user and the current terminal's project (#139).</summary>
+    private void ShowTools()
+    {
+        UsageStats.Count("feature.tools");
+        var project = _vm.CurrentNode is { WorkingDirectory: { Length: > 0 } dir, IsWsl: false } node
+            ? node.Worktree?.Path ?? dir
+            : null;
+        ToolsWindow.Show(this, project);
+    }
+
     private void Statistics_Click(object sender, RoutedEventArgs e)
     {
         UsageStats.Count("feature.statistics");

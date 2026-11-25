@@ -23,6 +23,7 @@ public enum ShortcutAction
     VoiceCommand,
     Find,
     ClearScrollback,
+    Tools,
 }
 
 /// <summary>
@@ -55,6 +56,7 @@ public static class Shortcuts
         // Not Ctrl+F (forward a character in bash, a page in less and vim) or Ctrl+Shift+F (fit all)
         (Key.H, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.Find, "Find in the current terminal"),
         (Key.L, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.ClearScrollback, "Clear the current terminal's scrollback"),
+        (Key.U, ModifierKeys.Control | ModifierKeys.Shift, ShortcutAction.Tools, "Tools: the agents' MCP servers, plugins, skills, subagents, commands and hooks"),
     ];
 
     public static ShortcutAction? Match(Key key, ModifierKeys modifiers)
