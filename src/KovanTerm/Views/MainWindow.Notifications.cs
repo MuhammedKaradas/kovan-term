@@ -34,7 +34,9 @@ public partial class MainWindow
         // The status light follows the counts and whether Kovan is in front
         _vm.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName is nameof(MainViewModel.WorkingCount) or nameof(MainViewModel.WaitingCount)) UpdateStatusLight();
+            if (e.PropertyName is nameof(MainViewModel.WorkingCount) or nameof(MainViewModel.WaitingCount)
+                or nameof(MainViewModel.OutsideWorkingCount) or nameof(MainViewModel.OutsideWaitingCount))
+                UpdateStatusLight();
             if (e.PropertyName is nameof(MainViewModel.WorkingCount) or nameof(MainViewModel.WaitingCount)
                 or nameof(MainViewModel.OutsideWorkingCount) or nameof(MainViewModel.OutsideWaitingCount))
                 UpdateBreathing(changed: true);
@@ -68,7 +70,8 @@ public partial class MainWindow
     private void UpdateStatusLight()
     {
         var settings = _vm.Settings;
-        var (working, waiting) = (_vm.WorkingCount, _vm.WaitingCount);
+        // Sessions outside Kovan (#138) count too: the light is about every agent
+        var (working, waiting) = (_vm.WorkingCount + _vm.OutsideWorkingCount, _vm.WaitingCount + _vm.OutsideWaitingCount);
         if (!settings.StatusLight || InFront || working + waiting == 0 || !IsLoaded)
         {
             _statusLight?.Hide();
@@ -80,12 +83,14 @@ public partial class MainWindow
             _statusLight.Clicked += OnStatusLightClicked;
             _statusLight.Moved += (right, top) =>
                 _vm.SaveSettings(s => s with { StatusLightRightEdge = right, StatusLightTop = top });
+            _statusLight.CompactChanged += compact => _vm.SaveSettings(s => s with { StatusLightCompact = compact });
             _statusLight.TurnedOff += () =>
             {
                 _vm.SaveSettings(s => s with { StatusLight = false });
                 _statusLight?.Hide();
             };
         }
+        _statusLight.SetCompact(settings.StatusLightCompact);
         _statusLight.SetPosition(settings.StatusLightRightEdge, settings.StatusLightTop);
         _statusLight.ShowCounts(working, waiting);
     }
@@ -95,6 +100,8 @@ public partial class MainWindow
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
         Activate();
         if (_vm.WaitingCount > 0) _vm.GoToWaitingCommand.Execute(null);
+        // Only a session outside Kovan waits: the Agents panel lists it under "Elsewhere"
+        else if (_vm.OutsideWaitingCount > 0) _vm.ShowAgentsPanel = true;
         MainViewModel.StatusLog("status light clicked");
     }
 

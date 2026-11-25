@@ -56,6 +56,8 @@ public sealed record AppSettings
     /// <summary>The status light's edge (right or left) and height on it, 0 (top) to 1 (bottom).</summary>
     public bool StatusLightRightEdge { get; init; } = true;
     public double StatusLightTop { get; init; } = 0.4;
+    /// <summary>The status light as one dot (yellow over green), without counts.</summary>
+    public bool StatusLightCompact { get; init; }
     /// <summary>Windows doesn't go to sleep on its own while an agent is working.</summary>
     public bool KeepAwakeWhileWorking { get; init; } = true;
     /// <summary>Send crash reports (<see cref="Services.CrashReports"/>); <c>null</c> until the user is asked.</summary>

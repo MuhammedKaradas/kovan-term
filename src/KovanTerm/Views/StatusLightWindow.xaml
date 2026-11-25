@@ -19,11 +19,15 @@
             <ContextMenu>
                 <MenuItem Header="Right edge" Click="RightEdge_Click"/>
                 <MenuItem Header="Left edge" Click="LeftEdge_Click"/>
+                <MenuItem x:Name="CompactItem" Header="Compact (one dot)" IsCheckable="True" Click="Compact_Click"/>
                 <Separator/>
                 <MenuItem Header="Turn off (Settings)" Click="TurnOff_Click"/>
             </ContextMenu>
         </Border.ContextMenu>
-        <StackPanel>
+        <Grid>
+        <!-- Compact: one dot, yellow while one waits, else green -->
+        <Ellipse x:Name="CompactDot" Width="12" Height="12" Fill="LimeGreen" Visibility="Collapsed"/>
+        <StackPanel x:Name="FullView">
             <StackPanel.Resources>
                 <Style TargetType="TextBlock">
                     <Setter Property="FontSize" Value="11"/>
@@ -38,6 +42,7 @@
             <Ellipse x:Name="WaitingDot" Width="12" Height="12" Fill="Gold" Margin="0,6,0,0"/>
             <TextBlock x:Name="WaitingText" AutomationProperties.Name="Agents waiting"/>
         </StackPanel>
+        </Grid>
     </Border>
     </Button>
 </Window>

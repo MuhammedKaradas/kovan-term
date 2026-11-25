@@ -25,6 +25,26 @@ public partial class StatusLightWindow : Window
     public event Action<bool, double>? Moved;
     public event Action? TurnedOff;
 
+    /// <summary>The user switched between one dot and the dots with counts.</summary>
+    public event Action<bool>? CompactChanged;
+
+    private bool _compact;
+
+    public void SetCompact(bool compact)
+    {
+        _compact = compact;
+        CompactItem.IsChecked = compact;
+        CompactDot.Visibility = compact ? Visibility.Visible : Visibility.Collapsed;
+        FullView.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        Pill.Padding = compact ? new Thickness(5) : new Thickness(5, 7, 5, 7);
+    }
+
+    private void Compact_Click(object sender, RoutedEventArgs e)
+    {
+        SetCompact(CompactItem.IsChecked);
+        CompactChanged?.Invoke(_compact);
+    }
+
     private bool _rightEdge = true;
     private double _top = 0.4;
     private Point _pressedAt;
@@ -56,6 +76,7 @@ public partial class StatusLightWindow : Window
         WaitingText.Text = waiting.ToString();
         WorkingDot.Opacity = WorkingText.Opacity = working > 0 ? 1 : 0.25;
         WaitingDot.Opacity = WaitingText.Opacity = waiting > 0 ? 1 : 0.25;
+        CompactDot.Fill = waiting > 0 ? WaitingDot.Fill : WorkingDot.Fill;
         ToolTip = $"Kovan: {working} working, {waiting} waiting for you. Click to go there.";
         PillButton.SetValue(System.Windows.Automation.AutomationProperties.HelpTextProperty, ToolTip);
         if (!IsVisible) Show();
