@@ -302,13 +302,31 @@ public static partial class ToolsInventory
             using var reader = new StreamReader(file);
             if (reader.ReadLine()?.Trim() != "---") return (null, null);
             string? name = null, description = null;
+            // A block value (description: >- and indented lines under it) is joined into one line
+            List<string>? block = null;
             for (var i = 0; i < 60 && reader.ReadLine() is { } line; i++)
             {
                 if (line.Trim() == "---") break;
+                if (block != null && line.Length > 0 && char.IsWhiteSpace(line[0]))
+                {
+                    block.Add(line.Trim());
+                    continue;
+                }
+                if (block != null)
+                {
+                    description = string.Join(' ', block);
+                    block = null;
+                }
                 if (line.StartsWith("name:", StringComparison.Ordinal)) name = Unquote(line[5..].Trim());
-                else if (line.StartsWith("description:", StringComparison.Ordinal)) description = Unquote(line[12..].Trim());
+                else if (line.StartsWith("description:", StringComparison.Ordinal))
+                {
+                    var value = line[12..].Trim();
+                    if (value is ">" or "|" or ">-" or "|-" or ">+" or "|+") block = [];
+                    else description = Unquote(value);
+                }
             }
-            return (name, description is ">" or "|" or ">-" or "|-" ? null : description);
+            if (block != null) description = string.Join(' ', block);
+            return (name, description);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return (null, null); }
     }

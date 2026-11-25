@@ -158,4 +158,13 @@ public sealed class ToolsInventoryTests : IDisposable
         vm.Agent = ToolsInventory.Codex;
         Assert.Contains(vm.Groups, g => g.Title == "Plugins (2)");
     }
+
+    [Fact]
+    public void A_block_description_is_read_as_one_line()
+    {
+        var file = Path.Combine(_dir, "SKILL.md");
+        Write(file, "---\nname: challenge\ndescription: >-\n  Pokes holes\n  in a plan.\nmodel: opus\n---\nbody");
+
+        Assert.Equal(("challenge", "Pokes holes in a plan."), ToolsInventory.FrontMatter(file));
+    }
 }
