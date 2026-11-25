@@ -1658,7 +1658,7 @@ public partial class MainViewModel : ObservableObject
 
     private void UpdateStats()
     {
-        using var self = Process.GetCurrentProcess();
-        MemoryMb = self.WorkingSet64 / 1024 / 1024;
+        // Process.WorkingSet64 lists every process on the system each time: a few ms a second of an otherwise idle app
+        if (Interop.ProcessMemory.OwnWorkingSet() is > 0 and var bytes) MemoryMb = bytes / 1024 / 1024;
     }
 }

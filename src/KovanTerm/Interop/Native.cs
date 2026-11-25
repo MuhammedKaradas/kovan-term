@@ -19,6 +19,18 @@ internal static class Native
     public const uint GA_ROOT = 2;
     public const uint SRCCOPY = 0x00CC0020;
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct PROCESS_MEMORY_COUNTERS
+    {
+        public uint cb, PageFaultCount;
+        public nuint PeakWorkingSetSize, WorkingSetSize, QuotaPeakPagedPoolUsage, QuotaPagedPoolUsage,
+            QuotaPeakNonPagedPoolUsage, QuotaNonPagedPoolUsage, PagefileUsage, PeakPagefileUsage;
+    }
+
+    [DllImport("kernel32.dll")] public static extern IntPtr GetCurrentProcess();
+    [DllImport("kernel32.dll", EntryPoint = "K32GetProcessMemoryInfo")]
+    public static extern bool GetProcessMemoryInfo(IntPtr process, out PROCESS_MEMORY_COUNTERS counters, uint size);
+
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
     [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr hWnd, out RECT rect);
     [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr hWnd, ref POINT point);
@@ -40,4 +52,18 @@ internal static class Native
     [DllImport("gdi32.dll")] public static extern IntPtr SelectObject(IntPtr hdc, IntPtr obj);
     [DllImport("gdi32.dll")] public static extern bool DeleteObject(IntPtr obj);
     [DllImport("gdi32.dll")] public static extern bool DeleteDC(IntPtr hdc);
+}
+
+/// <summary>This process's memory, read cheaply.</summary>
+public static class ProcessMemory
+{
+    /// <summary>
+    /// This process's working set in bytes; 0 if it can't be read. Unlike Process.WorkingSet64, it doesn't list every
+    /// process on the system to find this one (#150).
+    /// </summary>
+    public static long OwnWorkingSet()
+    {
+        var size = (uint)Marshal.SizeOf<Native.PROCESS_MEMORY_COUNTERS>();
+        return Native.GetProcessMemoryInfo(Native.GetCurrentProcess(), out var c, size) ? (long)c.WorkingSetSize : 0;
+    }
 }
