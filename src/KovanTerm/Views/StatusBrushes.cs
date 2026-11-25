@@ -19,11 +19,43 @@ namespace KovanTerm.Views;
 /// </summary>
 public static class StatusBrushes
 {
-    public static readonly SolidColorBrush Working = new(Color.FromRgb(0x32, 0xCD, 0x32));
-    public static readonly SolidColorBrush Waiting = new(Color.FromRgb(0xFF, 0xD7, 0x00));
-    public static readonly Brush Done = Frozen(Color.FromRgb(0x46, 0x82, 0xB4));
-    public static readonly Brush Error = Frozen(Color.FromRgb(0xCD, 0x5C, 0x5C));
+    /// <summary>The status colours, and the diff's added and removed line tints.</summary>
+    public sealed record Palette(Color Working, Color Waiting, Color Done, Color Error, Color Added, Color Removed, Color Hunk);
+
+    public static Palette Default { get; } = new(Color.FromRgb(0x32, 0xCD, 0x32), Color.FromRgb(0xFF, 0xD7, 0x00),
+        Color.FromRgb(0x46, 0x82, 0xB4), Color.FromRgb(0xCD, 0x5C, 0x5C),
+        Color.FromArgb(0x33, 0x2E, 0xA0, 0x43), Color.FromArgb(0x33, 0xF8, 0x51, 0x49), Color.FromArgb(0x1A, 0x38, 0x8B, 0xFD));
+
+    /// <summary>
+    /// Okabe–Ito colours, which stay apart with the common kinds of colour blindness, where green, yellow and red don't:
+    /// working bluish green, waiting orange, done sky blue, failed vermillion. Diffs use blue for added and orange for
+    /// removed lines, as GitHub's colour-blind themes do.
+    /// </summary>
+    public static Palette ColorBlind { get; } = new(Color.FromRgb(0x00, 0x9E, 0x73), Color.FromRgb(0xE6, 0x9F, 0x00),
+        Color.FromRgb(0x56, 0xB4, 0xE9), Color.FromRgb(0xD5, 0x5E, 0x00),
+        Color.FromArgb(0x38, 0x38, 0x8B, 0xFD), Color.FromArgb(0x38, 0xDB, 0x6D, 0x28), Color.FromArgb(0x1A, 0x80, 0x80, 0x80));
+
+    // Not frozen: the colour-blind palette recolours them in place, so every dot follows at once
+    public static readonly SolidColorBrush Working = new(Default.Working);
+    public static readonly SolidColorBrush Waiting = new(Default.Waiting);
+    public static readonly SolidColorBrush Done = new(Default.Done);
+    public static readonly SolidColorBrush Error = new(Default.Error);
     public static readonly Brush Idle = Frozen(Colors.Gray);
+
+    public const string DiffAddedKey = "DiffAddedBrush", DiffRemovedKey = "DiffRemovedBrush", DiffHunkKey = "DiffHunkBrush";
+
+    /// <summary>Switches the palette (Settings → Appearance); the diff tints are app resources.</summary>
+    public static void ApplyPalette(bool colorBlind, ResourceDictionary resources)
+    {
+        var p = colorBlind ? ColorBlind : Default;
+        Working.Color = p.Working;
+        Waiting.Color = p.Waiting;
+        Done.Color = p.Done;
+        Error.Color = p.Error;
+        resources[DiffAddedKey] = Frozen(p.Added);
+        resources[DiffRemovedKey] = Frozen(p.Removed);
+        resources[DiffHunkKey] = Frozen(p.Hunk);
+    }
 
     public static readonly TimeSpan Step = TimeSpan.FromMilliseconds(StepMs);
     private const int StepMs = 125;

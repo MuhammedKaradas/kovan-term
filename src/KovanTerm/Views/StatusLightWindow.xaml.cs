@@ -52,6 +52,10 @@ public partial class StatusLightWindow : Window
     public StatusLightWindow()
     {
         InitializeComponent();
+        // The same brushes as the status dots: the colour-blind palette applies here too
+        WorkingDot.Fill = StatusBrushes.Working;
+        WaitingDot.Fill = StatusBrushes.Waiting;
+        CompactDot.Fill = StatusBrushes.Working;
         SourceInitialized += (_, _) =>
         {
             var hwnd = new WindowInteropHelper(this).Handle;

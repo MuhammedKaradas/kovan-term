@@ -32,6 +32,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         Theme = s.Theme;
         TerminalSchemeDark = Views.TerminalThemes.Find(s.TerminalSchemeDark, dark: true).Name;
         TerminalSchemeLight = Views.TerminalThemes.Find(s.TerminalSchemeLight, dark: false).Name;
+        ColorBlindPalette = s.ColorBlindPalette;
         TitlesFromClaude = s.TitlesFromClaude;
         NotifyWhenWaiting = s.NotifyWhenWaiting;
         NotifyWhenDone = s.NotifyWhenDone;
@@ -73,6 +74,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     ];
 
     [ObservableProperty] public partial ThemePreference Theme { get; set; }
+    [ObservableProperty] public partial bool ColorBlindPalette { get; set; }
     [ObservableProperty] public partial string TerminalSchemeDark { get; set; } = Views.TerminalThemes.DefaultDark;
     [ObservableProperty] public partial string TerminalSchemeLight { get; set; } = Views.TerminalThemes.DefaultLight;
 
@@ -116,6 +118,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         else Save();
     }
 
+    partial void OnColorBlindPaletteChanged(bool value) => Save();
     partial void OnTerminalSchemeDarkChanged(string value) => Save();
     partial void OnTerminalSchemeLightChanged(string value) => Save();
     partial void OnTitlesFromClaudeChanged(bool value) => Save();
@@ -166,6 +169,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _store.Save(_store.Load() with
         {
             Theme = _applyTheme == null ? Theme : _store.Load().Theme,
+            ColorBlindPalette = ColorBlindPalette,
             TerminalSchemeDark = TerminalSchemeDark,
             TerminalSchemeLight = TerminalSchemeLight,
             TitlesFromClaude = TitlesFromClaude,

@@ -39,4 +39,23 @@ public sealed class ContextLevelTests
     [InlineData(0.5, 0.6)]
     public void A_breath_goes_from_full_to_low_and_back(double seconds, double opacity) =>
         Assert.Equal(opacity, StatusBrushes.OpacityAt(seconds, period: 2.0, low: 0.2), precision: 6);
+
+    [Fact]
+    public void The_colour_blind_palette_recolours_the_shared_brushes()
+    {
+        var resources = new System.Windows.ResourceDictionary();
+        try
+        {
+            StatusBrushes.ApplyPalette(colorBlind: true, resources);
+            Assert.Equal(StatusBrushes.ColorBlind.Working, StatusBrushes.Working.Color);
+            Assert.Equal(StatusBrushes.ColorBlind.Error, StatusBrushes.Error.Color);
+            Assert.Same(StatusBrushes.Done, StatusBrushes.For(NodeStatus.Done));
+            Assert.Equal(StatusBrushes.ColorBlind.Added, ((System.Windows.Media.SolidColorBrush)resources[StatusBrushes.DiffAddedKey]).Color);
+        }
+        finally
+        {
+            StatusBrushes.ApplyPalette(colorBlind: false, resources);
+        }
+        Assert.Equal(StatusBrushes.Default.Working, StatusBrushes.Working.Color);
+    }
 }

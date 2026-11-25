@@ -52,6 +52,10 @@
                     <ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding Theme}" MinWidth="200" HorizontalAlignment="Left"
                               AutomationProperties.Name="Theme"/>
                 </DockPanel>
+                <CheckBox Content="Colour-blind friendly status colours" IsChecked="{Binding ColorBlindPalette}" Margin="0,10,0,0"
+                          AutomationProperties.Name="Colour-blind friendly status colours"/>
+                <TextBlock Style="{StaticResource Hint}"
+                           Text="Working, waiting, done and failed agents, and added and removed lines in Changes, in colours that stay apart with red-green colour blindness."/>
                 <DockPanel Margin="0,8,0,0">
                     <TextBlock Text="Terminal colors (dark)" VerticalAlignment="Center" Width="140" Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
                     <ComboBox ItemsSource="{Binding DarkSchemes}" SelectedItem="{Binding TerminalSchemeDark}" MinWidth="200" HorizontalAlignment="Left"

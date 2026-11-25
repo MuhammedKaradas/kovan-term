@@ -52,6 +52,7 @@ public partial class MainWindow : FluentWindow
 
         // Theme: WPF-UI resources + terminal colors; re-applied when the preference changes
         TerminalThemes.Select(_vm.Settings.TerminalSchemeDark, _vm.Settings.TerminalSchemeLight);
+        StatusBrushes.ApplyPalette(_vm.Settings.ColorBlindPalette, Application.Current.Resources);
         var theme = new ThemeService(this);
         _theme = theme;
         theme.IsDarkChanged += _canvas.SetDarkTheme;
@@ -105,6 +106,7 @@ public partial class MainWindow : FluentWindow
     /// <summary>Settings were saved: the terminal color schemes may have changed.</summary>
     private void ApplyTerminalSchemes()
     {
+        StatusBrushes.ApplyPalette(_vm.Settings.ColorBlindPalette, Application.Current.Resources);
         if (!TerminalThemes.Select(_vm.Settings.TerminalSchemeDark, _vm.Settings.TerminalSchemeLight)) return;
         _theme?.RefreshTerminalBackground();
         _canvas.RefreshColors();

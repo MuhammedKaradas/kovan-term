@@ -1061,14 +1061,15 @@
                                             <Style TargetType="Border">
                                                 <Setter Property="Background" Value="Transparent"/>
                                                 <Style.Triggers>
+                                                    <!-- From the status palette (Settings → Appearance: colour-blind friendly) -->
                                                     <DataTrigger Binding="{Binding Kind}" Value="Added">
-                                                        <Setter Property="Background" Value="#332EA043"/>
+                                                        <Setter Property="Background" Value="{DynamicResource DiffAddedBrush}"/>
                                                     </DataTrigger>
                                                     <DataTrigger Binding="{Binding Kind}" Value="Removed">
-                                                        <Setter Property="Background" Value="#33F85149"/>
+                                                        <Setter Property="Background" Value="{DynamicResource DiffRemovedBrush}"/>
                                                     </DataTrigger>
                                                     <DataTrigger Binding="{Binding Kind}" Value="Hunk">
-                                                        <Setter Property="Background" Value="#1A388BFD"/>
+                                                        <Setter Property="Background" Value="{DynamicResource DiffHunkBrush}"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
