@@ -36,7 +36,10 @@ public partial class MainWindow
         {
             if (e.PropertyName is nameof(MainViewModel.WorkingCount) or nameof(MainViewModel.WaitingCount)
                 or nameof(MainViewModel.OutsideWorkingCount) or nameof(MainViewModel.OutsideWaitingCount))
+            {
                 UpdateStatusLight();
+                TaskbarBadge.Show(this, _vm.WaitingCount + _vm.OutsideWaitingCount, StatusBrushes.Waiting.Color);
+            }
             if (e.PropertyName is nameof(MainViewModel.WorkingCount) or nameof(MainViewModel.WaitingCount)
                 or nameof(MainViewModel.OutsideWorkingCount) or nameof(MainViewModel.OutsideWaitingCount))
                 UpdateBreathing(changed: true);
@@ -46,6 +49,7 @@ public partial class MainWindow
         {
             if (e.PropertyName == nameof(SystemParameters.ClientAreaAnimation)) UpdateBreathing();
         };
+        Loaded += (_, _) => TaskbarBadge.Show(this, _vm.WaitingCount + _vm.OutsideWaitingCount, StatusBrushes.Waiting.Color);
         Activated += (_, _) => UpdateStatusLight();
         Deactivated += (_, _) => UpdateStatusLight();
         // Breathing only shows (and costs) while Kovan is in front

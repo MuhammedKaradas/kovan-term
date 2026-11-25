@@ -58,4 +58,11 @@ public sealed class ContextLevelTests
         }
         Assert.Equal(StatusBrushes.Default.Working, StatusBrushes.Working.Color);
     }
+
+    [Theory]
+    [InlineData(0, null)]
+    [InlineData(1, "1")]
+    [InlineData(9, "9")]
+    [InlineData(12, "9+")]
+    public void Taskbar_badge_text(int waiting, string? text) => Assert.Equal(text, TaskbarBadge.Text(waiting));
 }
