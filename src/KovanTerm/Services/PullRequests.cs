@@ -14,8 +14,10 @@ public enum ChecksState { None, Pending, Passing, Failing }
 public sealed record FailedCheck(string Name, string? Url, long? RunId);
 
 /// <param name="HeadCommit">The commit the pull request ends at (its branch on the remote).</param>
+/// <param name="HasConflicts">GitHub says it can't be merged cleanly into its base branch (#142).</param>
+/// <param name="BaseBranch">The branch it merges into.</param>
 public sealed record PullRequestStatus(int Number, string Url, PullRequestState State, ChecksState Checks, string HeadCommit,
-    IReadOnlyList<FailedCheck> Failed)
+    IReadOnlyList<FailedCheck> Failed, bool HasConflicts = false, string? BaseBranch = null)
 {
     /// <summary>"PR #12 · checks failing", for the node's header and the Changes panel.</summary>
     public string Summary => $"PR #{Number} · " + (State switch
@@ -43,7 +45,7 @@ public sealed partial class PullRequests(string ghPath)
     /// <summary>The pull request for <paramref name="branch"/>; <c>null</c> if there's none (or gh can't tell).</summary>
     public async Task<PullRequestStatus?> GetAsync(string repoDirectory, string branch)
     {
-        var (ok, output) = await RunAsync(repoDirectory, "pr", "view", branch, "--json", "number,url,state,isDraft,headRefOid,statusCheckRollup");
+        var (ok, output) = await RunAsync(repoDirectory, "pr", "view", branch, "--json", "number,url,state,isDraft,headRefOid,statusCheckRollup,mergeable,baseRefName");
         return ok ? Parse(output) : null;
     }
 
@@ -70,6 +72,15 @@ public sealed partial class PullRequests(string ghPath)
         if (log.Trim().Length > 0) s.Append("\nThe end of the failed steps' log:\n```\n").Append(log.TrimEnd()).Append("\n```\n");
         s.Append("\nFind out why and fix it.");
         return s.ToString();
+    }
+
+    /// <summary>What's typed into the agent when its pull request conflicts with the base branch.</summary>
+    public static string ConflictPrompt(PullRequestStatus pr)
+    {
+        var target = pr.BaseBranch is { Length: > 0 } b ? $"origin/{b}" : "the base branch";
+        return $"Pull request #{pr.Number} can't be merged: it conflicts with its base branch. "
+               + $"Fetch and merge {target} into this branch, resolve the conflicts keeping both sides' intent, "
+               + "run the tests, then commit and push.";
     }
 
     public static PullRequestStatus? Parse(string json)
@@ -110,8 +121,10 @@ public sealed partial class PullRequests(string ghPath)
                 }
             }
             var checksState = failed.Count > 0 ? ChecksState.Failing : pending ? ChecksState.Pending : any ? ChecksState.Passing : ChecksState.None;
+            // "UNKNOWN" while GitHub is still working it out (the next refresh knows); only open ones can conflict
+            var conflicts = Str(r, "mergeable") == "CONFLICTING" && state is PullRequestState.Open or PullRequestState.Draft;
             return new PullRequestStatus(r.GetProperty("number").GetInt32(), Str(r, "url") ?? "", state, checksState,
-                Str(r, "headRefOid") ?? "", failed);
+                Str(r, "headRefOid") ?? "", failed, conflicts, Str(r, "baseRefName"));
         }
         catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
         {

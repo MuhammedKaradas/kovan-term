@@ -142,12 +142,13 @@ public partial class TerminalNodeViewModel : ObservableObject
 
     /// <summary>The worktree branch's pull request, if it has one (looked up with gh).</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(PullRequestText), nameof(HasFailedChecks), nameof(IsPullRequestMerged))]
+    [NotifyPropertyChangedFor(nameof(PullRequestText), nameof(HasFailedChecks), nameof(IsPullRequestMerged), nameof(HasConflicts))]
     public partial Services.PullRequestStatus? PullRequest { get; set; }
 
     public string? PullRequestText => PullRequest?.Summary;
     public bool HasFailedChecks => PullRequest is { Checks: Services.ChecksState.Failing, State: not Services.PullRequestState.Merged };
     public bool IsPullRequestMerged => PullRequest?.State == Services.PullRequestState.Merged;
+    public bool HasConflicts => PullRequest?.HasConflicts == true;
     public string MergeLabel => Worktree?.BaseBranch is { } b ? $"Merge into {b}" : "Merge";
     /// <summary>Header accent color (#RRGGBB); default if empty.</summary>
     public string? Color { get; init; }

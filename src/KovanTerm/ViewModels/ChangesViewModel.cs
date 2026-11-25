@@ -12,6 +12,21 @@ public sealed record ReviewNote(string Path, int? Line, string Code, string Text
     public string Location => Line is { } l ? $"{Path}:{l}" : Path;
 }
 
+/// <summary>A changed file in the Changes panel, with its "viewed" box (#142).</summary>
+public sealed partial class ChangedFileRow(ChangedFile file, bool viewed, Action<ChangedFileRow, bool> viewedChanged) : ObservableObject
+{
+    public ChangedFile File { get; } = file;
+    public string Path => File.Path;
+    public string Code => File.Code;
+    public string FileName => File.FileName;
+    public string? Folder => File.Folder;
+
+    [ObservableProperty]
+    public partial bool IsViewed { get; set; } = viewed;
+
+    partial void OnIsViewedChanged(bool value) => viewedChanged(this, value);
+}
+
 /// <summary>
 /// The Changes panel: the git changes in the current node's folder, the selected file's diff and the user's notes
 /// on its lines. Notes are pasted into the node's terminal as one message, for the user to review and send.
@@ -23,17 +38,25 @@ public partial class ChangesViewModel : ObservableObject
 
     public ChangesViewModel(GitChanges git) => _git = git;
 
+    private readonly ViewedFiles _viewed = new();
+    // The folder git's paths are relative to (the repository's root), for the files' viewed state
+    private string? _root;
+
     /// <summary>Raised with the message to paste into the node's terminal.</summary>
     public event Action<TerminalNodeViewModel, string>? SendRequested;
 
-    public ObservableCollection<ChangedFile> Files { get; } = new();
+    public ObservableCollection<ChangedFileRow> Files { get; } = new();
+
+    /// <summary>"3 to review" in the panel's header; <c>null</c> when every file is viewed (or none changed).</summary>
+    public string? UnviewedText => Files.Count == 0 ? null
+        : Files.Count(f => !f.IsViewed) is var n and > 0 ? $"{n} to review" : "All viewed";
     public ObservableCollection<ReviewNote> Notes { get; } = new();
 
     [ObservableProperty]
     public partial TerminalNodeViewModel? Node { get; private set; }
 
     [ObservableProperty]
-    public partial ChangedFile? SelectedFile { get; set; }
+    public partial ChangedFileRow? SelectedFile { get; set; }
 
     [ObservableProperty]
     public partial IReadOnlyList<DiffLine> DiffLines { get; private set; } = [];
@@ -113,16 +136,22 @@ public partial class ChangesViewModel : ObservableObject
         }
 
         var previous = SelectedFile?.Path;
+        var root = _root = GitWorktrees.FindRepoRoot(dir) ?? dir;
         Files.Clear();
-        foreach (var f in status.Value) Files.Add(f);
+        foreach (var f in status.Value)
+            Files.Add(new ChangedFileRow(f, _viewed.IsViewed(root, f, ViewedFiles.Fingerprint(root, f)), OnViewedChanged));
+        OnPropertyChanged(nameof(UnviewedText));
         Message = Files.Count == 0 ? "No changes." : null;
         // Keep the selection across refreshes if the file is still changed. Selecting another file loads its diff
         // (OnSelectedFileChanged); the same one is reloaded here, since its content may have changed.
         var selection = Files.FirstOrDefault(f => f.Path == previous) ?? Files.FirstOrDefault();
-        if (Equals(selection, SelectedFile))
+        if (selection != null && selection.Path == previous && SelectedFile?.File == selection.File)
         {
-            if (selection != null) await LoadDiffAsync(selection);
-            else DiffLines = [];
+            // The same file: keep it selected without reloading twice
+            _suppressLoad = true;
+            SelectedFile = selection;
+            _suppressLoad = false;
+            await LoadDiffAsync(selection.File);
         }
         else
         {
@@ -131,10 +160,21 @@ public partial class ChangesViewModel : ObservableObject
         }
     }
 
-    partial void OnSelectedFileChanged(ChangedFile? value)
+    private bool _suppressLoad;
+
+    partial void OnSelectedFileChanged(ChangedFileRow? value)
     {
+        if (_suppressLoad) return;
         NoteLine = null;
-        if (value != null) _ = LoadDiffAsync(value);
+        if (value != null) _ = LoadDiffAsync(value.File);
+    }
+
+    /// <summary>A file's box was ticked or cleared: remembered as the file is now, until it changes.</summary>
+    private void OnViewedChanged(ChangedFileRow row, bool viewed)
+    {
+        if (_root is { } root) _viewed.Set(root, row.File, ViewedFiles.Fingerprint(root, row.File), viewed);
+        OnPropertyChanged(nameof(UnviewedText));
+        if (viewed) UsageStats.Count("feature.viewed");
     }
 
     private ChangedFile? _diffLoadedFor;

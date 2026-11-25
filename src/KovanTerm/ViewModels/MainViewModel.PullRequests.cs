@@ -42,7 +42,7 @@ public partial class MainViewModel
         _pullRequestChecked[node] = DateTime.UtcNow;
         var pr = await _pullRequests!.GetAsync(w.Path, w.Branch);
         if (!Nodes.Contains(node)) return;
-        if (pr?.Summary != node.PullRequest?.Summary) StatusLog($"{node.Title} {pr?.Summary ?? "no pull request"}");
+        if (pr?.Summary != node.PullRequest?.Summary || pr?.HasConflicts != node.PullRequest?.HasConflicts) StatusLog($"{node.Title} {pr?.Summary ?? "no pull request"}");
         node.PullRequest = pr;
     }
 
@@ -62,6 +62,17 @@ public partial class MainViewModel
         TerminalInputRequested?.Invoke(node, ChangesViewModel.BracketedPaste(PullRequests.FixPrompt(pr, log)));
         StatusLog($"{node.Title} sent failed checks of PR #{pr.Number} ({log.Length} chars of log)");
         node.StatusText = null;
+        GoTo(node);
+    }
+
+    /// <summary>Pastes "merge the base branch and resolve the conflicts" into the node's agent, for the user to send.</summary>
+    [RelayCommand]
+    private void SendConflicts(TerminalNodeViewModel? node)
+    {
+        if (node is not { PullRequest: { HasConflicts: true } pr }) return;
+        TerminalInputRequested?.Invoke(node, ChangesViewModel.BracketedPaste(PullRequests.ConflictPrompt(pr)));
+        StatusLog($"{node.Title} sent conflicts of PR #{pr.Number}");
+        UsageStats.Count("feature.conflicts");
         GoTo(node);
     }
 
