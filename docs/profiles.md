@@ -148,6 +148,7 @@ resuming work the same, since it's still Claude Code. The Claude plan panel only
 - **DeepSeek** (`claude-deepseek`): create an API key at [platform.deepseek.com](https://platform.deepseek.com)
   (usage is billed by DeepSeek). The first terminal asks for it and keeps it in Credential Manager as
   `KovanTerm/deepseek`. Models follow [DeepSeek's guide](https://api-docs.deepseek.com/quick_start/agent_integrations/claude_code).
+  Once the key is saved, the bottom of the Agents panel shows the account's balance (asked from DeepSeek with that key).
 - **Ollama** (`claude-ollama`): install [Ollama](https://ollama.com) 0.14 or later and get a model
   (`ollama pull qwen3-coder`). The New terminal dialog lists the installed models; the one picked is saved with the
   node. Nothing leaves your computer with a local model. Small models struggle with agent work: pick a larger one

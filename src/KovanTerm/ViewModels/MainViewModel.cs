@@ -155,7 +155,7 @@ public partial class MainViewModel : ObservableObject
         IDialogService dialogs, SettingsStore settings,
         AgentHookServer? hookServer = null, ClaudeSessions? sessions = null, ClaudeUsage? usage = null,
         DictationViewModel? dictation = null, PullRequests? pullRequests = null, AntigravityConversations? antigravity = null,
-        CodexUsage? codexUsage = null, OutsideHook? outsideHook = null)
+        CodexUsage? codexUsage = null, OutsideHook? outsideHook = null, DeepSeekBalance? deepSeek = null)
     {
         AntigravityConversations = antigravity ?? new AntigravityConversations();
         InitPullRequests(pullRequests);
@@ -164,7 +164,8 @@ public partial class MainViewModel : ObservableObject
         _sessions = sessions ?? new ClaudeSessions();
         _usageLimits = usage;
         _codexUsage = codexUsage;
-        if (usage != null || codexUsage != null)
+        _deepSeek = deepSeek;
+        if (usage != null || codexUsage != null || deepSeek != null)
         {
             _usageTimer.Tick += (_, _) => _ = RefreshUsageAsync(force: true);
             _usageTimer.Start();
@@ -656,8 +657,17 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     public partial string CodexUsageTitle { get; private set; } = "Codex plan";
 
-    /// <summary>The panel shows when either plan is known.</summary>
-    public bool HasAnyUsage => HasUsage || HasCodexUsage;
+    private readonly DeepSeekBalance? _deepSeek;
+
+    /// <summary>The DeepSeek account's balance; null (and hidden) without a saved DeepSeek key.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAnyUsage), nameof(HasDeepSeekBalance))]
+    public partial DeepSeekAccount? DeepSeekAccount { get; private set; }
+
+    public bool HasDeepSeekBalance => DeepSeekAccount != null;
+
+    /// <summary>The panel shows when any plan or balance is known.</summary>
+    public bool HasAnyUsage => HasUsage || HasCodexUsage || HasDeepSeekBalance;
 
     /// <summary>Reads the limits again, at most once a minute (an agent finishing a turn asks for it).</summary>
     private async Task RefreshUsageAsync(bool force = false)
@@ -683,6 +693,8 @@ public partial class MainViewModel : ObservableObject
                 HasCodexUsage = CodexUsageRows.Count > 0;
                 CodexUsageTitle = plan is { Length: > 0 } ? $"Codex · {plan}" : "Codex plan";
             }
+            if (_deepSeek != null)
+                DeepSeekAccount = DeepSeekBalance.KeyName(_profiles) is { } key ? await _deepSeek.ReadAsync(key) : null;
         }
         finally
         {

@@ -450,8 +450,14 @@ The bottom of the Agents panel shows the Claude plan's limits (5-hour session, w
 `/usage` does (`ClaudeUsage`): Claude Code's own OAuth token from `<claude config dir>\.credentials.json` is sent only to
 `api.anthropic.com/api/oauth/usage`, every 5 minutes and after an agent's turn ends (at most once a minute). The
 endpoint isn't documented: no login, an expired token (it's never refreshed here — that would rewrite Claude Code's
-credentials), an error or an unexpected response hides the section. No limit is ever estimated. Codex's limits are only
-available through its app-server, which Kovan doesn't run.
+credentials), an error or an unexpected response hides the section. No limit is ever estimated. Codex's limits are read
+locally from the `rate_limits` Codex records in its newest session files (`CodexUsage`), with no request.
+
+The DeepSeek balance (`DeepSeekBalance`) is asked from DeepSeek's documented `api.deepseek.com/user/balance`, on the
+same schedule, with the key of a profile whose `ANTHROPIC_BASE_URL` is DeepSeek's (the built-in profile's
+`secret:deepseek`). Kovan only reads that key from Credential Manager, where KovanLaunch saved it; without a saved key
+nothing is asked and the row is hidden. The amount turns the caution colour under $1 (or ¥7), or when DeepSeek says
+the account can't make requests.
 
 ## Changes panel
 
