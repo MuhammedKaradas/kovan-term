@@ -64,6 +64,9 @@ Terminal'in GPU hızlandırmalı terminal bileşeniyle, düşük kaynak tüketim
 .NET kurulumu gerekmez. Exe henüz imzalı olmadığı için SmartScreen uyarısı çıkarsa
 "Ek bilgi → Yine de çalıştır".
 
+[.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) kuruluysa
+`KovanTerm-<sürüm>-win-x64-small.zip` (~62 MB yerine ~6 MB) aynı şekilde çalışır.
+
 Kovan açılırken GitHub'a daha yeni bir sürüm olup olmadığını sorar, varsa bir düğme gösterir; senin yerine hiçbir
 şey indirmez ya da kurmaz. Ayarlar → About bölümünden kapatılabilir.
 

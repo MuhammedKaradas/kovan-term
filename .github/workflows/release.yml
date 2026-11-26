@@ -1,6 +1,8 @@
 name: Release
 
-# On a v* tag: test → self-contained win-x64 package → zip + SHA256 → draft GitHub Release.
+# On a v* tag: test → two win-x64 packages → zips + SHA256 → draft GitHub Release:
+#   KovanTerm-<v>-win-x64.zip        self-contained, runs anywhere (~62 MB)
+#   KovanTerm-<v>-win-x64-small.zip  needs the .NET 10 Desktop Runtime (~6 MB); what winget installs, with the runtime as a dependency
 # On PRs that change the release setup, the package is only built and uploaded as an artifact (no release).
 on:
   push:
@@ -30,6 +32,7 @@ jobs:
           if ($env:GITHUB_REF_TYPE -eq 'tag') { $v = $env:GITHUB_REF_NAME.TrimStart('v') } else { $v = '0.0.0-pr' }
           "version=$v" >> $env:GITHUB_OUTPUT
           "file=KovanTerm-$v-win-x64" >> $env:GITHUB_OUTPUT
+          "small=KovanTerm-$v-win-x64-small" >> $env:GITHUB_OUTPUT
 
       - name: Test
         run: dotnet test -c Release
@@ -41,21 +44,31 @@ jobs:
           -p:KovanCrashReportEndpoint=${{ vars.CRASH_REPORT_ENDPOINT }}
           -p:KovanUsageEndpoint=${{ vars.USAGE_STATS_ENDPOINT }}
 
+      - name: Publish (needs .NET)
+        run: >
+          dotnet publish src/KovanTerm -c Release -r win-x64 --self-contained false
+          -p:Version=${{ steps.version.outputs.version }} -o dist/${{ steps.version.outputs.small }}
+          -p:KovanCrashReportEndpoint=${{ vars.CRASH_REPORT_ENDPOINT }}
+          -p:KovanUsageEndpoint=${{ vars.USAGE_STATS_ENDPOINT }}
+
       - name: Zip and SHA256
         shell: pwsh
         run: |
-          $name = '${{ steps.version.outputs.file }}'
-          Compress-Archive -Path "dist/$name/*" -DestinationPath "dist/$name.zip"
-          $hash = (Get-FileHash "dist/$name.zip" -Algorithm SHA256).Hash.ToLower()
-          "$hash  $name.zip" | Out-File "dist/$name.zip.sha256" -Encoding ascii
-          "{0:N1} MB, SHA256 {1}" -f ((Get-Item "dist/$name.zip").Length / 1MB), $hash
+          foreach ($name in '${{ steps.version.outputs.file }}', '${{ steps.version.outputs.small }}') {
+            Compress-Archive -Path "dist/$name/*" -DestinationPath "dist/$name.zip"
+            $hash = (Get-FileHash "dist/$name.zip" -Algorithm SHA256).Hash.ToLower()
+            "$hash  $name.zip" | Out-File "dist/$name.zip.sha256" -Encoding ascii
+            "{0}: {1:N1} MB, SHA256 {2}" -f $name, ((Get-Item "dist/$name.zip").Length / 1MB), $hash
+          }
 
       - name: Artifact (PR)
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.version.outputs.file }}
-          path: dist/${{ steps.version.outputs.file }}.zip
+          path: |
+            dist/${{ steps.version.outputs.file }}.zip
+            dist/${{ steps.version.outputs.small }}.zip
           retention-days: 7
 
       - name: Draft release
@@ -65,6 +78,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $name = '${{ steps.version.outputs.file }}'
+          $small = '${{ steps.version.outputs.small }}'
           $prerelease = if ('${{ steps.version.outputs.version }}'.Contains('-')) { '--prerelease' } else { '' }
-          gh release create $env:GITHUB_REF_NAME "dist/$name.zip" "dist/$name.zip.sha256" `
+          gh release create $env:GITHUB_REF_NAME "dist/$name.zip" "dist/$name.zip.sha256" "dist/$small.zip" "dist/$small.zip.sha256" `
             --draft --generate-notes --title "Kovan Term $env:GITHUB_REF_NAME" $prerelease
