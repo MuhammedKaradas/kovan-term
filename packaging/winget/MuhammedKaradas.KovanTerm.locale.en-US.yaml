@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.9.0.schema.json
+PackageIdentifier: MuhammedKaradas.KovanTerm
+PackageVersion: {version}
+PackageLocale: en-US
+Publisher: MuhammedKaradas
+PublisherUrl: https://github.com/MuhammedKaradas
+PublisherSupportUrl: https://github.com/MuhammedKaradas/kovan-term/issues
+PackageName: Kovan Term
+PackageUrl: https://github.com/MuhammedKaradas/kovan-term
+License: MIT
+LicenseUrl: https://github.com/MuhammedKaradas/kovan-term/blob/main/LICENSE
+ShortDescription: Run AI coding agents (Claude Code, Codex, Antigravity…) side by side on an infinite canvas, each in a real terminal.
+Description: |-
+  A lightweight, native Windows app that runs AI coding agents side by side on an infinite canvas, each in its own
+  real terminal (Windows Terminal's control). It shows which agent works and which waits for you, answers permission
+  prompts from outside the terminal, notifies you while you're in another app, and shows the agents' changes as a diff.
+Tags:
+  - ai
+  - agents
+  - claude-code
+  - codex
+  - terminal
+  - canvas
+ReleaseNotesUrl: https://github.com/MuhammedKaradas/kovan-term/releases/tag/v{version}
+ManifestType: defaultLocale
+ManifestVersion: 1.9.0

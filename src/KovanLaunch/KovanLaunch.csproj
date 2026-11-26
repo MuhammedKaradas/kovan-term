@@ -10,6 +10,7 @@
     <Product>Kovan Term</Product>
     <Version>0.1.0</Version>
     <DebugType>embedded</DebugType>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <!-- It waits for the program for as long as the terminal runs: keep it small -->
     <InvariantGlobalization>true</InvariantGlobalization>
     <UseSystemResourceKeys>true</UseSystemResourceKeys>

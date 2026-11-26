@@ -65,6 +65,9 @@ Download `KovanTerm-<version>-win-x64.zip` from the
 `KovanTerm.exe`. No .NET installation needed. The executable isn't signed yet, so if SmartScreen warns
 you, choose "More info → Run anyway".
 
+With the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) installed,
+`KovanTerm-<version>-win-x64-small.zip` (~6 MB instead of ~62 MB) works the same.
+
 When it opens, Kovan asks GitHub whether a newer release exists and shows a button if one does; nothing is
 downloaded or installed for you. Turn it off in Settings → About.
 

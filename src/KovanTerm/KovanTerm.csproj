@@ -11,6 +11,8 @@
     <Version>0.1.0</Version>
     <!-- Our own symbols are embedded in the dll: crash reports keep line numbers without shipping a separate .pdb -->
     <DebugType>embedded</DebugType>
+    <!-- The app is in English: the packages' translations (13 languages of WPF, WPF-UI…) would only add size -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <!-- Drawn by tools/draw-logo.py; the exe, taskbar and notification icon -->
     <ApplicationIcon>Resources\kovan.ico</ApplicationIcon>
     <!--

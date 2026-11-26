@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.version.1.9.0.schema.json
+# Version manifest. {version} is the release's version without the v (e.g. 0.1.0).
+PackageIdentifier: MuhammedKaradas.KovanTerm
+PackageVersion: {version}
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.9.0
